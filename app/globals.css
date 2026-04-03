@@ -1,0 +1,155 @@
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #0a0a0a;
+  --cream: #fff6e9;
+  --cream-soft: #fff5e6;
+  --mint: #f5ffe6;
+  --primary: #ff571f;
+  --hero-orange: #f16422;
+  --hero-chocolate: #301b14;
+  --ink: #3e2723;
+  --muted: #666666;
+  --border-faq: #c2b6b6;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-cream: var(--cream);
+  --color-cream-soft: var(--cream-soft);
+  --color-mint: var(--mint);
+  --color-primary: #ff571f;
+  --color-ink: var(--ink);
+  --font-sans: var(--font-poppins);
+  --font-display: var(--font-abeezee);
+}
+
+/* Orange tint for line-art icons (PNG/SVG via img) */
+.icon-orange-line {
+  filter: brightness(0) saturate(100%) invert(37%) sepia(93%) saturate(3264%)
+    hue-rotate(352deg) brightness(101%) contrast(101%);
+}
+
+html {
+  overflow-x: hidden;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-poppins), ui-sans-serif, system-ui, sans-serif;
+  overflow-x: hidden;
+}
+
+/* Semantic headings — consistent semibold weight across pages/sections */
+@layer base {
+  h1,
+  h2,
+  h3,
+  h4 {
+    @apply font-semibold;
+  }
+}
+
+/* Primary page / section headings */
+@layer components {
+  /**
+   * Full-size display — only the home hero “Learn & Discuss … Beyond the Classroom” line.
+   */
+  .text-heading-display-hero {
+    @apply text-balance text-[1.65rem] font-semibold leading-tight sm:text-4xl sm:leading-[1.15] lg:text-[2.65rem] lg:leading-[1.12];
+  }
+
+  /**
+   * Section titles — 60% smaller than legacy display (×0.4) with minimum readable sizes.
+   */
+  .text-heading-display {
+    @apply text-balance font-semibold leading-tight;
+    font-size: max(1rem, calc(1.65rem * 0.4));
+  }
+  @media (min-width: 640px) {
+    .text-heading-display {
+      font-size: max(1.25rem, calc(2.25rem * 0.4));
+      line-height: 1.15;
+    }
+  }
+  @media (min-width: 1024px) {
+    .text-heading-display {
+      font-size: max(1.5rem, calc(2.65rem * 0.4));
+      line-height: 1.12;
+    }
+  }
+
+  /**
+   * Card / feature titles — 60% smaller than legacy (×0.4) with floors.
+   */
+  .text-heading-card {
+    @apply font-semibold leading-snug;
+    font-size: max(0.875rem, calc(1.125rem * 0.4));
+  }
+  @media (min-width: 640px) {
+    .text-heading-card {
+      font-size: max(1rem, calc(1.25rem * 0.4));
+    }
+  }
+  @media (min-width: 1024px) {
+    .text-heading-card {
+      font-size: max(1.125rem, calc(1.5rem * 0.4));
+    }
+  }
+
+  /* Inner vertical padding for stacked marketing sections */
+  .section-y {
+    @apply py-3 sm:py-4 lg:py-5;
+  }
+
+  /** Vertical gap between sibling sections */
+  .section-gap-y {
+    @apply flex flex-col gap-5 lg:gap-[25px];
+  }
+}
+
+/* Hero accent words — black → brown → orange (Figma) */
+.text-hero-title-accent {
+  background: linear-gradient(90deg, #000000 0%, #913212 52%, #ff571f 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Home hero title — brown → orange (first phrase) */
+.text-hero-grad-lr {
+  background: linear-gradient(
+    90deg,
+    var(--hero-chocolate) 0%,
+    var(--hero-chocolate) 35%,
+    var(--hero-orange) 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Home hero title — orange → brown (last word, mirrored) */
+.text-hero-grad-rl {
+  background: linear-gradient(
+    90deg,
+    var(--hero-orange) 0%,
+    var(--hero-chocolate) 65%,
+    var(--hero-chocolate) 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.text-hero-solid-orange {
+  color: var(--hero-orange);
+}
+
+.text-hero-solid-chocolate {
+  color: var(--hero-chocolate);
+}
+
