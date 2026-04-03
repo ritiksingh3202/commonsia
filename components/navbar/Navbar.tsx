@@ -24,6 +24,7 @@ export function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
   const { status } = useSession();
   const authed = status === "authenticated";
+  const loading = status === "loading";
 
   return (
     <header className="sticky top-0 z-50 border-b border-cream/80 bg-white/90 backdrop-blur-md">
@@ -75,12 +76,28 @@ export function Navbar() {
               className="size-[22px]"
             />
           </Link>
-          <Link
-            href="/auth"
-            className="rounded-full bg-primary px-8 py-2.5 text-sm font-semibold text-white shadow-sm transition-transform hover:scale-[1.02] active:scale-[0.98]"
-          >
-            Login/Register
-          </Link>
+          {loading ? (
+            <span
+              className="inline-block min-w-[10rem] rounded-full bg-neutral-200/80 px-8 py-2.5 text-sm font-semibold text-transparent"
+              aria-hidden
+            >
+              …
+            </span>
+          ) : authed ? (
+            <Link
+              href="/student"
+              className="rounded-full bg-primary px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition-transform hover:scale-[1.02] active:scale-[0.98] sm:px-8"
+            >
+              My profile
+            </Link>
+          ) : (
+            <Link
+              href="/auth"
+              className="rounded-full bg-primary px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition-transform hover:scale-[1.02] active:scale-[0.98] sm:px-8"
+            >
+              Login/Register
+            </Link>
+          )}
           <button
             type="button"
             className="rounded-lg p-2 md:hidden"
@@ -123,6 +140,15 @@ export function Navbar() {
                   {item.label}
                 </Link>
               ))}
+              {!loading && (
+                <Link
+                  href={authed ? "/student" : "/auth"}
+                  className="mt-2 rounded-lg bg-primary px-3 py-2.5 text-center text-sm font-semibold text-white"
+                  onClick={() => setMenuOpen(false)}
+                >
+                  {authed ? "My profile" : "Login/Register"}
+                </Link>
+              )}
             </nav>
           </motion.div>
         )}

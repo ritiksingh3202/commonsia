@@ -71,176 +71,189 @@ const sessions = [
   { name: "Dr. Sarah Johnson", time: "Mar 25 at 2:00 PM" },
 ];
 
-const card = "rounded-xl border border-black/10 bg-white shadow-sm";
-const sectionTitle = "text-sm font-semibold text-[#0a0a0a]";
-const sectionDesc = "mt-0.5 text-[13px] text-[#717182]";
+const card =
+  "rounded-xl border border-black/[0.07] bg-white shadow-[0_1px_3px_rgba(0,0,0,0.06)]";
+const sectionTitle = "text-[15px] font-semibold leading-snug text-[#0a0a0a]";
+const sectionDesc = "mt-1 text-[13px] leading-snug text-[#6b7280]";
+const rowBtn =
+  "inline-flex h-9 shrink-0 items-center justify-center rounded-md px-4 text-[13px] font-medium transition-colors sm:min-w-[5.5rem]";
 
 export function StudentDashboard({ user }: { user: StudentProfileUser }) {
   return (
     <div className="w-full">
       <StudentProfileHero user={user} />
 
-      <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8 lg:py-10">
-        <h2 className="font-heading text-lg font-semibold tracking-tight text-[#0a0a0a] sm:text-xl">
-          My Dashboard
-        </h2>
-        <p className="mt-1 text-[13px] text-[#717182] sm:text-sm">
-          Overview of your mentorships, sessions, and progress.
-        </p>
-
-      <div className="mb-8 mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-4">
-        {statCards.map((c) => (
-          <div
-            key={c.title}
-            className={`${card} border-l-4 p-4 ${c.border}`}
-          >
-            <p className="text-[13px] text-[#717182]">{c.title}</p>
-            <p className="mt-1 text-2xl font-semibold tabular-nums text-[#0a0a0a]">{c.value}</p>
-            <div className="mt-3 flex items-center gap-1.5 text-[12px] leading-tight">
-              {c.icon === "calendar" && <CalendarIcon className="size-3.5 shrink-0 text-[#717182]" />}
-              {c.icon === "message" && <MessageIcon className="size-3.5 shrink-0 text-[#717182]" />}
-              {c.icon === "trophy" && <TrophyIcon className="size-3.5 shrink-0 text-[#717182]" />}
-              <span
-                className={
-                  c.footerTone === "green"
-                    ? "text-emerald-600"
-                    : c.footerTone === "orange"
-                      ? "text-primary"
-                      : "text-[#4a5565]"
-                }
-              >
-                {c.footer}
-              </span>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-12 lg:gap-6">
-        <div className="space-y-5 lg:col-span-8">
-          <section className={`${card} p-4 sm:p-5`}>
-            <h2 className={sectionTitle}>Your Mentors</h2>
-            <p className={sectionDesc}>Connect with your active mentors</p>
-            <ul className="mt-4 space-y-3">
-              {mentors.map((m) => (
-                <li
-                  key={m.name}
-                  className="flex flex-col gap-3 rounded-lg border border-black/10 p-3 sm:flex-row sm:items-center sm:justify-between sm:p-3.5"
-                >
-                  <div className="flex min-w-0 items-center gap-3">
-                    <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/10">
-                      <span className="text-[13px] font-medium text-primary">{m.initials}</span>
-                    </div>
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-semibold text-[#0a0a0a]">{m.name}</p>
-                      <p className="text-[13px] text-[#4a5565]">{m.role}</p>
-                      <p className="text-[11px] text-[#6a7282]">{m.focus}</p>
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    className="shrink-0 rounded-md bg-primary px-3 py-2 text-[13px] font-medium text-white transition-colors hover:bg-primary/90 sm:self-center"
-                  >
-                    Message
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </section>
-
-          <section className={`${card} p-4 sm:p-5`}>
-            <h2 className={sectionTitle}>Recommended for You</h2>
-            <p className={sectionDesc}>Resources based on your interests</p>
-            <ul className="mt-4 space-y-2">
-              {recommended.map((r) => (
-                <li
-                  key={r.title}
-                  className="flex flex-col gap-2 rounded-lg border border-black/10 px-3 py-3 sm:flex-row sm:items-center sm:justify-between"
-                >
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium text-[#0a0a0a]">{r.title}</p>
-                    <p className="text-[13px] text-[#4a5565]">{r.meta}</p>
-                  </div>
-                  <button
-                    type="button"
-                    className="shrink-0 rounded-md border border-black/10 bg-white px-3 py-1.5 text-[13px] font-medium text-[#0a0a0a] transition-colors hover:bg-neutral-50"
-                  >
-                    View
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </section>
+      <div className="mx-auto max-w-6xl px-4 py-9 sm:px-6 lg:px-10 lg:py-11">
+        <div className="border-b border-black/[0.06] pb-6">
+          <h2 className="font-heading text-lg font-semibold tracking-tight text-[#0a0a0a] sm:text-xl">
+            My Dashboard
+          </h2>
+          <p className="mt-1.5 text-[13px] text-[#5c5c66] sm:text-sm">
+            Overview of your mentorships, sessions, and progress.
+          </p>
         </div>
 
-        <aside className="space-y-5 lg:col-span-4">
-          <section className={`${card} p-4 sm:p-5`}>
-            <h2 className={sectionTitle}>Quick Actions</h2>
-            <div className="mt-3 flex flex-col gap-2">
-              <Link
-                href="/mentors"
-                className="rounded-md bg-primary py-2.5 text-center text-[13px] font-semibold text-white transition-colors hover:bg-primary/90"
-              >
-                Browse Mentors
-              </Link>
-              <Link
-                href="/schedule"
-                className="rounded-md border border-black/10 bg-white py-2.5 text-center text-[13px] font-medium text-[#0a0a0a] transition-colors hover:bg-neutral-50"
-              >
-                Schedule Session
-              </Link>
-              <Link
-                href="/student/setup/3"
-                className="rounded-md border border-black/10 bg-white py-2.5 text-center text-[13px] font-medium text-[#0a0a0a] transition-colors hover:bg-neutral-50"
-              >
-                Upload Portfolio
-              </Link>
-              <Link
-                href="/contact"
-                className="rounded-md border border-black/10 bg-white py-2.5 text-center text-[13px] font-medium text-[#0a0a0a] transition-colors hover:bg-neutral-50"
-              >
-                Join Discussion
-              </Link>
-            </div>
-          </section>
-
-          <section className={`${card} p-4 sm:p-5`}>
-            <h2 className={sectionTitle}>Upcoming Sessions</h2>
-            <ul className="mt-3 space-y-2">
-              {sessions.map((s, i) => (
-                <li key={`${s.name}-${i}`} className="rounded-lg border border-black/10 px-3 py-2.5">
-                  <p className="text-[13px] font-medium text-[#0a0a0a]">{s.name}</p>
-                  <p className="mt-0.5 text-[12px] text-[#4a5565]">{s.time}</p>
-                </li>
-              ))}
-            </ul>
-          </section>
-
-          <section className={`${card} p-4 sm:p-5`}>
-            <h2 className={sectionTitle}>Your Progress</h2>
-            <div className="mt-3 space-y-3">
+        <div className="mb-8 mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-4 xl:grid-cols-4">
+          {statCards.map((c) => (
+            <div
+              key={c.title}
+              className={`${card} flex min-h-[118px] flex-col justify-between border-l-4 p-5 ${c.border}`}
+            >
               <div>
-                <div className="flex justify-between text-[13px]">
-                  <span className="text-[#0a0a0a]">Profile Completion</span>
-                  <span className="font-medium text-primary">85%</span>
-                </div>
-                <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-neutral-200">
-                  <div className="h-full w-[85%] rounded-full bg-primary" />
-                </div>
+                <p className="text-[13px] leading-snug text-[#6b7280]">{c.title}</p>
+                <p className="mt-1.5 text-2xl font-semibold tabular-nums tracking-tight text-[#0a0a0a]">
+                  {c.value}
+                </p>
               </div>
-              <div>
-                <div className="flex justify-between text-[13px]">
-                  <span className="text-[#0a0a0a]">Sessions Completed</span>
-                  <span className="font-medium text-primary">12/20</span>
-                </div>
-                <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-neutral-200">
-                  <div className="h-full w-[60%] rounded-full bg-primary" />
-                </div>
+              <div className="mt-3 flex items-center gap-1.5 text-[12px] leading-tight">
+                {c.icon === "calendar" && <CalendarIcon className="size-3.5 shrink-0 text-[#9ca3af]" />}
+                {c.icon === "message" && <MessageIcon className="size-3.5 shrink-0 text-[#9ca3af]" />}
+                {c.icon === "trophy" && <TrophyIcon className="size-3.5 shrink-0 text-[#9ca3af]" />}
+                <span
+                  className={
+                    c.footerTone === "green"
+                      ? "text-emerald-600"
+                      : c.footerTone === "orange"
+                        ? "text-primary"
+                        : "text-[#4b5563]"
+                  }
+                >
+                  {c.footer}
+                </span>
               </div>
             </div>
-          </section>
-        </aside>
-      </div>
+          ))}
+        </div>
+
+        {/* Main ~65% fluid + sidebar ~340–380px — aligned columns */}
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_min(100%,22rem)] xl:grid-cols-[minmax(0,1fr)_23.75rem] lg:gap-8">
+          <div className="flex min-w-0 flex-col gap-6">
+            <section className={`${card} p-5 sm:p-6`}>
+              <h2 className={sectionTitle}>Your Mentors</h2>
+              <p className={sectionDesc}>Connect with your active mentors</p>
+              <ul className="mt-5 flex flex-col gap-3">
+                {mentors.map((m) => (
+                  <li
+                    key={m.name}
+                    className="flex min-h-[4.75rem] flex-col justify-center gap-3 rounded-xl border border-black/[0.08] bg-white px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
+                  >
+                    <div className="flex min-w-0 flex-1 items-center gap-3.5">
+                      <div className="flex size-11 shrink-0 items-center justify-center rounded-full bg-primary/10">
+                        <span className="text-[13px] font-semibold text-primary">{m.initials}</span>
+                      </div>
+                      <div className="min-w-0">
+                        <p className="truncate text-[15px] font-semibold text-[#0a0a0a]">{m.name}</p>
+                        <p className="mt-0.5 text-[13px] text-[#4b5563]">{m.role}</p>
+                        <p className="mt-0.5 text-[12px] text-[#9ca3af]">{m.focus}</p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      className={`${rowBtn} bg-primary text-white hover:bg-primary/92`}
+                    >
+                      Message
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </section>
+
+            <section className={`${card} p-5 sm:p-6`}>
+              <h2 className={sectionTitle}>Recommended for You</h2>
+              <p className={sectionDesc}>Resources based on your interests</p>
+              <ul className="mt-5 flex flex-col gap-3">
+                {recommended.map((r) => (
+                  <li
+                    key={r.title}
+                    className="flex min-h-[4.25rem] flex-col justify-center gap-3 rounded-xl border border-black/[0.08] bg-white px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[15px] font-medium text-[#0a0a0a]">{r.title}</p>
+                      <p className="mt-0.5 text-[13px] text-[#6b7280]">{r.meta}</p>
+                    </div>
+                    <button
+                      type="button"
+                      className={`${rowBtn} border border-black/[0.12] bg-white text-[#0a0a0a] hover:bg-neutral-50`}
+                    >
+                      View
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          </div>
+
+          <aside className="flex min-w-0 flex-col gap-6 lg:max-w-none">
+            <section className={`${card} p-5 sm:p-6`}>
+              <h2 className={sectionTitle}>Quick Actions</h2>
+              <div className="mt-4 flex flex-col gap-2.5">
+                <Link
+                  href="/mentors"
+                  className="flex h-10 items-center justify-center rounded-lg bg-primary text-[13px] font-semibold text-white transition-colors hover:bg-primary/90"
+                >
+                  Browse Mentors
+                </Link>
+                <Link
+                  href="/schedule"
+                  className="flex h-10 items-center justify-center rounded-lg border border-black/[0.1] bg-white text-[13px] font-medium text-[#0a0a0a] transition-colors hover:bg-neutral-50"
+                >
+                  Schedule Session
+                </Link>
+                <Link
+                  href="/student/setup/3"
+                  className="flex h-10 items-center justify-center rounded-lg border border-black/[0.1] bg-white text-[13px] font-medium text-[#0a0a0a] transition-colors hover:bg-neutral-50"
+                >
+                  Upload Portfolio
+                </Link>
+                <Link
+                  href="/contact"
+                  className="flex h-10 items-center justify-center rounded-lg border border-black/[0.1] bg-white text-[13px] font-medium text-[#0a0a0a] transition-colors hover:bg-neutral-50"
+                >
+                  Join Discussion
+                </Link>
+              </div>
+            </section>
+
+            <section className={`${card} p-5 sm:p-6`}>
+              <h2 className={sectionTitle}>Upcoming Sessions</h2>
+              <ul className="mt-4 flex flex-col gap-2.5">
+                {sessions.map((s, i) => (
+                  <li
+                    key={`${s.name}-${i}`}
+                    className="rounded-xl border border-black/[0.08] bg-white px-3.5 py-3"
+                  >
+                    <p className="text-[13px] font-semibold text-[#0a0a0a]">{s.name}</p>
+                    <p className="mt-1 text-[12px] text-[#6b7280]">{s.time}</p>
+                  </li>
+                ))}
+              </ul>
+            </section>
+
+            <section className={`${card} p-5 sm:p-6`}>
+              <h2 className={sectionTitle}>Your Progress</h2>
+              <div className="mt-4 space-y-5">
+                <div>
+                  <div className="flex items-baseline justify-between gap-3 text-[13px]">
+                    <span className="font-medium text-[#0a0a0a]">Profile Completion</span>
+                    <span className="shrink-0 font-semibold tabular-nums text-primary">85%</span>
+                  </div>
+                  <div className="mt-2 h-2 overflow-hidden rounded-full bg-neutral-200">
+                    <div className="h-full w-[85%] rounded-full bg-primary" />
+                  </div>
+                </div>
+                <div>
+                  <div className="flex items-baseline justify-between gap-3 text-[13px]">
+                    <span className="font-medium text-[#0a0a0a]">Sessions Completed</span>
+                    <span className="shrink-0 font-semibold tabular-nums text-primary">12/20</span>
+                  </div>
+                  <div className="mt-2 h-2 overflow-hidden rounded-full bg-neutral-200">
+                    <div className="h-full w-[60%] rounded-full bg-primary" />
+                  </div>
+                </div>
+              </div>
+            </section>
+          </aside>
+        </div>
       </div>
     </div>
   );

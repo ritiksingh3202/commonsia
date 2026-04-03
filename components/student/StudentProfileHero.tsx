@@ -13,7 +13,7 @@ import {
 } from "./student-profile-types";
 
 const pill =
-  "inline-flex items-center rounded-full bg-primary px-3 py-1 text-[11px] font-medium text-white sm:text-xs";
+  "inline-flex items-center rounded-full bg-primary/95 px-3 py-1.5 text-[11px] font-medium text-white shadow-sm ring-1 ring-primary/20 sm:text-xs";
 
 type Props = {
   user: StudentProfileUser;
@@ -125,61 +125,64 @@ export function StudentProfileHero({ user: initial }: Props) {
 
   return (
     <section className="border-b border-black/[0.06] bg-white">
-      <div className="relative mx-auto max-w-5xl">
-        {/* Banner */}
-        <div
-          className="relative h-[clamp(9.5rem,24vw,13.5rem)] w-full overflow-hidden rounded-b-2xl border-x border-b border-black/[0.06] sm:h-[clamp(10rem,26vw,14rem)]"
-          style={{ borderTop: "none" }}
-        >
-          {bannerSrc ? (
-            // eslint-disable-next-line @next/next/no-img-element -- data URLs from user uploads
-            <img src={bannerSrc} alt="" className="h-full w-full object-cover" />
-          ) : (
-            <div
-              className="flex h-full w-full items-end justify-center bg-gradient-to-br from-[#0d4d3f] via-[#157a66] to-[#0c3d3a] pb-4 opacity-95"
-              aria-hidden
-            >
-              <div className="pointer-events-none flex gap-6 opacity-30">
-                <span className="text-6xl text-white/90">◆</span>
-                <span className="text-6xl text-white/90">▣</span>
-                <span className="text-6xl text-white/90">◉</span>
-              </div>
-            </div>
-          )}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/25 to-transparent pointer-events-none" />
-          <button
-            type="button"
-            disabled={busy !== null}
-            onClick={() => bannerInputRef.current?.click()}
-            className="absolute bottom-3 right-3 flex size-9 items-center justify-center rounded-full bg-white/95 text-[#0a0a0a] shadow-md ring-1 ring-black/10 transition hover:bg-white disabled:opacity-60"
-            aria-label="Change banner image"
-          >
-            {busy === "banner" ? (
-              <span className="size-4 animate-pulse rounded-full bg-primary/60" />
+      {/* Full-viewport-width cover — bleeds edge to edge */}
+      <div className="relative w-full overflow-x-hidden">
+        <div className="relative left-1/2 w-screen max-w-[100vw] -translate-x-1/2">
+          <div className="relative h-[clamp(11rem,32vw,18rem)] w-full overflow-hidden sm:h-[clamp(12rem,28vw,17rem)]">
+            {bannerSrc ? (
+              // eslint-disable-next-line @next/next/no-img-element -- data URLs from user uploads
+              <img src={bannerSrc} alt="" className="h-full w-full object-cover object-center" />
             ) : (
-              <CameraIcon className="size-4" />
+              <div
+                className="flex h-full w-full items-end justify-center bg-gradient-to-br from-[#0c3d35] via-[#157a66] to-[#0a3028] pb-6 opacity-[0.98]"
+                aria-hidden
+              >
+                <div className="pointer-events-none flex gap-10 opacity-[0.22]">
+                  <span className="text-5xl text-white sm:text-6xl">◆</span>
+                  <span className="text-5xl text-white sm:text-6xl">▣</span>
+                  <span className="text-5xl text-white sm:text-6xl">◉</span>
+                </div>
+              </div>
             )}
-          </button>
-          <input
-            ref={bannerInputRef}
-            type="file"
-            accept="image/jpeg,image/png,image/webp,image/gif"
-            className="hidden"
-            onChange={onBannerFile}
-          />
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/35 via-black/5 to-transparent" />
+            <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/20 to-transparent pointer-events-none sm:h-20" />
+            <button
+              type="button"
+              disabled={busy !== null}
+              onClick={() => bannerInputRef.current?.click()}
+              className="absolute bottom-4 right-4 z-10 flex items-center gap-2 rounded-full border border-white/30 bg-white/95 px-3 py-2 text-[12px] font-medium text-[#0a0a0a] shadow-lg backdrop-blur-sm transition hover:bg-white disabled:opacity-60 sm:bottom-5 sm:right-6 sm:px-3.5"
+              aria-label="Edit cover photo"
+            >
+              {busy === "banner" ? (
+                <span className="size-4 animate-pulse rounded-full bg-primary/60" />
+              ) : (
+                <PencilIcon className="size-[15px] sm:size-4" />
+              )}
+              <span className="hidden sm:inline">Edit cover</span>
+            </button>
+            <input
+              ref={bannerInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/gif"
+              className="hidden"
+              onChange={onBannerFile}
+            />
+          </div>
         </div>
+      </div>
 
-        {/* Identity + bio */}
-        <div className="relative z-10 flex flex-col px-4 pb-8 pt-0 sm:flex-row sm:gap-8 sm:px-8 sm:pb-10">
-          {/* Avatar */}
-          <div className="-mt-14 flex shrink-0 justify-center sm:-mt-[4.25rem] sm:justify-start">
+      {/* Identity + bio — readable column width */}
+      <div className="relative z-10 mx-auto max-w-6xl px-4 pb-8 pt-0 sm:px-6 sm:pb-10 lg:px-10">
+        <div className="flex flex-col gap-6 sm:flex-row sm:items-start sm:gap-10 lg:gap-12">
+          {/* Avatar + edit */}
+          <div className="-mt-[4.5rem] flex shrink-0 justify-center sm:-mt-[5.25rem] sm:justify-start">
             <div className="relative">
-              <div className="relative size-[7.25rem] overflow-hidden rounded-full bg-neutral-100 ring-4 ring-white shadow-md sm:size-[8.25rem]">
+              <div className="relative size-[7.75rem] overflow-hidden rounded-full bg-neutral-100 ring-[5px] ring-white shadow-[0_8px_30px_rgb(0,0,0,0.12)] sm:size-[9rem]">
                 {avatarSrc ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={avatarSrc} alt="" className="size-full object-cover" />
+                  <img src={avatarSrc} alt="" className="size-full object-cover object-center" />
                 ) : (
-                  <div className="flex size-full items-center justify-center bg-primary/15 text-xl font-semibold text-primary sm:text-2xl">
+                  <div className="flex size-full items-center justify-center bg-gradient-to-br from-primary/12 to-primary/5 text-xl font-semibold text-primary sm:text-2xl">
                     {initials}
                   </div>
                 )}
@@ -188,13 +191,14 @@ export function StudentProfileHero({ user: initial }: Props) {
                 type="button"
                 disabled={busy !== null}
                 onClick={() => avatarInputRef.current?.click()}
-                className="absolute bottom-1 right-1 flex size-9 items-center justify-center rounded-full bg-primary text-white shadow-md ring-2 ring-white transition hover:bg-primary/90 disabled:opacity-60"
-                aria-label="Change profile photo"
+                className="absolute -bottom-0.5 -right-0.5 z-10 flex size-10 items-center justify-center rounded-full border-2 border-white bg-white text-[#0a0a0a] shadow-md ring-1 ring-black/[0.08] transition hover:bg-neutral-50 disabled:opacity-60"
+                aria-label="Edit profile photo"
+                title="Edit profile photo"
               >
                 {busy === "avatar" ? (
-                  <span className="size-3.5 animate-pulse rounded-full bg-white/80" />
+                  <span className="size-3.5 animate-pulse rounded-full bg-primary/60" />
                 ) : (
-                  <CameraIcon className="size-4" />
+                  <PencilIcon className="size-[18px]" />
                 )}
               </button>
               <input
@@ -207,15 +211,17 @@ export function StudentProfileHero({ user: initial }: Props) {
             </div>
           </div>
 
-          <div className="mt-5 min-w-0 flex-1 sm:mt-[4.5rem]">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0 flex-1 pt-1 sm:pt-[4.75rem]">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
               <div className="min-w-0 text-center sm:text-left">
-                <h1 className="font-heading text-xl font-semibold tracking-tight text-[#0a0a0a] sm:text-2xl lg:text-[1.65rem]">
+                <h1 className="font-heading text-[1.35rem] font-semibold tracking-tight text-[#0a0a0a] sm:text-2xl lg:text-[1.75rem]">
                   {displayName}
                 </h1>
-                <p className="mt-1 text-[13px] leading-snug text-[#717182] sm:text-sm">{subtitle}</p>
+                <p className="mt-1.5 max-w-xl text-[13px] leading-relaxed text-[#5c5c66] sm:text-sm">
+                  {subtitle}
+                </p>
               </div>
-              <div className="flex items-center justify-center gap-2 sm:justify-end sm:pt-0.5">
+              <div className="flex shrink-0 items-center justify-center gap-2 sm:justify-end sm:pt-1">
                 <button
                   type="button"
                   onClick={() => {
@@ -226,15 +232,15 @@ export function StudentProfileHero({ user: initial }: Props) {
                     });
                     setLinksOpen((o) => !o);
                   }}
-                  className="flex size-10 items-center justify-center rounded-full border border-black/10 bg-white text-[#0a0a0a] shadow-sm transition hover:bg-neutral-50"
-                  aria-label="Edit profile links"
+                  className="flex size-10 items-center justify-center rounded-full border border-black/[0.08] bg-white text-[#0a0a0a] shadow-sm transition hover:bg-neutral-50"
+                  aria-label="Edit social links"
                   title="Edit social links"
                 >
-                  <PencilIcon className="size-[18px]" />
+                  <LinkChainIcon className="size-[18px] text-[#4a5565]" />
                 </button>
                 <button
                   type="button"
-                  className="flex size-10 items-center justify-center rounded-full bg-primary text-white shadow-md transition hover:bg-primary/90"
+                  className="flex size-10 items-center justify-center rounded-full bg-primary text-white shadow-md ring-1 ring-primary/20 transition hover:bg-primary/90"
                   aria-label="Messages"
                 >
                   <ChatBubbleIcon className="size-[18px]" />
@@ -385,16 +391,21 @@ function SocialIconButton({
   );
 }
 
-function CameraIcon({ className }: { className?: string }) {
+function LinkChainIcon({ className }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden>
       <path
-        d="M4 7h3l1.5-2h7L17 7h3a2 2 0 012 2v9a2 2 0 01-2 2H4a2 2 0 01-2-2V9a2 2 0 012-2z"
+        d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"
         stroke="currentColor"
         strokeWidth="1.5"
-        strokeLinejoin="round"
+        strokeLinecap="round"
       />
-      <circle cx="12" cy="13" r="3.5" stroke="currentColor" strokeWidth="1.5" />
+      <path
+        d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+      />
     </svg>
   );
 }
