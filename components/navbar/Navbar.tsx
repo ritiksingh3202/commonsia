@@ -1,11 +1,11 @@
 "use client";
 
-import { motion, AnimatePresence } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 const nav = [
   { href: "/mentors", label: "Mentors" },
@@ -22,29 +22,45 @@ function isActive(pathname: string, href: string) {
 export function Navbar() {
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
-  const { status } = useSession();
+  const { data: session, status } = useSession();
   const authed = status === "authenticated";
   const loading = status === "loading";
+  const dashboardHref = session?.user?.role === "mentor" ? "/mentor" : "/student";
+
+  useEffect(() => {
+    if (menuOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [menuOpen]);
+
+  useEffect(() => {
+    setMenuOpen(false);
+  }, [pathname]);
 
   return (
-    <header className="sticky top-0 z-50 border-b border-cream/80 bg-white/90 backdrop-blur-md">
-      <div className="relative mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-8">
+    <header className="sticky top-0 z-50 border-b border-black/[0.06] bg-[#ffffff]">
+      <div className="relative z-[100] mx-auto flex min-w-0 max-w-7xl items-center justify-between gap-2 bg-[#ffffff] px-3 py-2.5 sm:gap-4 sm:px-6 sm:py-3 lg:px-8">
         <Link
           href="/"
-          className="relative z-10 block h-9 w-[min(100%,200px)] shrink-0 sm:h-10 sm:w-[220px]"
+          className="relative z-10 block w-[min(46vw,200px)] shrink-0"
         >
           <Image
             src="/logo.svg"
             alt="Commonsia"
-            fill
-            className="object-contain object-left"
-            sizes="220px"
+            width={220}
+            height={43}
+            className="h-8 w-auto sm:h-10"
             priority
           />
         </Link>
 
         <motion.nav
-          className="absolute left-1/2 top-1/2 hidden -translate-x-1/2 -translate-y-1/2 items-center gap-1 rounded-full bg-cream px-2 py-1.5 text-[15px] text-ink md:flex lg:gap-1 lg:px-4"
+          className="absolute left-1/2 top-1/2 hidden -translate-x-1/2 -translate-y-1/2 items-center gap-1 rounded-full border border-black/[0.08] bg-[#ffffff] px-2 py-1.5 text-[15px] text-ink shadow-sm md:flex lg:gap-1 lg:px-4"
           aria-label="Main"
           whileHover={{ scale: 1.01 }}
           transition={{ type: "spring", stiffness: 400, damping: 25 }}
@@ -62,7 +78,7 @@ export function Navbar() {
           ))}
         </motion.nav>
 
-        <div className="relative z-10 ml-auto flex items-center gap-2 sm:gap-3">
+        <div className="relative z-10 flex min-w-0 shrink-0 items-center justify-end gap-1.5 sm:gap-3">
           <Link
             href="/mentors"
             className="hidden rounded-full border-2 border-primary p-2 text-primary transition-colors hover:bg-primary/5 sm:flex sm:items-center sm:justify-center"
@@ -78,79 +94,92 @@ export function Navbar() {
           </Link>
           {loading ? (
             <span
-              className="inline-block min-w-[10rem] rounded-full bg-neutral-200/80 px-8 py-2.5 text-sm font-semibold text-transparent"
+              className="h-9 w-[4.5rem] shrink-0 animate-pulse rounded-full bg-neutral-200/90 sm:h-10 sm:w-32"
               aria-hidden
-            >
-              …
-            </span>
-          ) : authed ? (
+            />
+          ) : null}
+          {!loading && authed ? (
             <Link
-              href="/student"
-              className="rounded-full bg-primary px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition-transform hover:scale-[1.02] active:scale-[0.98] sm:px-8"
+              href={dashboardHref}
+              className="hidden rounded-full bg-primary px-4 py-2 text-xs font-semibold text-white shadow-sm transition-transform hover:scale-[1.02] active:scale-[0.98] sm:inline-flex sm:px-8 sm:py-2.5 sm:text-sm"
             >
-              My profile
+              <span className="max-w-[7rem] truncate sm:max-w-none">My profile</span>
             </Link>
-          ) : (
+          ) : null}
+          {!loading && !authed ? (
             <Link
               href="/auth"
-              className="rounded-full bg-primary px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition-transform hover:scale-[1.02] active:scale-[0.98] sm:px-8"
+              className="hidden rounded-full bg-primary px-3 py-2 text-xs font-semibold text-white shadow-sm transition-transform hover:scale-[1.02] active:scale-[0.98] sm:inline-flex sm:px-8 sm:py-2.5 sm:text-sm"
             >
-              Login/Register
+              <span className="sm:hidden">Login</span>
+              <span className="hidden sm:inline">Login/Register</span>
             </Link>
-          )}
+          ) : null}
           <button
             type="button"
-            className="rounded-lg p-2 md:hidden"
+            className="flex h-11 w-11 shrink-0 flex-col items-center justify-center gap-1.5 rounded-xl border border-black/[0.06] bg-[#ffffff] shadow-sm transition-colors hover:bg-neutral-50 active:bg-neutral-100 md:hidden"
             aria-expanded={menuOpen}
-            aria-label="Menu"
+            aria-label={menuOpen ? "Close menu" : "Open menu"}
             onClick={() => setMenuOpen((o) => !o)}
           >
-            <span className="block h-0.5 w-6 bg-ink" />
-            <span className="mt-1.5 block h-0.5 w-6 bg-ink" />
-            <span className="mt-1.5 block h-0.5 w-6 bg-ink" />
+            <span className="h-0.5 w-5 rounded-full bg-ink" />
+            <span className="h-0.5 w-5 rounded-full bg-ink" />
+            <span className="h-0.5 w-5 rounded-full bg-ink" />
           </button>
         </div>
       </div>
 
       <AnimatePresence>
         {menuOpen && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            className="overflow-hidden border-t border-cream md:hidden"
-          >
-            <nav className="flex flex-col gap-1 px-4 py-3" aria-label="Mobile">
-              <Link
-                href="/"
-                className="rounded-lg px-3 py-2.5 font-normal hover:bg-cream"
-                onClick={() => setMenuOpen(false)}
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="relative z-[100] overflow-hidden border-t border-black/[0.06] bg-[#ffffff] shadow-[0_12px_24px_-8px_rgba(0,0,0,0.08)] md:hidden"
+            >
+              <nav
+                className="flex max-h-[min(70vh,calc(100dvh-8rem))] flex-col gap-0.5 overflow-y-auto px-3 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-2"
+                aria-label="Mobile"
               >
-                Home
-              </Link>
-              {nav.map((item) => (
                 <Link
-                  key={item.href}
-                  href={item.href}
-                  className={`rounded-lg px-3 py-2.5 hover:bg-cream ${
-                    isActive(pathname, item.href) ? "font-semibold text-primary" : "font-normal"
-                  }`}
+                  href="/"
+                  className="rounded-xl px-3 py-3 text-[15px] font-normal text-ink hover:bg-neutral-50"
                   onClick={() => setMenuOpen(false)}
                 >
-                  {item.label}
+                  Home
                 </Link>
-              ))}
-              {!loading && (
+                {nav.map((item) => (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={`rounded-xl px-3 py-3 text-[15px] hover:bg-neutral-50 ${
+                      isActive(pathname, item.href) ? "font-semibold text-primary" : "font-normal text-ink"
+                    }`}
+                    onClick={() => setMenuOpen(false)}
+                  >
+                    {item.label}
+                  </Link>
+                ))}
                 <Link
-                  href={authed ? "/student" : "/auth"}
-                  className="mt-2 rounded-lg bg-primary px-3 py-2.5 text-center text-sm font-semibold text-white"
+                  href="/mentors"
+                  className="flex items-center gap-2 rounded-xl px-3 py-3 text-[15px] font-normal text-ink hover:bg-neutral-50"
                   onClick={() => setMenuOpen(false)}
                 >
-                  {authed ? "My profile" : "Login/Register"}
+                  <Image src="/mentors_assets/search.svg" alt="" width={20} height={20} className="size-5 opacity-80" />
+                  Search mentors
                 </Link>
-              )}
-            </nav>
-          </motion.div>
+                {!loading && (
+                  <Link
+                    href={authed ? dashboardHref : "/auth"}
+                    className="mt-2 rounded-xl bg-primary px-3 py-3.5 text-center text-[15px] font-semibold text-white shadow-sm"
+                    onClick={() => setMenuOpen(false)}
+                  >
+                    {authed ? "My profile" : "Login / Register"}
+                  </Link>
+                )}
+              </nav>
+            </motion.div>
         )}
       </AnimatePresence>
     </header>

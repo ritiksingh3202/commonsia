@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 
 export type ProfilePayload = {
   name?: string | null;
+  phone?: string | null;
   /** Profile photo — data URL or HTTPS (Auth.js `image` field) */
   image?: string | null;
   role?: "student" | "mentor";
@@ -20,6 +21,16 @@ export type ProfilePayload = {
   whatsappUrl?: string | null;
   linkedinUrl?: string | null;
   instagramUrl?: string | null;
+  mentorTitle?: string | null;
+  mentorCompany?: string | null;
+  mentorYearsExperience?: string | null;
+  mentorExpertise?: string[] | null;
+  mentorMentorshipFocus?: string | null;
+  mentorAvailabilityPref?: string | null;
+  mentorMaxMenteesPref?: string | null;
+  mentorCertifications?: string | null;
+  mentorAvailabilityJson?: Record<string, unknown> | null;
+  mentorOnboardingComplete?: boolean;
 };
 
 export async function PATCH(req: Request) {
@@ -33,6 +44,7 @@ export async function PATCH(req: Request) {
   const data: Record<string, unknown> = {};
 
   if (body.name !== undefined) data.name = body.name;
+  if (body.phone !== undefined) data.phone = body.phone;
   if (body.image !== undefined) data.image = body.image;
   if (body.role !== undefined) data.role = body.role;
   if (body.university !== undefined) data.university = body.university;
@@ -48,6 +60,16 @@ export async function PATCH(req: Request) {
   if (body.whatsappUrl !== undefined) data.whatsappUrl = body.whatsappUrl;
   if (body.linkedinUrl !== undefined) data.linkedinUrl = body.linkedinUrl;
   if (body.instagramUrl !== undefined) data.instagramUrl = body.instagramUrl;
+  if (body.mentorTitle !== undefined) data.mentorTitle = body.mentorTitle;
+  if (body.mentorCompany !== undefined) data.mentorCompany = body.mentorCompany;
+  if (body.mentorYearsExperience !== undefined) data.mentorYearsExperience = body.mentorYearsExperience;
+  if (body.mentorExpertise !== undefined) data.mentorExpertise = body.mentorExpertise;
+  if (body.mentorMentorshipFocus !== undefined) data.mentorMentorshipFocus = body.mentorMentorshipFocus;
+  if (body.mentorAvailabilityPref !== undefined) data.mentorAvailabilityPref = body.mentorAvailabilityPref;
+  if (body.mentorMaxMenteesPref !== undefined) data.mentorMaxMenteesPref = body.mentorMaxMenteesPref;
+  if (body.mentorCertifications !== undefined) data.mentorCertifications = body.mentorCertifications;
+  if (body.mentorAvailabilityJson !== undefined) data.mentorAvailabilityJson = body.mentorAvailabilityJson;
+  if (body.mentorOnboardingComplete !== undefined) data.mentorOnboardingComplete = body.mentorOnboardingComplete;
 
   if (Object.keys(data).length === 0) {
     return NextResponse.json({ ok: true });

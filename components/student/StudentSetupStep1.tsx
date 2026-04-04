@@ -1,17 +1,18 @@
 "use client";
 
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { PROGRAM_OPTIONS, PROGRAM_OTHER_VALUE, YEAR_OPTIONS } from "./student-setup-constants";
 import { StudentSetupShell } from "./StudentSetupShell";
 import { setupField, setupLabel } from "./student-ui";
-
-const years = ["1st Year", "2nd Year", "3rd Year", "4th Year", "5th Year", "Graduate"];
 
 const btnPrimary =
   "mt-1 flex w-full items-center justify-center gap-2 rounded-md bg-primary px-3 py-2.5 text-[13px] font-semibold text-white shadow-sm transition-colors hover:bg-primary/90 sm:text-sm";
 
 export function StudentSetupStep1() {
   const router = useRouter();
+  const [program, setProgram] = useState("");
 
   return (
     <StudentSetupShell step={1} backHref="/auth/register/student">
@@ -22,6 +23,17 @@ export function StudentSetupStep1() {
           onSubmit={async (e) => {
             e.preventDefault();
             const fd = new FormData(e.currentTarget);
+            const prog = program;
+            let major: string | null = null;
+            if (prog === PROGRAM_OTHER_VALUE) {
+              major = String(fd.get("majorOther") ?? "").trim() || null;
+              if (!major) {
+                window.alert("Please specify your program.");
+                return;
+              }
+            } else if (prog) {
+              major = prog;
+            }
             const res = await fetch("/api/profile", {
               method: "PATCH",
               headers: { "Content-Type": "application/json" },
@@ -29,7 +41,7 @@ export function StudentSetupStep1() {
                 role: "student",
                 university: String(fd.get("university") ?? "").trim() || null,
                 yearOfStudy: String(fd.get("year") ?? "").trim() || null,
-                major: String(fd.get("major") ?? "").trim() || null,
+                major,
               }),
             });
             if (!res.ok) {
@@ -66,7 +78,7 @@ export function StudentSetupStep1() {
                 <option value="" disabled>
                   Select year
                 </option>
-                {years.map((y) => (
+                {YEAR_OPTIONS.map((y) => (
                   <option key={y} value={y}>
                     {y}
                   </option>
@@ -78,16 +90,42 @@ export function StudentSetupStep1() {
             </div>
           </div>
           <div className="space-y-1.5">
-            <label htmlFor="major" className={setupLabel}>
+            <label htmlFor="program" className={setupLabel}>
               Major / Program
             </label>
-            <input
-              id="major"
-              name="major"
-              type="text"
-              placeholder="e.g., Architecture, Civil Engineering"
-              className={setupField}
-            />
+            <div className="relative">
+              <select
+                id="program"
+                value={program}
+                onChange={(e) => setProgram(e.target.value)}
+                className={`${setupField} appearance-none pr-9`}
+                required
+              >
+                <option value="" disabled>
+                  Select program
+                </option>
+                {PROGRAM_OPTIONS.map((p) => (
+                  <option key={p} value={p}>
+                    {p}
+                  </option>
+                ))}
+                <option value={PROGRAM_OTHER_VALUE}>Other</option>
+              </select>
+              <span className="pointer-events-none absolute right-2.5 top-1/2 size-4 -translate-y-1/2 text-[#717182]">
+                <ChevronDown />
+              </span>
+            </div>
+            {program === PROGRAM_OTHER_VALUE && (
+              <input
+                id="majorOther"
+                name="majorOther"
+                type="text"
+                placeholder="Specify your program"
+                className={setupField}
+                required
+                autoComplete="off"
+              />
+            )}
           </div>
           <button type="submit" className={btnPrimary}>
             Next: Interests &amp; Skills

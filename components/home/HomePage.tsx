@@ -76,7 +76,8 @@ const mentorSpotlights = [
       "Mentoring students through this platform has been a rewarding experience. It allows us to guide young architects, review their ideas, and share industry perspectives that help them grow academically and professionally.",
     name: "Ar. Saurabh Singh",
     cred: "IIT Roorkee",
-    avatar: "/assets/saurabh.png",
+    /** Was `/assets/saurabh.png` — add `public/assets/saurabh.png` to use a local headshot. */
+    avatar: marketingImages.mentorPortrait,
   },
   {
     quote:
@@ -277,7 +278,7 @@ export function HomePage() {
         </SectionReveal>
         <div className="mx-auto mt-3 grid max-w-7xl auto-rows-fr gap-[30px] lg:grid-cols-12 lg:grid-rows-2">
           <SectionReveal className="lg:col-span-5 lg:row-span-1">
-            <div className="flex h-full min-h-[280px] flex-col rounded-[20px] bg-cream-soft p-5 text-left sm:p-6 lg:min-h-[300px]">
+            <div className="flex h-full min-h-[280px] flex-col rounded-[20px] border border-black/[0.08] bg-[#ffffff] p-5 text-left shadow-sm sm:p-6 lg:min-h-[300px]">
               <h3 className="text-heading-card text-[#1a1a1a]">
                 Building the Future of Architecture
               </h3>
@@ -293,7 +294,7 @@ export function HomePage() {
             </div>
           </SectionReveal>
           <SectionReveal className="lg:col-span-4 lg:row-span-1" delay={0.05}>
-            <div className="flex h-full min-h-[280px] flex-col rounded-[20px] bg-mint p-5 text-left sm:p-6 lg:min-h-[300px]">
+            <div className="flex h-full min-h-[280px] flex-col rounded-[20px] border border-black/[0.08] bg-[#ffffff] p-5 text-left shadow-sm sm:p-6 lg:min-h-[300px]">
               <h3 className="text-heading-card text-[#1a1a1a]">
                 A Community of Designers
               </h3>
@@ -309,7 +310,7 @@ export function HomePage() {
             </div>
           </SectionReveal>
           <SectionReveal className="lg:col-span-3 lg:row-span-2" delay={0.1}>
-            <div className="flex h-full min-h-[320px] flex-col rounded-[20px] bg-[#fff9e6] p-5 text-left sm:p-6 lg:min-h-0">
+            <div className="flex h-full min-h-[320px] flex-col rounded-[20px] border border-black/[0.08] bg-[#ffffff] p-5 text-left shadow-sm sm:p-6 lg:min-h-0">
               <h3 className="text-heading-card text-[#1a1a1a]">
                 Mentorship that Matters
               </h3>
@@ -332,7 +333,7 @@ export function HomePage() {
             className="lg:col-span-9 lg:row-span-1 lg:col-start-1 lg:row-start-2"
             delay={0.08}
           >
-            <div className="grid h-full min-h-[280px] gap-[14px] rounded-[20px] bg-mint p-5 text-left sm:p-6 md:grid-cols-2 md:items-center lg:min-h-[300px]">
+            <div className="grid h-full min-h-[280px] gap-[14px] rounded-[20px] border border-black/[0.08] bg-[#ffffff] p-5 text-left shadow-sm sm:p-6 md:grid-cols-2 md:items-center lg:min-h-[300px]">
               <div className="flex flex-col justify-center text-left">
                 <h3 className="text-heading-card text-[#1a1a1a]">
                   Learning Beyond the Studio
@@ -510,7 +511,7 @@ export function HomePage() {
                           animate={{ height: "auto", opacity: 1 }}
                           exit={{ height: 0, opacity: 0 }}
                           transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
-                          className="overflow-hidden rounded-b-[16px] border border-t-0 border-neutral-200 bg-neutral-50/90"
+                          className="overflow-hidden rounded-b-[16px] border border-t-0 border-neutral-200 bg-[#ffffff]"
                         >
                           <p className="px-4 py-4 text-sm leading-relaxed text-neutral-600 sm:px-6 sm:text-[15px]">
                             {s.body}
@@ -553,24 +554,16 @@ export function HomePage() {
           </motion.h2>
         </div>
 
-        <div className={`${fullBleed} bg-[#0a0a0a]`}>
-          <div
-            className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_85%_70%_at_100%_-5%,rgba(241,100,34,0.55),rgba(255,87,34,0.18)_42%,transparent_58%)]"
-            aria-hidden
-          />
-          <div
-            className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_60%_50%_at_50%_120%,rgba(255,87,34,0.08),transparent_45%)]"
-            aria-hidden
-          />
+        <div className={`${fullBleed} border-y border-black/[0.06] bg-[#ffffff]`}>
           <div className="relative z-10 mx-auto min-w-0 max-w-7xl px-4 py-3.5 sm:px-6 sm:py-4 lg:px-8 lg:py-5">
             <motion.p
               initial={{ opacity: 0, y: 8 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: 0.04 }}
-              className="text-heading-display text-center text-white"
+              className="text-heading-display text-center text-ink"
             >
-              What <span className="text-[#f16422]">Students</span> Say
+              What <span className="text-primary">Students</span> Say
             </motion.p>
 
             <div
@@ -581,7 +574,7 @@ export function HomePage() {
                 <article
                   key={s.name}
                   data-student-card
-                  className="flex h-full min-h-[260px] w-[min(280px,85vw)] shrink-0 snap-center flex-col rounded-2xl border border-white/10 bg-white p-4 shadow-lg sm:w-[min(300px,82vw)] sm:p-5 lg:min-h-[280px] lg:w-auto lg:min-w-0"
+                  className="flex h-full min-h-[260px] w-[min(280px,85vw)] shrink-0 snap-center flex-col rounded-2xl border border-black/[0.08] bg-[#ffffff] p-4 shadow-sm sm:w-[min(300px,82vw)] sm:p-5 lg:min-h-[280px] lg:w-auto lg:min-w-0"
                 >
                   <div className="relative mx-auto size-14 shrink-0 overflow-hidden rounded-full ring-2 ring-primary/25">
                     <Image src={s.face} alt="" fill className="object-cover" sizes="56px" />
@@ -599,10 +592,10 @@ export function HomePage() {
 
             <div className="relative mt-3 flex justify-center sm:mt-4">
               <div
-                className="pointer-events-none absolute left-4 right-4 top-1/2 border-t border-dashed border-white/25 sm:left-8 sm:right-8"
+                className="pointer-events-none absolute left-4 right-4 top-1/2 border-t border-dashed border-neutral-200 sm:left-8 sm:right-8"
                 aria-hidden
               />
-              <div className="relative z-[1] flex items-center gap-[10px] bg-[#0a0a0a] px-4">
+              <div className="relative z-[1] flex items-center gap-[10px] bg-[#ffffff] px-4">
                 <motion.button
                   type="button"
                   aria-label="Scroll student testimonials left"
@@ -641,14 +634,11 @@ export function HomePage() {
           </SectionReveal>
           <div className="mt-3 grid min-w-0 gap-6 sm:mt-4 lg:grid-cols-[minmax(0,380px)_minmax(0,1fr)] lg:items-stretch lg:gap-[50px]">
             <SectionReveal delay={0.05} className="flex min-h-0 min-w-0 justify-center lg:justify-start">
-              <div className="flex h-full w-full max-w-[380px] flex-col gap-[54px] overflow-hidden rounded-[20px] bg-black shadow-sm">
+              <div className="flex h-full w-full max-w-[380px] flex-col gap-[54px] overflow-hidden rounded-[20px] border border-black/[0.08] bg-[#ffffff] shadow-sm">
                 <div className="relative min-h-[130px] shrink-0 px-5 py-6 sm:px-6 sm:py-8">
-                  <div
-                    className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_95%_100%_at_100%_0%,#ff7700_0%,#c15b01_22%,#442204_55%,#0a0a0a_88%,#000_100%)]"
-                    aria-hidden
-                  />
-                  <p className="text-heading-display relative z-10 max-w-[300px] leading-[1.15] text-white">
-                    90% of Students Succeed after Mentorship
+                  <p className="text-heading-display max-w-[300px] leading-[1.15] text-[#1a1a1a]">
+                    90% of Students Succeed after{" "}
+                    <span className="text-primary">Mentorship</span>
                   </p>
                 </div>
                 <div className="relative min-h-[200px] flex-1 p-3">
@@ -665,7 +655,7 @@ export function HomePage() {
               </div>
             </SectionReveal>
             <SectionReveal delay={0.08} className="flex min-h-0 min-w-0 h-full flex-col">
-              <div className="relative flex min-h-[350px] min-w-0 flex-1 flex-col overflow-hidden rounded-[20px] bg-[#fff5e6] p-6 sm:min-h-[380px] sm:p-8 lg:min-h-[400px]">
+              <div className="relative flex min-h-[350px] min-w-0 flex-1 flex-col overflow-hidden rounded-[20px] border border-black/[0.08] bg-[#ffffff] p-6 shadow-sm sm:min-h-[380px] sm:p-8 lg:min-h-[400px]">
                 <AnimatePresence mode="wait">
                   <motion.div
                     key={mIndex}
@@ -741,21 +731,13 @@ export function HomePage() {
 
       {/* Join community — black band, orange glow from right, left copy + right art */}
       <section id="join-community" className="scroll-mt-24 mb-10 sm:mb-12 lg:mb-14">
-        <div className={`${fullBleed} overflow-hidden bg-[#0a0a0a]`}>
-          <div
-            className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_90%_120%_at_92%_50%,rgba(255,107,53,0.75),rgba(255,87,34,0.35)_32%,rgba(0,0,0,0)_62%)]"
-            aria-hidden
-          />
-          <div
-            className="pointer-events-none absolute inset-0 bg-gradient-to-l from-primary/45 from-[8%] via-transparent via-55% to-transparent"
-            aria-hidden
-          />
+        <div className={`${fullBleed} overflow-hidden border-y border-black/[0.06] bg-[#ffffff]`}>
           <div className="relative z-10 mx-auto flex max-w-7xl flex-col items-center gap-4 px-4 py-3.5 sm:px-6 sm:py-4 lg:flex-row lg:items-center lg:justify-between lg:gap-[22px] lg:px-8 lg:py-5">
             <div className="w-full max-w-[min(100%,52rem)] text-center lg:flex-1 lg:text-left">
-              <h2 className="text-heading-display text-balance tracking-tight text-white">
+              <h2 className="text-heading-display text-balance tracking-tight text-ink">
                 Learn, Share, and Grow with the Architecture Community!
               </h2>
-              <p className="mx-auto mt-2 max-w-2xl text-sm leading-relaxed text-white/95 sm:text-[15px] lg:mx-0 lg:max-w-3xl">
+              <p className="mx-auto mt-2 max-w-2xl text-sm leading-relaxed text-neutral-700 sm:text-[15px] lg:mx-0 lg:max-w-3xl">
                 Discover a platform built for architecture students to connect with
                 mentors, discuss ideas, and explore insights from the community. Take the
                 next step in your design journey.

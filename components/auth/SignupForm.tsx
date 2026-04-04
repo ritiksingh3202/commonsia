@@ -3,10 +3,13 @@
 import Image from "next/image";
 import Link from "next/link";
 import { signIn } from "next-auth/react";
-import { useMemo } from "react";
+import { useRouter } from "next/navigation";
+import { useMemo, useState } from "react";
 import { AUTH_ASSETS, type AuthRole } from "./auth-assets";
 import { AuthBackLink } from "./AuthBackLink";
 import { AuthSocialRow } from "./AuthSocialRow";
+
+const MIN_PASSWORD = 8;
 
 const copy: Record<
   AuthRole,
@@ -39,15 +42,30 @@ const field =
 
 type SignupFormProps = {
   role: AuthRole;
-  /** Where OAuth sends the user after Google sign-in */
+  /** Where to send the user after a successful sign-in (email or OAuth) */
   oauthCallbackUrl?: string;
 };
 
 export function SignupForm({ role, oauthCallbackUrl }: SignupFormProps) {
+  const router = useRouter();
   const c = useMemo(() => copy[role], [role]);
-  const afterOAuth =
-    oauthCallbackUrl ?? (role === "student" ? "/student/setup/1" : "/");
+  const afterAuth =
+    oauthCallbackUrl ?? (role === "student" ? "/student/setup/1" : "/mentor/setup/1");
   const icon = role === "student" ? AUTH_ASSETS.student : AUTH_ASSETS.mentor;
+  const [submitting, setSubmitting] = useState(false);
+
+  const saveDraftForOAuth = () => {
+    const form = document.getElementById(`signup-form-${role}`) as HTMLFormElement | null;
+    if (!form) return;
+    const fd = new FormData(form);
+    const name = String(fd.get("name") ?? "").trim();
+    const email = String(fd.get("email") ?? "").trim();
+    try {
+      sessionStorage.setItem("commonsia_signup_draft", JSON.stringify({ name, email, role }));
+    } catch {
+      /* ignore */
+    }
+  };
 
   return (
     <div className="mx-auto w-full max-w-[360px] px-4 py-6 sm:py-8">
@@ -67,6 +85,7 @@ export function SignupForm({ role, oauthCallbackUrl }: SignupFormProps) {
         </div>
 
         <form
+          id={`signup-form-${role}`}
           className="space-y-3"
           onSubmit={async (e) => {
             e.preventDefault();
@@ -76,22 +95,57 @@ export function SignupForm({ role, oauthCallbackUrl }: SignupFormProps) {
             const email = String(fd.get("email") ?? "").trim();
             const pw = String(fd.get("password") ?? "");
             const confirm = String(fd.get("confirmPassword") ?? "");
-            if (!name || !email) return;
-            if (pw || confirm) {
-              if (pw !== confirm) {
-                window.alert("Passwords do not match.");
+
+            if (!name || !email) {
+              window.alert("Please enter your name and email.");
+              return;
+            }
+            if (!pw || !confirm) {
+              window.alert(`Please enter and confirm your password (at least ${MIN_PASSWORD} characters).`);
+              return;
+            }
+            if (pw !== confirm) {
+              window.alert("Passwords do not match.");
+              return;
+            }
+            if (pw.length < MIN_PASSWORD) {
+              window.alert(`Password must be at least ${MIN_PASSWORD} characters.`);
+              return;
+            }
+
+            setSubmitting(true);
+            try {
+              const reg = await fetch("/api/auth/register", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  name,
+                  email,
+                  password: pw,
+                  role,
+                }),
+              });
+              const data = (await reg.json().catch(() => ({}))) as { error?: string };
+              if (!reg.ok) {
+                window.alert(data.error ?? "Could not create your account.");
                 return;
               }
+
+              const signInRes = await signIn("credentials", {
+                email: email.trim().toLowerCase(),
+                password: pw,
+                redirect: false,
+              });
+              if (signInRes?.error) {
+                window.alert("Account created. Please sign in with your email and password.");
+                router.push(c.loginHref);
+                return;
+              }
+              router.push(afterAuth);
+              router.refresh();
+            } finally {
+              setSubmitting(false);
             }
-            try {
-              sessionStorage.setItem(
-                "commonsia_signup_draft",
-                JSON.stringify({ name, email, role }),
-              );
-            } catch {
-              /* ignore */
-            }
-            await signIn("google", { callbackUrl: afterOAuth });
           }}
         >
           <div className="space-y-1.5">
@@ -105,6 +159,7 @@ export function SignupForm({ role, oauthCallbackUrl }: SignupFormProps) {
               autoComplete="name"
               placeholder={c.namePlaceholder}
               className={field}
+              required
             />
           </div>
           <div className="space-y-1.5">
@@ -118,6 +173,7 @@ export function SignupForm({ role, oauthCallbackUrl }: SignupFormProps) {
               autoComplete="email"
               placeholder={c.emailPlaceholder}
               className={field}
+              required
             />
           </div>
           <div className="space-y-1.5">
@@ -129,8 +185,10 @@ export function SignupForm({ role, oauthCallbackUrl }: SignupFormProps) {
               name="password"
               type="password"
               autoComplete="new-password"
-              placeholder="Create a strong password"
+              placeholder={`At least ${MIN_PASSWORD} characters`}
               className={field}
+              required
+              minLength={MIN_PASSWORD}
             />
           </div>
           <div className="space-y-1.5">
@@ -144,18 +202,21 @@ export function SignupForm({ role, oauthCallbackUrl }: SignupFormProps) {
               autoComplete="new-password"
               placeholder="Confirm your password"
               className={field}
+              required
+              minLength={MIN_PASSWORD}
             />
           </div>
           <button
             type="submit"
-            className="mt-1 w-full rounded-md bg-primary px-3 py-2.5 text-[13px] font-semibold text-white shadow-sm transition-colors hover:bg-primary/90 sm:text-sm"
+            disabled={submitting}
+            className="mt-1 w-full rounded-md bg-primary px-3 py-2.5 text-[13px] font-semibold text-white shadow-sm transition-colors hover:bg-primary/90 disabled:opacity-60 sm:text-sm"
           >
-            Continue
+            {submitting ? "Creating account…" : "Continue"}
           </button>
         </form>
 
         <div className="mt-4">
-          <AuthSocialRow callbackUrl={afterOAuth} />
+          <AuthSocialRow callbackUrl={afterAuth} onBeforeOAuth={saveDraftForOAuth} />
         </div>
 
         <p className="mt-4 text-center text-[13px] text-[#717182]">

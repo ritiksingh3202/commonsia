@@ -23,13 +23,13 @@ export function SiteFooter() {
       <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-10 lg:px-8">
         <div className="grid gap-10 sm:grid-cols-2 sm:gap-x-10 sm:gap-y-10 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,0.85fr)_minmax(0,0.85fr)] lg:items-start lg:gap-x-14 lg:gap-y-8 xl:gap-x-20">
           <div className="sm:col-span-2 lg:col-span-1">
-            <Link href="/" className="relative block h-9 w-full max-w-[200px] sm:h-10 sm:max-w-[220px]">
+            <Link href="/" className="relative block w-full max-w-[220px]">
               <Image
                 src="/logo.svg"
                 alt="Commonsia"
-                fill
-                className="object-contain object-left"
-                sizes="220px"
+                width={220}
+                height={43}
+                className="h-9 w-auto sm:h-10"
               />
             </Link>
             <p className="mt-4 max-w-md text-justify text-xs leading-relaxed text-neutral-800 sm:text-[13px]">

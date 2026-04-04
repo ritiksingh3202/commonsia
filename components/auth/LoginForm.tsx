@@ -2,6 +2,9 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { signIn } from "next-auth/react";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { AUTH_ASSETS } from "./auth-assets";
 import { AuthBackLink } from "./AuthBackLink";
 import { AuthSocialRow } from "./AuthSocialRow";
@@ -9,7 +12,15 @@ import { AuthSocialRow } from "./AuthSocialRow";
 const field =
   "w-full rounded-md border border-[#e5e5e5] bg-white px-2.5 py-2 text-[13px] text-[#0a0a0a] placeholder:text-[#717182] outline-none transition-[box-shadow,border-color] focus:border-primary focus:ring-[1.5px] focus:ring-primary/20";
 
-export function LoginForm() {
+type LoginFormProps = {
+  /** Safe post-login redirect (must be a same-origin path). */
+  callbackUrl?: string;
+};
+
+export function LoginForm({ callbackUrl = "/" }: LoginFormProps) {
+  const router = useRouter();
+  const [submitting, setSubmitting] = useState(false);
+
   return (
     <div className="mx-auto w-full max-w-[360px] px-4 py-6 sm:py-8">
       <div className="mb-4">
@@ -35,7 +46,36 @@ export function LoginForm() {
           </p>
         </div>
 
-        <form className="space-y-3" onSubmit={(e) => e.preventDefault()}>
+        <form
+          className="space-y-3"
+          onSubmit={async (e) => {
+            e.preventDefault();
+            const form = e.currentTarget;
+            const fd = new FormData(form);
+            const email = String(fd.get("email") ?? "").trim();
+            const password = String(fd.get("password") ?? "");
+            if (!email || !password) {
+              window.alert("Enter your email and password.");
+              return;
+            }
+            setSubmitting(true);
+            try {
+              const res = await signIn("credentials", {
+                email: email.toLowerCase(),
+                password,
+                redirect: false,
+              });
+              if (res?.error) {
+                window.alert("Invalid email or password. If you signed up with Google or LinkedIn, use that button below.");
+                return;
+              }
+              router.push(callbackUrl);
+              router.refresh();
+            } finally {
+              setSubmitting(false);
+            }
+          }}
+        >
           <div className="space-y-1.5">
             <label htmlFor="login-email" className="block text-[13px] font-medium text-[#0a0a0a]">
               Email
@@ -47,6 +87,7 @@ export function LoginForm() {
               autoComplete="email"
               placeholder="you@example.com"
               className={field}
+              required
             />
           </div>
           <div className="space-y-1.5">
@@ -57,7 +98,7 @@ export function LoginForm() {
               <Link
                 href="#"
                 className="text-[12px] font-medium text-primary hover:underline sm:text-[13px]"
-                onClick={(e) => e.preventDefault()}
+                onClick={(ev) => ev.preventDefault()}
               >
                 Forgot password?
               </Link>
@@ -69,18 +110,20 @@ export function LoginForm() {
               autoComplete="current-password"
               placeholder="Enter your password"
               className={field}
+              required
             />
           </div>
           <button
             type="submit"
-            className="mt-1 w-full rounded-md bg-primary px-3 py-2.5 text-[13px] font-semibold text-white shadow-sm transition-colors hover:bg-primary/90 sm:text-sm"
+            disabled={submitting}
+            className="mt-1 w-full rounded-md bg-primary px-3 py-2.5 text-[13px] font-semibold text-white shadow-sm transition-colors hover:bg-primary/90 disabled:opacity-60 sm:text-sm"
           >
-            Sign In
+            {submitting ? "Signing in…" : "Sign In"}
           </button>
         </form>
 
         <div className="mt-4">
-          <AuthSocialRow />
+          <AuthSocialRow callbackUrl={callbackUrl} />
         </div>
 
         <p className="mt-4 text-center text-[13px] text-[#717182]">

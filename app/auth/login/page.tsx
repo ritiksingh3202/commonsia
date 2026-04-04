@@ -7,11 +7,21 @@ export const metadata: Metadata = {
   description: "Sign in to your Commonsia account.",
 };
 
-export default function LoginPage() {
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ callbackUrl?: string }>;
+}) {
+  const sp = await searchParams;
+  const callbackUrl =
+    sp.callbackUrl && sp.callbackUrl.startsWith("/") && !sp.callbackUrl.startsWith("//")
+      ? sp.callbackUrl
+      : "/";
+
   return (
     <MarketingShell>
       <div className="bg-white">
-        <LoginForm />
+        <LoginForm callbackUrl={callbackUrl} />
       </div>
     </MarketingShell>
   );

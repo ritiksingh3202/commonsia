@@ -33,7 +33,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="scroll-smooth">
       <body
-        className={`${poppins.variable} ${abeeZee.variable} ${poppins.className} min-h-screen bg-white font-sans text-neutral-900 antialiased`}
+        className={`${poppins.variable} ${abeeZee.variable} ${poppins.className} min-h-screen bg-[#ffffff] font-sans text-neutral-900 antialiased`}
       >
         <AuthSessionProvider>{children}</AuthSessionProvider>
       </body>

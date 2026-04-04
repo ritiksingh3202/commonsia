@@ -40,6 +40,9 @@ model User {
   id               String    @id @default(cuid())
   name             String?
   email            String?   @unique
+  /// Bcrypt hash for email/password sign-in (OAuth users have null)
+  passwordHash     String?
+  phone            String?
   emailVerified    DateTime?
   image            String?
   /// "student" | "mentor" — set during onboarding
@@ -52,12 +55,31 @@ model User {
   otherInterests   String?   @db.Text
   bio              String?   @db.Text
   portfolioUrl     String?
+  /// Original filename for uploaded portfolio (PDF/ZIP), optional.
+  portfolioFileName   String?
+  /// Data URL for uploaded portfolio file (PDF/ZIP). Large; prefer upload API.
+  portfolioFileDataUrl String? @db.Text
   profileComplete  Boolean   @default(false)
   /// Custom cover image (data URL or HTTPS). OAuth avatar uses `image`.
   bannerImageUrl   String?   @db.Text
   whatsappUrl      String?
   linkedinUrl      String?
   instagramUrl     String?
+  /// Mentor onboarding — professional step 1
+  mentorTitle              String?
+  mentorCompany            String?
+  mentorYearsExperience    String?
+  mentorExpertise          Json?
+  /// Step 2 — what to mentor on; session & mentee prefs
+  mentorMentorshipFocus    String?   @db.Text
+  mentorAvailabilityPref   String?
+  mentorMaxMenteesPref     String?
+  mentorCertifications     String?
+  /// Step 4 — scheduling (duration, weekly/specific dates, slots, etc.)
+  mentorAvailabilityJson   Json?
+  mentorOnboardingComplete Boolean   @default(false)
+  /// Google Calendar OAuth refresh token (mentor “Connect Calendar” flow)
+  googleCalendarRefreshToken String? @db.Text
   accounts         Account[]
   sessions         Session[]
 }

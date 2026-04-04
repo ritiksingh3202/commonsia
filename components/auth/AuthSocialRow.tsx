@@ -5,10 +5,17 @@ import { signIn } from "next-auth/react";
 type Props = {
   /** Where to send the user after a successful OAuth sign-in */
   callbackUrl?: string;
+  /** Called immediately before starting Google/LinkedIn (e.g. save signup draft from the form). */
+  onBeforeOAuth?: () => void;
 };
 
-/** LinkedIn + Google — triggers Auth.js OAuth flows */
-export function AuthSocialRow({ callbackUrl = "/" }: Props) {
+/** LinkedIn + Google — triggers Auth.js OAuth flows only when these buttons are pressed */
+export function AuthSocialRow({ callbackUrl = "/", onBeforeOAuth }: Props) {
+  const runOAuth = (provider: "linkedin" | "google") => {
+    onBeforeOAuth?.();
+    void signIn(provider, { callbackUrl });
+  };
+
   return (
     <div className="flex flex-col items-center gap-0">
       <p className="text-center text-[11px] text-black/80">Or</p>
@@ -17,7 +24,7 @@ export function AuthSocialRow({ callbackUrl = "/" }: Props) {
           type="button"
           className="flex size-8 items-center justify-center rounded-md opacity-90 transition-opacity hover:bg-black/[0.03] hover:opacity-100"
           aria-label="Continue with LinkedIn"
-          onClick={() => signIn("linkedin", { callbackUrl })}
+          onClick={() => runOAuth("linkedin")}
         >
           <svg className="size-[18px]" viewBox="0 0 24 24" fill="none" aria-hidden>
             <path
@@ -30,7 +37,7 @@ export function AuthSocialRow({ callbackUrl = "/" }: Props) {
           type="button"
           className="flex size-8 items-center justify-center rounded-md opacity-90 transition-opacity hover:bg-black/[0.03] hover:opacity-100"
           aria-label="Continue with Google"
-          onClick={() => signIn("google", { callbackUrl })}
+          onClick={() => runOAuth("google")}
         >
           <svg className="size-[18px]" viewBox="0 0 24 24" aria-hidden>
             <path
