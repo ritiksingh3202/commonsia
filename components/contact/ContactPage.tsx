@@ -27,7 +27,7 @@ function IconDisc({
 
 export function ContactPage() {
   return (
-    <div className="bg-[#ffffff] pb-8">
+    <div className="bg-white pb-8">
       <section className="px-4 pt-5 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-5xl text-center">
           <motion.span
@@ -52,12 +52,12 @@ export function ContactPage() {
             href="mailto:admin@commonsia.com"
             whileHover={{ y: -4 }}
             whileTap={{ scale: 0.99 }}
-            className="flex flex-col items-center gap-5 rounded-[20px] border border-black/[0.08] bg-[#ffffff] px-8 py-9 text-center text-[#0a0a0a] shadow-sm"
+            className="flex flex-col items-center gap-5 rounded-[20px] bg-black px-8 py-9 text-center text-white shadow-lg"
           >
             <IconDisc variant="dark">
               <Image src="/contact_assets/mail.svg" alt="" width={36} height={36} />
             </IconDisc>
-            <p className="text-xl text-neutral-700">Send a Message</p>
+            <p className="text-xl text-white/90">Send a Message</p>
             <p className="text-xl font-semibold sm:text-2xl">admin@commonsia.com</p>
           </motion.a>
 
@@ -65,18 +65,24 @@ export function ContactPage() {
             href="tel:+919876543210"
             whileHover={{ y: -4 }}
             whileTap={{ scale: 0.99 }}
-            className="flex flex-col items-center gap-5 rounded-[20px] border border-primary/35 bg-[#ffffff] px-8 py-9 text-center text-[#0a0a0a] shadow-sm"
+            className="flex flex-col items-center gap-5 rounded-[20px] bg-primary px-8 py-9 text-center text-white shadow-lg"
           >
-            <IconDisc variant="outline">
-              <Image src="/contact_assets/phone.svg" alt="" width={36} height={36} />
+            <IconDisc variant="primary">
+              <Image
+                src="/contact_assets/phone.svg"
+                alt=""
+                width={36}
+                height={36}
+                className="brightness-0 invert"
+              />
             </IconDisc>
-            <p className="text-xl text-neutral-700">Working Together ? Call now</p>
+            <p className="text-xl text-white/90">Working Together ? Call now</p>
             <p className="text-xl font-semibold sm:text-2xl">+91 9876543210</p>
           </motion.a>
 
           <motion.div
             whileHover={{ y: -4 }}
-            className="flex flex-col items-center gap-5 rounded-[20px] border border-black/[0.08] bg-[#ffffff] px-8 py-9 text-center shadow-sm"
+            className="flex flex-col items-center gap-5 rounded-[20px] border-2 border-primary bg-white px-8 py-9 text-center shadow-md"
           >
             <IconDisc variant="black">
               <Image src="/contact_assets/location.svg" alt="" width={36} height={36} />
@@ -88,10 +94,10 @@ export function ContactPage() {
       </section>
 
       <SectionReveal className="mx-auto mt-8 max-w-6xl px-4 sm:px-6 lg:px-8">
-        <div className="overflow-hidden rounded-3xl border border-black/[0.08] bg-[#ffffff] shadow-sm lg:grid lg:min-h-[min(520px,70vh)] lg:grid-cols-[2fr_3fr]">
+        <div className="overflow-hidden rounded-3xl bg-[#FF511A] shadow-[0_12px_40px_rgba(0,0,0,0.12)] lg:grid lg:min-h-[min(520px,70vh)] lg:grid-cols-[2fr_3fr]">
           {/* ~40% — informational */}
-          <div className="flex min-h-[300px] flex-col gap-4 border-b border-black/[0.06] p-5 text-[#0a0a0a] sm:p-5 lg:min-h-0 lg:border-b-0 lg:border-r lg:justify-between lg:gap-5 lg:p-6">
-            <p className="text-heading-display text-left leading-snug text-ink">
+          <div className="flex min-h-[300px] flex-col gap-4 p-5 text-white sm:p-5 lg:min-h-0 lg:justify-between lg:gap-5 lg:p-6">
+            <p className="text-heading-display text-left leading-snug">
               Have Questions? Our Experts Are Ready to Help
             </p>
             <div className="relative mx-auto h-[200px] w-full max-w-lg lg:mx-0 lg:mt-auto lg:h-[min(240px,30vh)] lg:max-w-none">
@@ -105,8 +111,8 @@ export function ContactPage() {
             </div>
           </div>
           {/* ~60% — form */}
-          <div className="flex flex-col bg-[#ffffff] p-5 sm:p-5 lg:p-6">
-            <h2 className="text-heading-display mb-4 text-left text-primary">
+          <div className="flex flex-col bg-white p-5 sm:p-5 lg:p-6">
+            <h2 className="text-heading-display mb-4 text-left text-[#FF511A]">
               Let&apos;s Talk
             </h2>
             <form

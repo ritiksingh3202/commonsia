@@ -1,6 +1,10 @@
+"use client";
+
+import { AnimatePresence, motion } from "framer-motion";
+import { useState } from "react";
+
 export type FaqItem = { q: string; a: string };
 
-/** Simple FAQ list — native details/summary, white surface, light borders. */
 export function FaqAccordion({
   items,
   className,
@@ -8,27 +12,50 @@ export function FaqAccordion({
   items: readonly FaqItem[];
   className?: string;
 }) {
+  const [open, setOpen] = useState<number | null>(null);
+
   return (
     <div className={className}>
-      <ul className="overflow-hidden rounded-xl border border-black/[0.08] bg-[#ffffff]">
-        {items.map((item, i) => (
-          <li key={`${i}-${item.q.slice(0, 24)}`} className="border-b border-black/[0.06] last:border-b-0">
-            <details className="group">
-              <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3.5 text-left text-[15px] font-semibold leading-snug text-[#0a0a0a] marker:content-none sm:px-5 sm:py-4 sm:text-base [&::-webkit-details-marker]:hidden">
-                <span className="min-w-0 flex-1">{item.q}</span>
-                <span
-                  className="flex size-8 shrink-0 items-center justify-center rounded-full border border-black/[0.08] text-lg leading-none text-primary transition-transform duration-200 group-open:rotate-45"
+      <ul className="flex flex-col gap-[27px]">
+        {items.map((item, i) => {
+          const isOpen = open === i;
+          return (
+            <li key={item.q}>
+              <button
+                type="button"
+                onClick={() => setOpen(isOpen ? null : i)}
+                className="flex w-full items-center justify-between gap-3 rounded-[14px] border border-neutral-200/90 bg-white px-4 py-3.5 text-left shadow-sm transition-colors hover:border-primary/35 sm:gap-4 sm:rounded-[17px] sm:px-6 sm:py-4"
+              >
+                <span className="text-[15px] font-semibold leading-snug text-black sm:text-lg">
+                  {item.q}
+                </span>
+                <motion.span
                   aria-hidden
+                  className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xl font-normal leading-none text-primary"
+                  animate={{ rotate: isOpen ? 45 : 0 }}
+                  transition={{ duration: 0.25 }}
                 >
                   +
-                </span>
-              </summary>
-              <div className="border-t border-black/[0.05] px-4 pb-4 pt-3 text-left text-sm leading-relaxed text-neutral-600 sm:px-5 sm:text-[15px]">
-                {item.a}
-              </div>
-            </details>
-          </li>
-        ))}
+                </motion.span>
+              </button>
+              <AnimatePresence initial={false}>
+                {isOpen && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+                    className="overflow-hidden"
+                  >
+                    <p className="px-4 pb-3 pt-0 text-left text-sm leading-relaxed text-neutral-700 sm:px-6 sm:text-[15px]">
+                      {item.a}
+                    </p>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </li>
+          );
+        })}
       </ul>
     </div>
   );

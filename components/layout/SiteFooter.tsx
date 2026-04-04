@@ -66,21 +66,21 @@ export function SiteFooter() {
                 className="transition-opacity hover:opacity-70"
                 aria-label="WhatsApp"
               >
-                <Image src="/home_assets/whatsapp.svg" alt="" width={20} height={20} />
+                <Image src="/home_assets/whatsapp-footer.svg" alt="" width={20} height={20} />
               </a>
               <a
                 href="https://linkedin.com/"
                 className="transition-opacity hover:opacity-70"
                 aria-label="LinkedIn"
               >
-                <Image src="/home_assets/linkedin.svg" alt="" width={20} height={20} />
+                <Image src="/home_assets/linkedin-footer.svg" alt="" width={20} height={20} />
               </a>
               <a
                 href="https://instagram.com/"
                 className="transition-opacity hover:opacity-70"
                 aria-label="Instagram"
               >
-                <Image src="/home_assets/instagram.svg" alt="" width={20} height={20} />
+                <Image src="/home_assets/instagram-footer.svg" alt="" width={20} height={20} />
               </a>
             </div>
           </div>
