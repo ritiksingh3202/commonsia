@@ -59,14 +59,16 @@ body {
    * Full-size display — only the home hero “Learn & Discuss … Beyond the Classroom” line.
    */
   .text-heading-display-hero {
-    @apply text-balance text-[1.65rem] font-semibold leading-tight sm:text-4xl sm:leading-[1.15] lg:text-[2.65rem] lg:leading-[1.12];
+    @apply text-balance break-words text-[1.65rem] font-semibold leading-tight sm:text-4xl sm:leading-[1.15] lg:text-[2.65rem] lg:leading-[1.12];
+    overflow-wrap: anywhere;
   }
 
   /**
    * Section titles — 60% smaller than legacy display (×0.4) with minimum readable sizes.
    */
   .text-heading-display {
-    @apply text-balance font-semibold leading-tight;
+    @apply text-balance break-words font-semibold leading-tight;
+    overflow-wrap: anywhere;
     font-size: max(1rem, calc(1.65rem * 0.4));
   }
   @media (min-width: 640px) {
@@ -86,7 +88,8 @@ body {
    * Card / feature titles — 60% smaller than legacy (×0.4) with floors.
    */
   .text-heading-card {
-    @apply font-semibold leading-snug;
+    @apply break-words font-semibold leading-snug;
+    overflow-wrap: anywhere;
     font-size: max(0.875rem, calc(1.125rem * 0.4));
   }
   @media (min-width: 640px) {

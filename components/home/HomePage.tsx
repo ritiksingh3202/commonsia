@@ -185,7 +185,7 @@ export function HomePage() {
             </div>
           </motion.div>
 
-          <div className="flex flex-col items-center justify-center text-center mx-auto relative z-20 max-w-2xl sm:max-w-4xl lg:max-w-5xl xl:max-w-[65rem] 2xl:max-w-[75rem]">
+          <div className="relative z-20 mx-auto flex w-full min-w-0 max-w-2xl flex-col items-center justify-center px-1 text-center sm:max-w-4xl sm:px-2 lg:max-w-5xl xl:max-w-[65rem] 2xl:max-w-[75rem]">
             <motion.div
               className="mb-4 flex justify-center gap-0"
               initial={{ opacity: 0, y: 8 }}
@@ -211,16 +211,19 @@ export function HomePage() {
               The Community Platform for Architecture Students
             </motion.p>
 
-            {/* Heading Guaranteed On Two Lines */}
             <motion.h1
-              className="mx-auto mt-4 w-full max-w-[1117px] text-center text-[6.5vw] font-semibold leading-[1.15] tracking-tight sm:text-[2.6rem] md:text-[3.4rem] lg:text-[4rem] xl:text-[4.6rem] 2xl:text-[5rem]"
+              className="mx-auto mt-4 w-full min-w-0 max-w-[1117px] text-center text-[clamp(1.3rem,5.2vw+0.4rem,2.2rem)] font-semibold leading-[1.22] tracking-tight sm:text-[2.6rem] sm:leading-[1.15] md:text-[3.4rem] lg:text-[4rem] xl:text-[4.6rem] 2xl:text-[5rem]"
               style={heroTitleGradientStyle}
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
             >
-              <span className="block whitespace-nowrap">Learn & Discuss Architecture</span>
-              <span className="mt-1 block whitespace-nowrap md:mt-0">Beyond the Classroom</span>
+              <span className="block max-w-full text-balance break-words [overflow-wrap:anywhere] xl:whitespace-nowrap">
+                Learn & Discuss Architecture
+              </span>
+              <span className="mt-1 block max-w-full text-balance break-words [overflow-wrap:anywhere] md:mt-0 xl:whitespace-nowrap">
+                Beyond the Classroom
+              </span>
             </motion.h1>
             <p className="mx-auto mt-4 max-w-4xl text-pretty text-center text-[14px] leading-relaxed text-neutral-600 sm:mt-6 sm:text-[16px] lg:text-lg">
               Connect with experienced mentors, ask questions, discuss design ideas, and
