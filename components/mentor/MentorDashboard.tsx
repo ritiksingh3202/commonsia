@@ -264,12 +264,20 @@ export function MentorDashboard({ user }: Props) {
                         </p>
                       </div>
                     </div>
-                    <button
-                      type="button"
-                      className="h-8 shrink-0 rounded-lg border border-black/10 bg-white px-3 text-[14px] font-medium text-[#0a0a0a] hover:bg-neutral-50"
-                    >
-                      Message
-                    </button>
+                    <div className="flex shrink-0 flex-col items-end gap-1.5 sm:flex-row sm:items-center">
+                      <Link
+                        href="/mentor/students/demo"
+                        className="flex h-8 items-center rounded-lg border border-black/10 bg-white px-3 text-[14px] font-medium text-[#0a0a0a] hover:bg-neutral-50"
+                      >
+                        Profile
+                      </Link>
+                      <Link
+                        href="/messages"
+                        className="flex h-8 items-center rounded-lg border border-black/10 bg-white px-3 text-[14px] font-medium text-[#0a0a0a] hover:bg-neutral-50"
+                      >
+                        Message
+                      </Link>
+                    </div>
                   </div>
                   <div className="mt-3">
                     <div className="mb-1 flex justify-between text-xs leading-4 text-[#6a7282]">

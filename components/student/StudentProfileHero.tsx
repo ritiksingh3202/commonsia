@@ -175,13 +175,13 @@ export function StudentProfileHero({ user: initial }: Props) {
                 >
                   <PencilIcon className="size-[18px]" />
                 </Link>
-                <button
-                  type="button"
+                <Link
+                  href="/messages"
                   className="flex size-11 items-center justify-center rounded-full bg-primary text-white shadow-md ring-1 ring-primary/20 transition hover:bg-primary/90 sm:size-10"
                   aria-label="Messages"
                 >
                   <ChatBubbleIcon className="size-[18px]" />
-                </button>
+                </Link>
               </div>
             </div>
 

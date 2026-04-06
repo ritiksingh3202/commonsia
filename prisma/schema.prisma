@@ -82,6 +82,40 @@ model User {
   googleCalendarRefreshToken String? @db.Text
   accounts         Account[]
   sessions         Session[]
+  chatThreadsAsStudent ChatThread[] @relation("ChatStudent")
+  chatThreadsAsMentor  ChatThread[] @relation("ChatMentor")
+  chatMessages         ChatMessage[]
+}
+
+/// Student ↔ mentor DM thread. `pending` until mentor accepts (message request).
+model ChatThread {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  studentId String
+  mentorId  String
+  status    String   @default("pending")
+
+  student  User          @relation("ChatStudent", fields: [studentId], references: [id], onDelete: Cascade)
+  mentor   User          @relation("ChatMentor", fields: [mentorId], references: [id], onDelete: Cascade)
+  messages ChatMessage[]
+
+  @@unique([studentId, mentorId])
+  @@index([studentId])
+  @@index([mentorId])
+}
+
+model ChatMessage {
+  id        String   @id @default(cuid())
+  threadId  String
+  senderId  String
+  body      String   @db.Text
+  createdAt DateTime @default(now())
+
+  thread ChatThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  sender User       @relation(fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@index([threadId])
 }
 
 model VerificationToken {

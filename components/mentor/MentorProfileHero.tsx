@@ -178,14 +178,14 @@ export function MentorProfileHero({ user: initial }: Props) {
                   >
                     <PencilIcon className="size-[18px]" />
                   </Link>
-                  <button
-                    type="button"
+                  <Link
+                    href="/messages"
                     className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-[13px] font-semibold text-white shadow-md ring-1 ring-primary/25 transition hover:bg-primary/90"
                     aria-label="Messages"
                   >
                     <ChatBubbleIcon className="size-[18px] shrink-0 text-white" />
                     <span>Message</span>
-                  </button>
+                  </Link>
                 </div>
                 <div className="flex justify-center gap-3 lg:justify-end">
                   <SocialIconButton

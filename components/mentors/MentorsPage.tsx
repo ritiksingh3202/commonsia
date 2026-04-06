@@ -8,6 +8,7 @@ import { MentorCard } from "@/components/mentors/MentorCard";
 import { MentorPagination } from "@/components/mentors/MentorPagination";
 import { MentorSearchBar } from "@/components/mentors/MentorSearchBar";
 import { SectionReveal } from "@/components/motion/SectionReveal";
+import { heroTitleGradientStyle } from "@/lib/hero-title-gradient";
 import { marketingImages } from "@/lib/marketing-images";
 import { mentors } from "@/lib/mentors-data";
 
@@ -43,99 +44,113 @@ export function MentorsPage() {
 
   return (
     <div className="bg-white pb-6 sm:pb-8">
-      <section className="relative overflow-hidden bg-[#ffffff] px-4 pb-6 pt-4 sm:px-6 lg:px-8 lg:pb-8 lg:pt-5">
-        <div className="mx-auto w-full max-w-7xl px-3 sm:px-5 lg:px-10">
-          <div className="flex flex-col items-center lg:flex-row lg:items-start lg:justify-center lg:gap-6 xl:gap-12">
-            <motion.div
-              className="relative order-2 hidden w-[min(130px,13vw)] shrink-0 self-start pt-5 sm:w-[min(150px,14vw)] lg:order-1 lg:block lg:pt-8 xl:pt-10"
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.55 }}
-            >
-              <div className="relative aspect-[3/5] w-full max-h-[min(340px,36vh)]">
-                <Image
-                  src={marketingImages.mentorsHeroLeft}
-                  alt=""
-                  fill
-                  className="object-contain object-bottom object-center"
-                  sizes="150px"
-                />
-              </div>
-            </motion.div>
-
-            <div className="order-1 flex w-full max-w-2xl flex-col items-center text-center sm:max-w-3xl lg:order-2 lg:max-w-4xl xl:max-w-[52rem]">
-              <div className="mb-3 flex justify-center gap-0">
-                {heroAvatars.map((src, i) => (
-                  <div
-                    key={src}
-                    className="-ml-2 first:ml-0 relative size-10 overflow-hidden rounded-full border-2 border-white shadow sm:size-11"
-                    style={{ zIndex: heroAvatars.length - i }}
-                  >
-                    <Image src={src} alt="" fill className="object-cover" sizes="40px" />
-                  </div>
-                ))}
-              </div>
-              <p className="text-xs font-normal text-neutral-600 sm:text-sm">
-                The Community Platform for Architecture Students
-              </p>
-              <motion.h1
-                className="mt-3 max-w-4xl text-heading-display-hero"
-                initial={{ opacity: 0, y: 14 }}
-                animate={{ opacity: 1, y: 0 }}
-              >
-                <span className="block md:whitespace-nowrap">
-                  <span className="text-[#301b14]">Stuck in Your </span>
-                  <span className="text-hero-title-accent">Design Journey</span>
-                  <span className="text-[#301b14]">?</span>
-                </span>
-                <span className="mt-1 block md:mt-0 md:whitespace-nowrap">
-                  <span className="text-[#301b14]">Find a </span>
-                  <span className="text-hero-title-accent">Mentor</span>
-                  <span className="text-[#301b14]">.</span>
-                </span>
-              </motion.h1>
-              <p className="mx-auto mt-2.5 max-w-5xl text-pretty text-center text-sm leading-relaxed text-neutral-700 sm:text-[15px]">
-                Connect with experienced architects, professors, and industry experts who
-                guide you through design, portfolios, or real-world projects.
-              </p>
-              <motion.div
-                className="mt-4 flex flex-wrap items-center justify-center gap-3 sm:gap-4"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.12 }}
-              >
-                <Link
-                  href="/mentors"
-                  className="rounded-full bg-primary px-8 py-2.5 text-sm font-semibold text-white shadow-sm transition-transform hover:scale-[1.02]"
-                >
-                  Find a Mentor
-                </Link>
-                <Link
-                  href="/auth"
-                  className="rounded-full border-2 border-primary bg-white px-8 py-2.5 text-sm font-semibold text-primary transition-transform hover:scale-[1.02]"
-                >
-                  Become a Mentor
-                </Link>
-              </motion.div>
+      {/* Hero — same proportions / rhythm as home (padding, type scale, CTAs, side art) */}
+      {/* No overflow-x clip here — nowrap + long line was clipping the trailing "?" */}
+      <section className="relative bg-[#ffffff] px-4 pb-4 pt-12 sm:px-6 sm:pb-6 sm:pt-16 lg:px-8 lg:pb-8 lg:pt-24">
+        <div className="relative mx-auto w-full max-w-[100rem] min-w-0 px-3 sm:px-5 lg:px-10">
+          <motion.div
+            className="absolute left-0 top-[15%] z-10 hidden w-[120px] md:block lg:top-[20%] lg:w-[160px] xl:top-[25%] xl:w-[200px] 2xl:w-[240px]"
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.55 }}
+          >
+            <div className="relative aspect-[3/5] w-full">
+              <Image
+                src={marketingImages.mentorsHeroLeft}
+                alt=""
+                fill
+                className="object-contain object-bottom object-center"
+                sizes="240px"
+              />
             </div>
+          </motion.div>
+
+          <div className="relative z-20 mx-auto flex min-w-0 max-w-2xl flex-col items-center justify-center text-center sm:max-w-4xl lg:max-w-5xl xl:max-w-[65rem] 2xl:max-w-[75rem]">
+            <motion.div
+              className="mb-4 flex justify-center gap-0"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.08 }}
+            >
+              {heroAvatars.map((src, i) => (
+                <div
+                  key={src}
+                  className="relative -ml-2 size-10 overflow-hidden rounded-full border-2 border-white shadow first:ml-0 sm:size-11"
+                  style={{ zIndex: heroAvatars.length - i }}
+                >
+                  <Image src={src} alt="" fill className="object-cover" sizes="40px" />
+                </div>
+              ))}
+            </motion.div>
+            <motion.p
+              className="text-[11px] font-normal text-neutral-600 sm:text-xs lg:text-[13px]"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.09 }}
+            >
+              The Community Platform for Architecture Students
+            </motion.p>
+
+            <motion.h1
+              className="mx-auto mt-4 w-full min-w-0 max-w-[1117px] px-1 text-center text-[6.5vw] font-semibold leading-[1.15] tracking-tight sm:px-2 sm:text-[2.6rem] md:text-[3.4rem] lg:text-[4rem] xl:text-[4.6rem] 2xl:text-[5rem]"
+              style={heroTitleGradientStyle}
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+            >
+              {/* Below lg: two lines so "Journey?" never clips; lg+: single line */}
+              <span className="block max-w-full text-balance lg:whitespace-nowrap">
+                <span className="block lg:inline">Stuck in Your Design </span>
+                <span className="block lg:inline">Journey?</span>
+              </span>
+              <span className="mt-1 block max-w-full text-balance lg:mt-0 lg:whitespace-nowrap">
+                <span className="block lg:inline">Find a </span>
+                <span className="block lg:inline">Mentor.</span>
+              </span>
+            </motion.h1>
+
+            <p className="mx-auto mt-4 max-w-4xl text-pretty text-center text-[14px] leading-relaxed text-neutral-600 sm:mt-6 sm:text-[16px] lg:text-lg">
+              Connect with experienced architects, professors, and industry experts who
+              guide you through design, portfolios, or real-world projects.
+            </p>
 
             <motion.div
-              className="relative order-3 hidden w-[min(130px,13vw)] shrink-0 self-start pt-5 sm:w-[min(150px,14vw)] lg:block lg:pt-8 xl:pt-10"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.55 }}
+              className="mt-6 flex w-full max-w-sm flex-col items-center justify-center gap-3 sm:max-w-none sm:flex-row sm:gap-5"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
             >
-              <div className="relative aspect-[3/5] w-full max-h-[min(340px,36vh)]">
-                <Image
-                  src={marketingImages.mentorsHeroRight}
-                  alt=""
-                  fill
-                  className="object-contain object-bottom object-center"
-                  sizes="150px"
-                />
-              </div>
+              <Link
+                href="/mentors"
+                className="w-full rounded-full bg-primary px-8 py-3 text-center text-[15px] font-semibold tracking-wide text-white shadow-md transition-all hover:scale-[1.03] hover:shadow-lg sm:w-auto sm:px-10 sm:py-3.5 sm:text-base"
+              >
+                Find a Mentor
+              </Link>
+              <Link
+                href="/auth"
+                className="w-full rounded-full border-2 border-primary bg-white px-8 py-3 text-center text-[15px] font-semibold tracking-wide text-primary transition-all hover:scale-[1.03] hover:bg-primary/5 sm:w-auto sm:px-10 sm:py-3.5 sm:text-base"
+              >
+                Become a Mentor
+              </Link>
             </motion.div>
           </div>
+
+          <motion.div
+            className="absolute right-0 top-[15%] z-10 hidden w-[120px] md:block lg:top-[20%] lg:w-[160px] xl:top-[25%] xl:w-[200px] 2xl:w-[240px]"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.55 }}
+          >
+            <div className="relative aspect-[3/5] w-full">
+              <Image
+                src={marketingImages.mentorsHeroRight}
+                alt=""
+                fill
+                className="object-contain object-bottom object-center"
+                sizes="240px"
+              />
+            </div>
+          </motion.div>
         </div>
       </section>
 

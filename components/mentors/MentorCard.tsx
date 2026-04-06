@@ -3,6 +3,7 @@
 import { motion } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import type { Mentor } from "@/lib/mentors-data";
 
 export function MentorCard({
@@ -12,6 +13,7 @@ export function MentorCard({
   mentor: Mentor;
   index: number;
 }) {
+  const router = useRouter();
   return (
     <motion.article
       layout
@@ -24,7 +26,16 @@ export function MentorCard({
         boxShadow: "0 12px 40px rgba(0,0,0,0.12)",
         transition: { duration: 0.2 },
       }}
-      className="grid min-h-0 grid-cols-1 overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-sm md:grid-cols-[minmax(0,1fr)_minmax(0,34%)]"
+      role="link"
+      tabIndex={0}
+      onClick={() => router.push(`/mentors/${mentor.id}`)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          router.push(`/mentors/${mentor.id}`);
+        }
+      }}
+      className="grid min-h-0 cursor-pointer grid-cols-1 overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-sm md:grid-cols-[minmax(0,1fr)_minmax(0,34%)]"
     >
       <div className="order-1 flex flex-col justify-between gap-1.5 p-3 sm:gap-2 sm:p-3.5 md:order-1 md:max-w-none md:pr-3 md:py-3">
         <div>
@@ -56,6 +67,7 @@ export function MentorCard({
         </p>
         <Link
           href="/schedule"
+          onClick={(e) => e.stopPropagation()}
           className="inline-flex w-fit items-center justify-center rounded-full bg-primary px-3 py-1.5 text-[10px] font-semibold text-white transition-transform hover:scale-[1.02] sm:px-4 sm:py-2 sm:text-[11px]"
         >
           Schedule A Call

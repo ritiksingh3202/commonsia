@@ -50,6 +50,7 @@ export default async function MentorAvailabilityPage() {
       <MentorAvailabilityForm
         initialJson={user.mentorAvailabilityJson ?? null}
         googleCalendarConnected={googleCalendarConnected}
+        mentorOnboardingComplete={user.mentorOnboardingComplete}
       />
     </Suspense>
   );

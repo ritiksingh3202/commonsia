@@ -74,6 +74,8 @@ export function buildAvailabilityCalendarEvents(av: MentorAvailabilityJson): Cal
     return events;
   }
 
+  const blocked = new Set((av.blockedDates ?? []).map((b) => b.date));
+
   for (const day of WEEKDAY_KEYS) {
     const slots = av.weeklySlots[day] ?? [];
     if (slots.length === 0) continue;
@@ -81,6 +83,7 @@ export function buildAvailabilityCalendarEvents(av: MentorAvailabilityJson): Cal
     const dates = nextWeekdayDates(now, wd, 8);
     for (const dayDate of dates) {
       const iso = `${dayDate.getFullYear()}-${String(dayDate.getMonth() + 1).padStart(2, "0")}-${String(dayDate.getDate()).padStart(2, "0")}`;
+      if (blocked.has(iso)) continue;
       for (const slot of slots) {
         const start = combineDateAndSlotLabel(iso, slot);
         if (!start) continue;
@@ -91,6 +94,22 @@ export function buildAvailabilityCalendarEvents(av: MentorAvailabilityJson): Cal
           end,
         });
       }
+    }
+  }
+
+  const extra = av.extraAvailabilitySlots ?? {};
+  for (const [iso, slots] of Object.entries(extra)) {
+    if (!Array.isArray(slots)) continue;
+    for (const slot of slots) {
+      if (typeof slot !== "string") continue;
+      const start = combineDateAndSlotLabel(iso, slot);
+      if (!start) continue;
+      const end = new Date(start.getTime() + durationMin * 60 * 1000);
+      events.push({
+        summary: "Commonsia — Mentor availability (extra)",
+        start,
+        end,
+      });
     }
   }
 

@@ -9,6 +9,8 @@ export type Mentor = {
   tags: string[];
   slot: string;
   image: string;
+  /** When set, logged-in students can open a real DM to this User id via `/messages`. */
+  linkedUserId?: string | null;
 };
 
 export const mentors: Mentor[] = [
@@ -203,3 +205,7 @@ export const mentors: Mentor[] = [
     image: marketingImages.mentorPortrait,
   },
 ];
+
+export function getMentorById(id: string): Mentor | undefined {
+  return mentors.find((m) => m.id === id);
+}

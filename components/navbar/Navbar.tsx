@@ -117,14 +117,23 @@ export function Navbar() {
           ) : null}
           <button
             type="button"
-            className="flex h-11 w-11 shrink-0 flex-col items-center justify-center gap-1.5 rounded-xl border border-black/[0.06] bg-[#ffffff] shadow-sm transition-colors hover:bg-neutral-50 active:bg-neutral-100 md:hidden"
+            className="flex shrink-0 items-center justify-center p-2 transition-opacity hover:opacity-70 active:opacity-50 md:hidden -mr-2"
             aria-expanded={menuOpen}
             aria-label={menuOpen ? "Close menu" : "Open menu"}
             onClick={() => setMenuOpen((o) => !o)}
           >
-            <span className="h-0.5 w-5 rounded-full bg-ink" />
-            <span className="h-0.5 w-5 rounded-full bg-ink" />
-            <span className="h-0.5 w-5 rounded-full bg-ink" />
+            {menuOpen ? (
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#334155" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
+            ) : (
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#334155" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="4" x2="20" y1="12" y2="12" />
+                <line x1="4" x2="20" y1="6" y2="6" />
+                <line x1="4" x2="20" y1="18" y2="18" />
+              </svg>
+            )}
           </button>
         </div>
       </div>

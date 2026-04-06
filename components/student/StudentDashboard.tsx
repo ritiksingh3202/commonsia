@@ -147,12 +147,12 @@ export function StudentDashboard({ user }: { user: StudentProfileUser }) {
                         <p className="mt-0.5 text-[12px] text-[#9ca3af]">{m.focus}</p>
                       </div>
                     </div>
-                    <button
-                      type="button"
+                    <Link
+                      href="/messages"
                       className={`${rowBtn} bg-primary text-white hover:bg-primary/92`}
                     >
                       Message
-                    </button>
+                    </Link>
                   </li>
                 ))}
               </ul>

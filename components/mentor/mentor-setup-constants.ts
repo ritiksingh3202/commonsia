@@ -9,6 +9,7 @@ export const MENTOR_EXPERTISE_OPTIONS = [
   "Interior Architecture",
   "Landscape Architecture",
   "Historic Preservation",
+  "Digital Fabrication",
   "BIM & Technology",
   "Construction Management",
   MENTOR_EXPERTISE_OTHER,
@@ -102,8 +103,20 @@ export function buildHalfHourTimeSlots(): string[] {
 
 export const MENTOR_TIME_SLOTS_HALF = buildHalfHourTimeSlots();
 
+export type SessionTemplateRow = {
+  id: string;
+  name: string;
+  durationMinutes: number;
+  enabled: boolean;
+};
+
+export type BlockedDateEntry = {
+  date: string;
+  reason?: string;
+};
+
 export type MentorAvailabilityJson = {
-  sessionDurationMinutes: 30 | 45 | 60 | 90;
+  sessionDurationMinutes: 15 | 30 | 45 | 60 | 90;
   availabilityType: "weekly" | "specific";
   specificDates: string[];
   /** When availabilityType is "specific", time chips per ISO date (YYYY-MM-DD). */
@@ -113,7 +126,26 @@ export type MentorAvailabilityJson = {
   autoAcceptSessionRequests?: boolean;
   bufferBetweenSessions?: string;
   advanceBookingWindow?: string;
+  /** Smart Automation tab */
+  smartAutomationEnabled?: boolean;
+  maxSessionsPerWeek?: number;
+  bufferMinutes?: number;
+  /** Session types tab — first enabled row drives `sessionDurationMinutes` on save */
+  sessionTemplates?: SessionTemplateRow[];
+  /** Weekly mode: do not offer slots on these ISO dates */
+  blockedDates?: BlockedDateEntry[];
+  /** Weekly mode: extra slot labels (same format as weeklySlots) per ISO date */
+  extraAvailabilitySlots?: Record<string, string[]>;
+  acceptingNewMentees?: boolean;
 };
+
+export function defaultSessionTemplates(): SessionTemplateRow[] {
+  return [
+    { id: "st-quick", name: "Quick Doubt Session", durationMinutes: 15, enabled: true },
+    { id: "st-design", name: "Design Discussion", durationMinutes: 30, enabled: true },
+    { id: "st-portfolio", name: "Portfolio Review", durationMinutes: 45, enabled: true },
+  ];
+}
 
 export function emptyWeeklySlots(): Record<WeekdayKey, string[]> {
   return {
@@ -134,9 +166,16 @@ export function defaultMentorAvailability(): MentorAvailabilityJson {
     specificDates: [],
     specificDateSlots: {},
     weeklySlots: emptyWeeklySlots(),
-    maxStudents: 5,
-    autoAcceptSessionRequests: false,
-    bufferBetweenSessions: "",
+    maxStudents: 10,
+    autoAcceptSessionRequests: true,
+    bufferBetweenSessions: "15",
     advanceBookingWindow: "",
+    smartAutomationEnabled: true,
+    maxSessionsPerWeek: 10,
+    bufferMinutes: 15,
+    sessionTemplates: defaultSessionTemplates(),
+    blockedDates: [],
+    extraAvailabilitySlots: {},
+    acceptingNewMentees: true,
   };
 }
