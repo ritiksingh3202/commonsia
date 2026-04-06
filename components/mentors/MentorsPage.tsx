@@ -45,7 +45,7 @@ export function MentorsPage() {
   return (
     <div className="bg-white pb-6 sm:pb-8">
       {/* Hero — same proportions / rhythm as home (padding, type scale, CTAs, side art) */}
-      {/* No overflow-x clip here — nowrap + long line was clipping the trailing "?" */}
+      {/* Hero title wraps with text-balance — no forced nowrap so long lines never clip */}
       <section className="relative bg-[#ffffff] px-4 pb-4 pt-12 sm:px-6 sm:pb-6 sm:pt-16 lg:px-8 lg:pb-8 lg:pt-24">
         <div className="relative mx-auto w-full max-w-[100rem] min-w-0 px-3 sm:px-5 lg:px-10">
           <motion.div
@@ -92,19 +92,19 @@ export function MentorsPage() {
             </motion.p>
 
             <motion.h1
-              className="mx-auto mt-4 w-full min-w-0 max-w-[1117px] px-2 text-center text-[clamp(1.3rem,5.2vw+0.4rem,2.2rem)] font-semibold leading-[1.22] tracking-tight sm:px-3 sm:text-[2.6rem] sm:leading-[1.15] md:text-[3.4rem] lg:text-[4rem] xl:text-[4.6rem] 2xl:text-[5rem]"
+              className="mx-auto mt-4 w-full min-w-0 max-w-[1117px] px-3 text-center text-[clamp(1.3rem,5.2vw+0.4rem,2.2rem)] font-semibold leading-[1.25] tracking-tight sm:px-4 sm:text-[2.5rem] sm:leading-[1.2] md:text-[3.15rem] md:leading-[1.18] lg:text-[3.65rem] xl:text-[4.1rem] 2xl:text-[4.75rem]"
               style={heroTitleGradientStyle}
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
             >
-              <span className="block max-w-full text-balance break-words [overflow-wrap:anywhere] xl:whitespace-nowrap">
-                <span className="block xl:inline">Stuck in Your Design </span>
-                <span className="block xl:inline">Journey?</span>
+              <span className="block max-w-full text-balance break-words [overflow-wrap:anywhere]">
+                <span className="inline">Stuck in Your Design </span>
+                <span className="inline">Journey?</span>
               </span>
-              <span className="mt-1 block max-w-full text-balance break-words [overflow-wrap:anywhere] md:mt-0 xl:whitespace-nowrap">
-                <span className="block xl:inline">Find a </span>
-                <span className="block xl:inline">Mentor.</span>
+              <span className="mt-1 block max-w-full text-balance break-words [overflow-wrap:anywhere] md:mt-0">
+                <span className="inline">Find a </span>
+                <span className="inline">Mentor.</span>
               </span>
             </motion.h1>
 

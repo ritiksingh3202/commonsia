@@ -212,16 +212,16 @@ export function HomePage() {
             </motion.p>
 
             <motion.h1
-              className="mx-auto mt-4 w-full min-w-0 max-w-[1117px] text-center text-[clamp(1.3rem,5.2vw+0.4rem,2.2rem)] font-semibold leading-[1.22] tracking-tight sm:text-[2.6rem] sm:leading-[1.15] md:text-[3.4rem] lg:text-[4rem] xl:text-[4.6rem] 2xl:text-[5rem]"
+              className="mx-auto mt-4 w-full min-w-0 max-w-[1117px] px-1 text-center text-[clamp(1.3rem,5.2vw+0.4rem,2.2rem)] font-semibold leading-[1.25] tracking-tight sm:px-2 sm:text-[2.5rem] sm:leading-[1.2] md:text-[3.15rem] md:leading-[1.18] lg:text-[3.65rem] xl:text-[4.1rem] 2xl:text-[4.75rem]"
               style={heroTitleGradientStyle}
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
             >
-              <span className="block max-w-full text-balance break-words [overflow-wrap:anywhere] xl:whitespace-nowrap">
+              <span className="block max-w-full text-balance break-words [overflow-wrap:anywhere]">
                 Learn & Discuss Architecture
               </span>
-              <span className="mt-1 block max-w-full text-balance break-words [overflow-wrap:anywhere] md:mt-0 xl:whitespace-nowrap">
+              <span className="mt-1 block max-w-full text-balance break-words [overflow-wrap:anywhere] md:mt-0">
                 Beyond the Classroom
               </span>
             </motion.h1>
