@@ -1,0 +1,38 @@
+import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
+
+/**
+ * Redirect www ↔ apex to match `AUTH_URL` so OAuth redirect URIs and Auth.js cookies
+ * always use one host (fixes "Server error" / state+PKCE issues when users mix hosts).
+ */
+export function middleware(request: NextRequest) {
+  const raw = process.env.AUTH_URL?.trim();
+  if (!raw) return NextResponse.next();
+
+  let canonical: URL;
+  try {
+    canonical = new URL(raw);
+  } catch {
+    return NextResponse.next();
+  }
+
+  if (canonical.protocol !== "https:") return NextResponse.next();
+
+  const host = request.headers.get("host")?.split(":")[0]?.toLowerCase();
+  if (!host || host === canonical.hostname) return NextResponse.next();
+
+  const stripWww = (h: string) => h.replace(/^www\./i, "");
+  if (stripWww(host) !== stripWww(canonical.hostname)) return NextResponse.next();
+
+  const url = request.nextUrl.clone();
+  url.hostname = canonical.hostname;
+  url.port = "";
+  url.protocol = canonical.protocol;
+  return NextResponse.redirect(url, 308);
+}
+
+export const config = {
+  matcher: [
+    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
+  ],
+};

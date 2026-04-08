@@ -49,6 +49,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: PrismaAdapter(prisma),
   trustHost: true,
   secret: authSecret,
+  /** Set `AUTH_DEBUG=1` in Vercel temporarily to log OAuth details (then remove). */
+  debug: process.env.AUTH_DEBUG === "1",
   session: {
     strategy: "jwt",
     maxAge: 30 * 24 * 60 * 60,
