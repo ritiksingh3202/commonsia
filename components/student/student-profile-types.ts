@@ -19,6 +19,9 @@ export type StudentProfileUser = Pick<
   | "whatsappUrl"
   | "linkedinUrl"
   | "instagramUrl"
+  | "portfolioUrl"
+  | "portfolioFileName"
+  | "portfolioVisibleToOthers"
 >;
 
 export function parseInterests(interests: unknown): string[] {

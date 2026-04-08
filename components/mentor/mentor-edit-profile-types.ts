@@ -14,6 +14,8 @@ export type MentorEditProfileInitial = {
   bio: string | null;
   linkedinUrl: string | null;
   portfolioUrl: string | null;
+  portfolioFileName: string | null;
+  portfolioVisibleToOthers: boolean;
   mentorCertifications: string | null;
   softwareSkills: string | null;
 };

@@ -9,6 +9,7 @@ import {
   WhatsAppGlyph,
 } from "@/components/profile/ProfileSocialIcons";
 
+import { PortfolioViewerPanel } from "@/components/profile/PortfolioViewerPanel";
 import {
   formatStudentSubtitle,
   parseInterests,
@@ -125,6 +126,13 @@ export function StudentProfileViewForMentor({
                   {user.bio.trim()}
                 </p>
               ) : null}
+
+              <PortfolioViewerPanel
+                userId={user.id}
+                portfolioUrl={user.portfolioUrl}
+                portfolioFileName={user.portfolioFileName}
+                portfolioVisibleToOthers={user.portfolioVisibleToOthers ?? true}
+              />
 
               {(interests.length > 0 || user.otherInterests?.trim()) && (
                 <div className="mt-6 text-left">

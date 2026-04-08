@@ -11,6 +11,7 @@ import {
   SocialIconButton,
   WhatsAppGlyph,
 } from "@/components/profile/ProfileSocialIcons";
+import { ProfileSettingsMenu } from "@/components/profile/ProfileSettingsMenu";
 import { compressImageToDataUrl } from "@/lib/resize-image-client";
 
 type Props = {
@@ -186,6 +187,7 @@ export function MentorProfileHero({ user: initial }: Props) {
                     <ChatBubbleIcon className="size-[18px] shrink-0 text-white" />
                     <span>Message</span>
                   </Link>
+                  <ProfileSettingsMenu editProfileHref="/mentor/profile/edit" compact />
                 </div>
                 <div className="flex justify-center gap-3 lg:justify-end">
                   <SocialIconButton

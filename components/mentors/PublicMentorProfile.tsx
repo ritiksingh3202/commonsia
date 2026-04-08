@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
+import { PortfolioViewerPanel } from "@/components/profile/PortfolioViewerPanel";
 import {
   InstagramGlyph,
   LinkedInGlyph,
@@ -61,10 +62,18 @@ export function PublicMentorProfile({
   mentor,
   messageHref,
   scheduleHref,
+  viewerPortfolio,
 }: {
   mentor: Mentor;
   messageHref: string;
   scheduleHref: string;
+  /** When this marketing card is linked to a real mentor `User`, students can open their shared portfolio. */
+  viewerPortfolio?: {
+    userId: string;
+    portfolioUrl: string | null;
+    portfolioFileName: string | null;
+    portfolioVisibleToOthers: boolean;
+  } | null;
 }) {
   const [tab, setTab] = useState<Tab>("overview");
   const [reviewIdx, setReviewIdx] = useState(0);
@@ -199,6 +208,14 @@ export function PublicMentorProfile({
                   ))}
                 </ul>
               </div>
+              {viewerPortfolio ? (
+                <PortfolioViewerPanel
+                  userId={viewerPortfolio.userId}
+                  portfolioUrl={viewerPortfolio.portfolioUrl}
+                  portfolioFileName={viewerPortfolio.portfolioFileName}
+                  portfolioVisibleToOthers={viewerPortfolio.portfolioVisibleToOthers}
+                />
+              ) : null}
             </div>
 
             <aside className="h-fit rounded-[14px] border border-black/10 bg-white p-4 shadow-sm sm:p-5">

@@ -5,6 +5,7 @@ import { auth } from "@/auth";
 import { MarketingShell } from "@/components/layout/MarketingShell";
 import { PublicMentorProfile } from "@/components/mentors/PublicMentorProfile";
 import { getMentorById } from "@/lib/mentors-data";
+import { prisma } from "@/lib/prisma";
 
 function initialsFromName(name: string): string {
   return name
@@ -48,9 +49,41 @@ export default async function PublicMentorPage({ params }: Props) {
     }).toString()}`;
   }
 
+  let viewerPortfolio: {
+    userId: string;
+    portfolioUrl: string | null;
+    portfolioFileName: string | null;
+    portfolioVisibleToOthers: boolean;
+  } | null = null;
+
+  if (linked) {
+    const u = await prisma.user.findFirst({
+      where: { id: linked, role: "mentor" },
+      select: {
+        id: true,
+        portfolioUrl: true,
+        portfolioFileName: true,
+        portfolioVisibleToOthers: true,
+      },
+    });
+    if (u) {
+      viewerPortfolio = {
+        userId: u.id,
+        portfolioUrl: u.portfolioUrl,
+        portfolioFileName: u.portfolioFileName,
+        portfolioVisibleToOthers: u.portfolioVisibleToOthers,
+      };
+    }
+  }
+
   return (
     <MarketingShell>
-      <PublicMentorProfile mentor={mentor} messageHref={messageHref} scheduleHref="/schedule" />
+      <PublicMentorProfile
+        mentor={mentor}
+        messageHref={messageHref}
+        scheduleHref="/schedule"
+        viewerPortfolio={viewerPortfolio}
+      />
     </MarketingShell>
   );
 }

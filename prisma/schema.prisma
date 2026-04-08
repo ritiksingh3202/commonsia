@@ -59,6 +59,8 @@ model User {
   portfolioFileName   String?
   /// Data URL for uploaded portfolio file (PDF/ZIP). Large; prefer upload API.
   portfolioFileDataUrl String? @db.Text
+  /// When true, mentors/students may open the other party's portfolio file or URL.
+  portfolioVisibleToOthers Boolean @default(true)
   profileComplete  Boolean   @default(false)
   /// Custom cover image (data URL or HTTPS). OAuth avatar uses `image`.
   bannerImageUrl   String?   @db.Text

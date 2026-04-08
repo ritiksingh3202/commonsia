@@ -16,6 +16,7 @@ export type ProfilePayload = {
   otherInterests?: string | null;
   bio?: string | null;
   portfolioUrl?: string | null;
+  portfolioVisibleToOthers?: boolean;
   profileComplete?: boolean;
   bannerImageUrl?: string | null;
   whatsappUrl?: string | null;
@@ -55,6 +56,9 @@ export async function PATCH(req: Request) {
   if (body.otherInterests !== undefined) data.otherInterests = body.otherInterests;
   if (body.bio !== undefined) data.bio = body.bio;
   if (body.portfolioUrl !== undefined) data.portfolioUrl = body.portfolioUrl;
+  if (body.portfolioVisibleToOthers !== undefined) {
+    data.portfolioVisibleToOthers = body.portfolioVisibleToOthers;
+  }
   if (body.profileComplete !== undefined) data.profileComplete = body.profileComplete;
   if (body.bannerImageUrl !== undefined) data.bannerImageUrl = body.bannerImageUrl;
   if (body.whatsappUrl !== undefined) data.whatsappUrl = body.whatsappUrl;

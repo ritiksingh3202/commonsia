@@ -35,6 +35,9 @@ const DEMO_STUDENT: StudentProfileUser = {
   whatsappUrl: null,
   linkedinUrl: null,
   instagramUrl: null,
+  portfolioUrl: null,
+  portfolioFileName: null,
+  portfolioVisibleToOthers: true,
 };
 
 export default async function MentorStudentDemoPage() {

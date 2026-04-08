@@ -34,6 +34,7 @@ export default async function StudentEditProfilePage() {
       bio: true,
       portfolioUrl: true,
       portfolioFileName: true,
+      portfolioVisibleToOthers: true,
       whatsappUrl: true,
       linkedinUrl: true,
       instagramUrl: true,

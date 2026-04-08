@@ -35,6 +35,9 @@ export default async function StudentHomePage() {
       whatsappUrl: true,
       linkedinUrl: true,
       instagramUrl: true,
+      portfolioUrl: true,
+      portfolioFileName: true,
+      portfolioVisibleToOthers: true,
     },
   });
 

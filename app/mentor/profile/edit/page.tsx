@@ -35,6 +35,8 @@ export default async function MentorProfileEditPage() {
       bio: true,
       linkedinUrl: true,
       portfolioUrl: true,
+      portfolioFileName: true,
+      portfolioVisibleToOthers: true,
       mentorCertifications: true,
       softwareSkills: true,
       mentorOnboardingComplete: true,
@@ -76,6 +78,8 @@ export default async function MentorProfileEditPage() {
         bio: user.bio,
         linkedinUrl: user.linkedinUrl,
         portfolioUrl: user.portfolioUrl,
+        portfolioFileName: user.portfolioFileName,
+        portfolioVisibleToOthers: user.portfolioVisibleToOthers,
         mentorCertifications: user.mentorCertifications,
         softwareSkills: user.softwareSkills,
       }}

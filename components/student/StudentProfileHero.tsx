@@ -11,6 +11,7 @@ import {
   SocialIconButton,
   WhatsAppGlyph,
 } from "@/components/profile/ProfileSocialIcons";
+import { ProfileSettingsMenu } from "@/components/profile/ProfileSettingsMenu";
 
 import {
   formatStudentSubtitle,
@@ -182,6 +183,7 @@ export function StudentProfileHero({ user: initial }: Props) {
                 >
                   <ChatBubbleIcon className="size-[18px]" />
                 </Link>
+                <ProfileSettingsMenu editProfileHref="/student/profile/edit" />
               </div>
             </div>
 

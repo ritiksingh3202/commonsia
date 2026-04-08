@@ -150,7 +150,12 @@ export function MentorEditProfileForm({ initial }: { initial: MentorEditProfileI
   const [bio, setBio] = useState(initial.bio ?? "");
   const [linkedinUrl, setLinkedinUrl] = useState(initial.linkedinUrl ?? "");
   const [portfolioUrl, setPortfolioUrl] = useState(initial.portfolioUrl ?? "");
+  const [portfolioFileLabel, setPortfolioFileLabel] = useState(initial.portfolioFileName ?? "");
+  const [portfolioVisibleToOthers, setPortfolioVisibleToOthers] = useState(
+    initial.portfolioVisibleToOthers ?? true,
+  );
   const [certifications, setCertifications] = useState(initial.mentorCertifications ?? "");
+  const portfolioFileRef = useRef<HTMLInputElement>(null);
 
   const displayPhotoSrc = previewObjectUrl || imageDataUrl || initial.image || null;
 
@@ -160,6 +165,39 @@ export function MentorEditProfileForm({ initial }: { initial: MentorEditProfileI
       return null;
     });
   }, []);
+
+  const onPortfolioFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    const fd = new FormData();
+    fd.set("file", file);
+    try {
+      const res = await fetch("/api/profile/portfolio-file", {
+        method: "POST",
+        body: fd,
+      });
+      if (!res.ok) {
+        const j = (await res.json().catch(() => ({}))) as { error?: string };
+        throw new Error(j.error ?? "Upload failed");
+      }
+      setPortfolioFileLabel(file.name);
+      router.refresh();
+    } catch (err) {
+      window.alert(err instanceof Error ? err.message : "Upload failed.");
+    }
+  };
+
+  const clearPortfolioFile = async () => {
+    try {
+      const res = await fetch("/api/profile/portfolio-file", { method: "DELETE" });
+      if (!res.ok) throw new Error("Remove failed");
+      setPortfolioFileLabel("");
+      router.refresh();
+    } catch {
+      window.alert("Could not remove file. Try again.");
+    }
+  };
 
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -252,6 +290,7 @@ export function MentorEditProfileForm({ initial }: { initial: MentorEditProfileI
         bio: bio.trim(),
         linkedinUrl: linkedinUrl.trim() || null,
         portfolioUrl: portfolioUrl.trim() || null,
+        portfolioVisibleToOthers,
         mentorCertifications: certifications.trim() || null,
       };
       if (imageDataUrl) payload.image = imageDataUrl;
@@ -673,6 +712,56 @@ export function MentorEditProfileForm({ initial }: { initial: MentorEditProfileI
                     className={field}
                   />
                 </div>
+                <div className="space-y-2">
+                  <span className={label}>Upload portfolio (PDF or ZIP, optional)</span>
+                  <input
+                    ref={portfolioFileRef}
+                    type="file"
+                    accept=".pdf,.zip,application/pdf,application/zip,application/x-zip-compressed"
+                    className="hidden"
+                    onChange={onPortfolioFile}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => portfolioFileRef.current?.click()}
+                    className="flex w-full flex-col items-center justify-center rounded-xl border-2 border-dashed border-neutral-200 bg-white px-3 py-6 text-center transition-colors hover:border-primary/35 hover:bg-neutral-50/80"
+                  >
+                    <IconUpload className="mb-2 size-8 text-neutral-500" />
+                    <p className="text-[13px] font-medium text-neutral-600">Click to upload PDF or ZIP</p>
+                    <p className="mt-0.5 text-[11px] text-neutral-400">Max 10 MB</p>
+                  </button>
+                  {portfolioFileLabel ? (
+                    <div className="mt-2 flex flex-wrap items-center gap-2 rounded-lg border border-neutral-200 bg-neutral-50/90 px-3 py-2 text-[13px]">
+                      <span className="min-w-0 flex-1 truncate text-[#0a0a0a]" title={portfolioFileLabel}>
+                        {portfolioFileLabel}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => void clearPortfolioFile()}
+                        className="shrink-0 text-[12px] font-medium text-red-600 hover:text-red-700"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ) : null}
+                </div>
+                <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-neutral-200 bg-white px-3 py-3 text-left">
+                  <input
+                    type="checkbox"
+                    className="mt-0.5 size-4 shrink-0 rounded border-neutral-300 text-primary focus:ring-primary"
+                    checked={portfolioVisibleToOthers}
+                    onChange={(e) => setPortfolioVisibleToOthers(e.target.checked)}
+                  />
+                  <span>
+                    <span className="block text-[13px] font-semibold text-[#0a0a0a]">
+                      Let students open my portfolio
+                    </span>
+                    <span className="mt-0.5 block text-[12px] leading-snug text-neutral-500">
+                      When enabled, students can open your uploaded file or portfolio link from your public mentor
+                      profile (when linked to a Commonsia account).
+                    </span>
+                  </span>
+                </label>
                 <div className="space-y-2">
                   <label htmlFor="certifications" className={label}>
                     Certifications &amp; Credentials

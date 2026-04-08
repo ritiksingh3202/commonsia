@@ -8,29 +8,53 @@ import LinkedIn from "next-auth/providers/linkedin";
 import { prisma } from "@/lib/prisma";
 
 /**
- * OAuth uses env inference (Auth.js v5):
- * - AUTH_SECRET — required in production; generate with `npx auth secret`
- * - AUTH_URL — optional; e.g. https://yourdomain.com (defaults work on Vercel)
- * - AUTH_GOOGLE_ID / AUTH_GOOGLE_SECRET
- * - AUTH_LINKEDIN_ID / AUTH_LINKEDIN_SECRET
+ * OAuth (Auth.js v5):
+ * - AUTH_SECRET — required in production (or NEXTAUTH_SECRET). Generate: `npx auth secret`
+ * - AUTH_URL — e.g. https://yourdomain.com (no trailing slash). Set on Vercel.
+ * - AUTH_GOOGLE_ID / AUTH_GOOGLE_SECRET (aliases: GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET)
+ * - AUTH_LINKEDIN_ID / AUTH_LINKEDIN_SECRET (aliases: LINKEDIN_CLIENT_ID / LINKEDIN_CLIENT_SECRET)
  * - DATABASE_URL — Neon Postgres (see `.env.example`)
  *
- * Email/password uses `User.passwordHash` (bcrypt). JWT sessions are required for Credentials + adapter.
+ * LinkedIn app must include the "Sign in with LinkedIn using OpenID Connect" product.
  *
- * Callback URLs to register in each provider’s console:
+ * Callback URLs:
  * - Google: {AUTH_URL}/api/auth/callback/google
  * - LinkedIn: {AUTH_URL}/api/auth/callback/linkedin
  */
+const authSecret = process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET;
+
+const googleId =
+  process.env.AUTH_GOOGLE_ID ?? process.env.GOOGLE_CLIENT_ID;
+const googleSecret =
+  process.env.AUTH_GOOGLE_SECRET ?? process.env.GOOGLE_CLIENT_SECRET;
+
+const linkedinId =
+  process.env.AUTH_LINKEDIN_ID ?? process.env.LINKEDIN_CLIENT_ID;
+const linkedinSecret =
+  process.env.AUTH_LINKEDIN_SECRET ?? process.env.LINKEDIN_CLIENT_SECRET;
+
+const oauthProviders = [];
+if (googleId && googleSecret) {
+  oauthProviders.push(
+    Google({ clientId: googleId, clientSecret: googleSecret }),
+  );
+}
+if (linkedinId && linkedinSecret) {
+  oauthProviders.push(
+    LinkedIn({ clientId: linkedinId, clientSecret: linkedinSecret }),
+  );
+}
+
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: PrismaAdapter(prisma),
   trustHost: true,
+  secret: authSecret,
   session: {
     strategy: "jwt",
     maxAge: 30 * 24 * 60 * 60,
   },
   providers: [
-    Google,
-    LinkedIn,
+    ...oauthProviders,
     Credentials({
       id: "credentials",
       name: "Email and password",
@@ -62,11 +86,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id;
-        const u = await prisma.user.findUnique({
-          where: { id: user.id },
-          select: { role: true },
-        });
-        token.role = u?.role ?? null;
+        try {
+          const u = await prisma.user.findUnique({
+            where: { id: user.id },
+            select: { role: true },
+          });
+          token.role = u?.role ?? null;
+        } catch {
+          token.role = null;
+        }
       }
       return token;
     },

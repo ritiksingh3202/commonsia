@@ -41,6 +41,7 @@ export type EditProfileUser = {
   bio: string | null;
   portfolioUrl: string | null;
   portfolioFileName: string | null;
+  portfolioVisibleToOthers: boolean;
   whatsappUrl: string | null;
   linkedinUrl: string | null;
   instagramUrl: string | null;
@@ -118,6 +119,9 @@ export function EditProfileForm({ user: initial }: Props) {
   const [bio, setBio] = useState(initial.bio ?? "");
   const [portfolioUrl, setPortfolioUrl] = useState(initial.portfolioUrl ?? "");
   const [portfolioFileLabel, setPortfolioFileLabel] = useState(initial.portfolioFileName ?? "");
+  const [portfolioVisibleToOthers, setPortfolioVisibleToOthers] = useState(
+    initial.portfolioVisibleToOthers ?? true,
+  );
   const [saving, setSaving] = useState(false);
   const photoInputRef = useRef<HTMLInputElement>(null);
   const portfolioFileRef = useRef<HTMLInputElement>(null);
@@ -141,6 +145,7 @@ export function EditProfileForm({ user: initial }: Props) {
     setBio(initial.bio ?? "");
     setPortfolioUrl(initial.portfolioUrl ?? "");
     setPortfolioFileLabel(initial.portfolioFileName ?? "");
+    setPortfolioVisibleToOthers(initial.portfolioVisibleToOthers ?? true);
   }, [initial]);
 
   const toggleInterest = (id: string) => {
@@ -211,6 +216,7 @@ export function EditProfileForm({ user: initial }: Props) {
       softwareSkills: softwareParts.length ? softwareParts.join(", ") : null,
       bio: bio.trim() || null,
       portfolioUrl: portfolioUrl.trim() || null,
+      portfolioVisibleToOthers,
     };
   };
 
@@ -626,6 +632,23 @@ export function EditProfileForm({ user: initial }: Props) {
                 </div>
               ) : null}
             </div>
+            <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-black/[0.08] bg-white px-3 py-3 text-left">
+              <input
+                type="checkbox"
+                className="mt-0.5 size-4 shrink-0 rounded border-neutral-300 text-primary focus:ring-primary"
+                checked={portfolioVisibleToOthers}
+                onChange={(e) => setPortfolioVisibleToOthers(e.target.checked)}
+              />
+              <span>
+                <span className="block text-[13px] font-medium text-[#0a0a0a]">
+                  Let mentors open my portfolio
+                </span>
+                <span className="mt-0.5 block text-[12px] leading-snug text-[#6b7280]">
+                  When enabled, mentors you interact with can open your uploaded PDF/ZIP or portfolio link from your
+                  profile. You can turn this off anytime.
+                </span>
+              </span>
+            </label>
             <div className="rounded-xl border border-emerald-200/90 bg-emerald-50/90 px-4 py-3 text-[13px] leading-relaxed text-emerald-950">
               <p className="font-semibold text-emerald-950">Pro Tip</p>
               <p className="mt-1 text-emerald-900/95">
