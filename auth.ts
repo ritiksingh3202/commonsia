@@ -2,17 +2,18 @@ import { PrismaAdapter } from "@auth/prisma-adapter";
 import bcrypt from "bcryptjs";
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
-import Google from "next-auth/providers/google";
-import LinkedIn from "next-auth/providers/linkedin";
+import GoogleProvider from "next-auth/providers/google";
+import LinkedInProvider from "next-auth/providers/linkedin";
 
+import { getGoogleOAuthClient, getLinkedInOAuthClient } from "@/lib/oauth-credentials";
 import { prisma } from "@/lib/prisma";
 
 /**
  * OAuth (Auth.js v5):
  * - AUTH_SECRET — required in production (or NEXTAUTH_SECRET). Generate: `npx auth secret`
- * - AUTH_URL — e.g. https://yourdomain.com (no trailing slash). Set on Vercel.
- * - AUTH_GOOGLE_ID / AUTH_GOOGLE_SECRET (aliases: GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET)
- * - AUTH_LINKEDIN_ID / AUTH_LINKEDIN_SECRET (aliases: LINKEDIN_CLIENT_ID / LINKEDIN_CLIENT_SECRET)
+ * - AUTH_URL — e.g. https://www.yoursite.com (no trailing slash). Set on Vercel.
+ * - GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET (fallback: AUTH_GOOGLE_ID / AUTH_GOOGLE_SECRET)
+ * - LINKEDIN_CLIENT_ID / LINKEDIN_CLIENT_SECRET (fallback: AUTH_LINKEDIN_*)
  * - DATABASE_URL — Neon Postgres (see `.env.example`)
  *
  * LinkedIn app must include the "Sign in with LinkedIn using OpenID Connect" product.
@@ -23,25 +24,24 @@ import { prisma } from "@/lib/prisma";
  */
 const authSecret = process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET;
 
-const googleId =
-  process.env.AUTH_GOOGLE_ID ?? process.env.GOOGLE_CLIENT_ID;
-const googleSecret =
-  process.env.AUTH_GOOGLE_SECRET ?? process.env.GOOGLE_CLIENT_SECRET;
-
-const linkedinId =
-  process.env.AUTH_LINKEDIN_ID ?? process.env.LINKEDIN_CLIENT_ID;
-const linkedinSecret =
-  process.env.AUTH_LINKEDIN_SECRET ?? process.env.LINKEDIN_CLIENT_SECRET;
+const googleOAuth = getGoogleOAuthClient();
+const linkedinOAuth = getLinkedInOAuthClient();
 
 const oauthProviders = [];
-if (googleId && googleSecret) {
+if (googleOAuth) {
   oauthProviders.push(
-    Google({ clientId: googleId, clientSecret: googleSecret }),
+    GoogleProvider({
+      clientId: googleOAuth.clientId,
+      clientSecret: googleOAuth.clientSecret,
+    }),
   );
 }
-if (linkedinId && linkedinSecret) {
+if (linkedinOAuth) {
   oauthProviders.push(
-    LinkedIn({ clientId: linkedinId, clientSecret: linkedinSecret }),
+    LinkedInProvider({
+      clientId: linkedinOAuth.clientId,
+      clientSecret: linkedinOAuth.clientSecret,
+    }),
   );
 }
 

@@ -5,7 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { startTransition, useEffect, useState } from "react";
 
 const nav = [
   { href: "/mentors", label: "Mentors" },
@@ -39,7 +39,9 @@ export function Navbar() {
   }, [menuOpen]);
 
   useEffect(() => {
-    setMenuOpen(false);
+    startTransition(() => {
+      setMenuOpen(false);
+    });
   }, [pathname]);
 
   return (

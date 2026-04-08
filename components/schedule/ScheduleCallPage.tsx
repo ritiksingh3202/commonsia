@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 import { monthName, MENTOR_TIME_SLOTS_HALF } from "@/components/mentor/mentor-setup-constants";
 
@@ -56,7 +56,6 @@ const EVENING_START_INDEX = SLOT_RANGES.findIndex((r) => r.startsWith("06:00 PM"
 const DEFAULT_SLOT_SLICE = EVENING_START_INDEX >= 0 ? EVENING_START_INDEX : Math.max(0, SLOT_RANGES.length - 8);
 
 export function ScheduleCallPage() {
-  const now = useMemo(() => new Date(), []);
   const [viewYear, setViewYear] = useState(2026);
   const [viewMonth, setViewMonth] = useState(2); // March 0-based
   const [selectedDay, setSelectedDay] = useState(18);
@@ -69,9 +68,7 @@ export function ScheduleCallPage() {
   const [notifyEmail, setNotifyEmail] = useState(true);
 
   const dim = daysInMonth(viewYear, viewMonth);
-  useEffect(() => {
-    setSelectedDay((sd) => Math.min(sd, dim));
-  }, [viewYear, viewMonth, dim]);
+  const displayDay = Math.min(selectedDay, dim);
   const startPad = startWeekday(viewYear, viewMonth);
   const cells: (number | null)[] = [...Array(startPad).fill(null)];
   for (let d = 1; d <= dim; d++) cells.push(d);
@@ -84,7 +81,7 @@ export function ScheduleCallPage() {
   const selectedRange = visibleSlots[selectedSlotIndex] ?? visibleSlots[0];
   const [startLabel, endLabel] = selectedRange.split("–").map((s) => s.trim());
 
-  const summaryDate = formatLongDate(viewYear, viewMonth, selectedDay);
+  const summaryDate = formatLongDate(viewYear, viewMonth, displayDay);
   const summaryTime = `${startLabel} - ${endLabel} (IST)`;
 
   const prevMonth = () => {
@@ -265,7 +262,7 @@ export function ScheduleCallPage() {
                         type="button"
                         onClick={() => setSelectedDay(day)}
                         className={`aspect-square max-h-10 rounded-xl text-sm font-medium transition sm:max-h-11 ${
-                          day === selectedDay
+                          day === displayDay
                             ? "bg-primary text-white shadow-md"
                             : "text-[#0a0a0a] hover:bg-orange-50"
                         }`}

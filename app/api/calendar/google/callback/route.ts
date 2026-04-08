@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 
 import { setGoogleCalendarRefreshToken } from "@/lib/google-calendar-db";
 import { verifyCalendarOAuthState } from "@/lib/calendar-oauth-state";
+import { getGoogleOAuthClient } from "@/lib/oauth-credentials";
 
 export async function GET(req: Request) {
   const url = new URL(req.url);
@@ -21,15 +22,18 @@ export async function GET(req: Request) {
     return NextResponse.redirect(`${back}?calendar=error`);
   }
 
-  const clientId = process.env.AUTH_GOOGLE_ID;
-  const clientSecret = process.env.AUTH_GOOGLE_SECRET;
+  const googleCreds = getGoogleOAuthClient();
   const redirectUri = `${base.replace(/\/$/, "")}/api/calendar/google/callback`;
 
-  if (!clientId || !clientSecret) {
+  if (!googleCreds) {
     return NextResponse.redirect(`${back}?calendar=error`);
   }
 
-  const oauth2Client = new google.auth.OAuth2(clientId, clientSecret, redirectUri);
+  const oauth2Client = new google.auth.OAuth2(
+    googleCreds.clientId,
+    googleCreds.clientSecret,
+    redirectUri,
+  );
   let tokens;
   try {
     const res = await oauth2Client.getToken(code);

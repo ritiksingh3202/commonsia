@@ -5,6 +5,7 @@ import { auth } from "@/auth";
 import type { MentorAvailabilityJson } from "@/components/mentor/mentor-setup-constants";
 import { getGoogleCalendarRefreshToken } from "@/lib/google-calendar-db";
 import { buildAvailabilityCalendarEvents } from "@/lib/mentor-calendar-sync";
+import { getGoogleOAuthClient } from "@/lib/oauth-credentials";
 import { prisma } from "@/lib/prisma";
 
 const TZ = process.env.DEFAULT_CALENDAR_TIMEZONE ?? "Asia/Kolkata";
@@ -36,16 +37,19 @@ export async function POST() {
     return NextResponse.json({ error: "No time slots to sync." }, { status: 400 });
   }
 
-  const clientId = process.env.AUTH_GOOGLE_ID;
-  const clientSecret = process.env.AUTH_GOOGLE_SECRET;
+  const googleCreds = getGoogleOAuthClient();
   const base = process.env.AUTH_URL ?? "http://localhost:3000";
   const redirectUri = `${base.replace(/\/$/, "")}/api/calendar/google/callback`;
 
-  if (!clientId || !clientSecret) {
+  if (!googleCreds) {
     return NextResponse.json({ error: "Server misconfiguration." }, { status: 500 });
   }
 
-  const oauth2Client = new google.auth.OAuth2(clientId, clientSecret, redirectUri);
+  const oauth2Client = new google.auth.OAuth2(
+    googleCreds.clientId,
+    googleCreds.clientSecret,
+    redirectUri,
+  );
   oauth2Client.setCredentials({ refresh_token: refreshToken });
 
   const calendar = google.calendar({ version: "v3", auth: oauth2Client });

@@ -54,7 +54,9 @@ export function MentorCalendarPicker({ selected, onToggleDate, onClearDatesInMon
   const countInView = useMemo(() => {
     let n = 0;
     for (const iso of selected) {
-      const [y, mo, _d] = iso.split("-").map(Number);
+      const [yStr, moStr] = iso.split("-");
+      const y = Number(yStr);
+      const mo = Number(moStr);
       if (y === year && mo - 1 === month) n++;
     }
     return n;

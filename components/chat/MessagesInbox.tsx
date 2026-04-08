@@ -131,12 +131,18 @@ export function MessagesInbox({
   );
 
   useEffect(() => {
-    void loadThreads();
+    const t = window.setTimeout(() => {
+      void loadThreads();
+    }, 0);
+    return () => window.clearTimeout(t);
   }, [loadThreads]);
 
   useEffect(() => {
     if (!initialPeerId || loadingList) return;
-    void openOrCreatePeer(initialPeerId);
+    const t = window.setTimeout(() => {
+      void openOrCreatePeer(initialPeerId);
+    }, 0);
+    return () => window.clearTimeout(t);
   }, [initialPeerId, loadingList, openOrCreatePeer]);
 
   const loadMessages = useCallback(async (threadId: string) => {
@@ -156,13 +162,20 @@ export function MessagesInbox({
 
   useEffect(() => {
     if (!selectedId) {
-      setMessages([]);
-      setThreadStatus(null);
-      return;
+      const clearT = window.setTimeout(() => {
+        setMessages([]);
+        setThreadStatus(null);
+      }, 0);
+      return () => window.clearTimeout(clearT);
     }
-    void loadMessages(selectedId);
-    const t = window.setInterval(() => void loadMessages(selectedId), 4500);
-    return () => window.clearInterval(t);
+    const kick = window.setTimeout(() => {
+      void loadMessages(selectedId);
+    }, 0);
+    const poll = window.setInterval(() => void loadMessages(selectedId), 4500);
+    return () => {
+      window.clearTimeout(kick);
+      window.clearInterval(poll);
+    };
   }, [selectedId, loadMessages]);
 
   useEffect(() => {

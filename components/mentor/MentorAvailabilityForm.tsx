@@ -206,7 +206,7 @@ export function MentorAvailabilityForm({
     const c = searchParams.get("calendar");
     if (c === "connected") window.alert("Google Calendar connected. You can sync your slots after saving.");
     if (c === "error")
-      window.alert("Could not connect Google Calendar. Try again or check AUTH_GOOGLE_* and redirect URI in Google Cloud.");
+      window.alert("Could not connect Google Calendar. Try again or check GOOGLE_CLIENT_* and redirect URI in Google Cloud.");
   }, [searchParams]);
 
   const weeklySlotsPreview = useMemo(() => weeklySlotsFromRows(weeklyRows), [weeklyRows]);

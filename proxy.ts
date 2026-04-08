@@ -2,10 +2,10 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
 /**
- * Redirect www ↔ apex to match `AUTH_URL` so OAuth redirect URIs and Auth.js cookies
- * always use one host (fixes "Server error" / state+PKCE issues when users mix hosts).
+ * Next.js 16+ uses `proxy` (replaces deprecated `middleware`).
+ * Redirect www ↔ apex to match `AUTH_URL` so OAuth cookies and redirect URIs align.
  */
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const raw = process.env.AUTH_URL?.trim();
   if (!raw) return NextResponse.next();
 
