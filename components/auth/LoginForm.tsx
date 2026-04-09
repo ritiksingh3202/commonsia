@@ -65,7 +65,7 @@ export function LoginForm({ callbackUrl = "/" }: LoginFormProps) {
                 password,
                 redirect: false,
               });
-              if (res?.error) {
+              if (!res?.ok) {
                 window.alert("Invalid email or password. If you signed up with Google or LinkedIn, use that button below.");
                 return;
               }
@@ -95,13 +95,17 @@ export function LoginForm({ callbackUrl = "/" }: LoginFormProps) {
               <label htmlFor="login-password" className="text-[13px] font-medium text-[#0a0a0a]">
                 Password
               </label>
-              <Link
-                href="#"
+              <button
+                type="button"
                 className="text-[12px] font-medium text-primary hover:underline sm:text-[13px]"
-                onClick={(ev) => ev.preventDefault()}
+                onClick={() =>
+                  window.alert(
+                    "Password reset is not set up yet. If you signed up with Google or LinkedIn, use that option below.",
+                  )
+                }
               >
                 Forgot password?
-              </Link>
+              </button>
             </div>
             <input
               id="login-password"

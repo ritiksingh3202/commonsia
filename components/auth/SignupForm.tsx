@@ -136,7 +136,7 @@ export function SignupForm({ role, oauthCallbackUrl }: SignupFormProps) {
                 password: pw,
                 redirect: false,
               });
-              if (signInRes?.error) {
+              if (!signInRes?.ok) {
                 window.alert("Account created. Please sign in with your email and password.");
                 router.push(c.loginHref);
                 return;

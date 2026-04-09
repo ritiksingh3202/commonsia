@@ -5,7 +5,7 @@ import { useEffect, useRef } from "react";
 
 /** Applies name/role from the signup form (sessionStorage) right after OAuth. */
 export function MergeSignupDraft() {
-  const { status } = useSession();
+  const { status, update } = useSession();
   const ran = useRef(false);
 
   useEffect(() => {
@@ -16,17 +16,29 @@ export function MergeSignupDraft() {
       if (!raw) return;
       ran.current = true;
       const draft = JSON.parse(raw) as { name?: string; role?: string };
-      sessionStorage.removeItem("commonsia_signup_draft");
       const role =
         draft.role === "mentor" ? "mentor" : draft.role === "student" ? "student" : undefined;
-      void fetch("/api/profile", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: draft.name?.trim() || undefined,
-          role,
-        }),
-      });
+      void (async () => {
+        try {
+          const res = await fetch("/api/profile", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              name: draft.name?.trim() || undefined,
+              role,
+            }),
+          });
+          if (!res.ok) throw new Error("profile merge failed");
+          try {
+            sessionStorage.removeItem("commonsia_signup_draft");
+          } catch {
+            /* ignore */
+          }
+          await update();
+        } catch {
+          ran.current = false;
+        }
+      })();
     } catch {
       ran.current = false;
       if (raw) {
@@ -37,7 +49,7 @@ export function MergeSignupDraft() {
         }
       }
     }
-  }, [status]);
+  }, [status, update]);
 
   return null;
 }
