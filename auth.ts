@@ -33,6 +33,11 @@ if (googleOAuth) {
     GoogleProvider({
       clientId: googleOAuth.clientId,
       clientSecret: googleOAuth.clientSecret,
+      /**
+       * Link Google to an existing user with the same verified email (e.g. they registered with password first).
+       * @see https://authjs.dev/concepts#security
+       */
+      allowDangerousEmailAccountLinking: true,
     }),
   );
 }
@@ -41,6 +46,7 @@ if (linkedinOAuth) {
     LinkedInProvider({
       clientId: linkedinOAuth.clientId,
       clientSecret: linkedinOAuth.clientSecret,
+      allowDangerousEmailAccountLinking: true,
     }),
   );
 }
@@ -49,6 +55,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: PrismaAdapter(prisma),
   trustHost: true,
   secret: authSecret,
+  pages: {
+    signIn: "/auth/login",
+    error: "/auth/error",
+  },
   /** Set `AUTH_DEBUG=1` in Vercel temporarily to log OAuth details (then remove). */
   debug: process.env.AUTH_DEBUG === "1",
   session: {

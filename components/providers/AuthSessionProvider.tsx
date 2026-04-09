@@ -6,7 +6,7 @@ import { MergeSignupDraft } from "@/components/auth/MergeSignupDraft";
 
 export function AuthSessionProvider({ children }: { children: React.ReactNode }) {
   return (
-    <SessionProvider>
+    <SessionProvider basePath="/api/auth">
       <MergeSignupDraft />
       {children}
     </SessionProvider>

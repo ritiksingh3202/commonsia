@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ callbackUrl?: string }>;
+  searchParams: Promise<{ callbackUrl?: string; error?: string }>;
 }) {
   const sp = await searchParams;
   const callbackUrl =
@@ -21,7 +21,7 @@ export default async function LoginPage({
   return (
     <MarketingShell>
       <div className="bg-white">
-        <LoginForm callbackUrl={callbackUrl} />
+        <LoginForm callbackUrl={callbackUrl} authError={sp.error} />
       </div>
     </MarketingShell>
   );

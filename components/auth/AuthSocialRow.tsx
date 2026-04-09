@@ -24,9 +24,19 @@ export function AuthSocialRow({ callbackUrl = "/", onBeforeOAuth }: Props) {
     });
   }, []);
 
+  const [busy, setBusy] = useState(false);
+
   const runOAuth = (provider: "linkedin" | "google") => {
+    if (busy) return;
+    setBusy(true);
     onBeforeOAuth?.();
-    void signIn(provider, { callbackUrl });
+    void (async () => {
+      try {
+        await signIn(provider, { callbackUrl });
+      } catch {
+        setBusy(false);
+      }
+    })();
   };
 
   if (!ready) return null;
@@ -39,7 +49,8 @@ export function AuthSocialRow({ callbackUrl = "/", onBeforeOAuth }: Props) {
         {linkedin ? (
           <button
             type="button"
-            className="flex size-8 items-center justify-center rounded-md opacity-90 transition-opacity hover:bg-black/[0.03] hover:opacity-100"
+            disabled={busy}
+            className="flex size-8 items-center justify-center rounded-md opacity-90 transition-opacity hover:bg-black/[0.03] hover:opacity-100 disabled:pointer-events-none disabled:opacity-40"
             aria-label="Continue with LinkedIn"
             onClick={() => runOAuth("linkedin")}
           >
@@ -54,7 +65,8 @@ export function AuthSocialRow({ callbackUrl = "/", onBeforeOAuth }: Props) {
         {google ? (
           <button
             type="button"
-            className="flex size-8 items-center justify-center rounded-md opacity-90 transition-opacity hover:bg-black/[0.03] hover:opacity-100"
+            disabled={busy}
+            className="flex size-8 items-center justify-center rounded-md opacity-90 transition-opacity hover:bg-black/[0.03] hover:opacity-100 disabled:pointer-events-none disabled:opacity-40"
             aria-label="Continue with Google"
             onClick={() => runOAuth("google")}
           >

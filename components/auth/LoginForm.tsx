@@ -5,6 +5,7 @@ import Link from "next/link";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { authErrorMessage } from "@/lib/auth-error-messages";
 import { AUTH_ASSETS } from "./auth-assets";
 import { AuthBackLink } from "./AuthBackLink";
 import { AuthSocialRow } from "./AuthSocialRow";
@@ -15,9 +16,11 @@ const field =
 type LoginFormProps = {
   /** Safe post-login redirect (must be a same-origin path). */
   callbackUrl?: string;
+  /** Auth.js error code from ?error= when redirected from OAuth or sign-in. */
+  authError?: string;
 };
 
-export function LoginForm({ callbackUrl = "/" }: LoginFormProps) {
+export function LoginForm({ callbackUrl = "/", authError }: LoginFormProps) {
   const router = useRouter();
   const [submitting, setSubmitting] = useState(false);
 
@@ -28,6 +31,14 @@ export function LoginForm({ callbackUrl = "/" }: LoginFormProps) {
       </div>
 
       <div className="rounded-xl border border-[#e5e5e5] bg-white px-5 py-6 shadow-sm sm:px-6 sm:py-7">
+        {authError ? (
+          <div
+            role="alert"
+            className="mb-4 rounded-md border border-amber-200 bg-amber-50 px-3 py-2.5 text-left text-[12px] leading-snug text-amber-950 sm:text-[13px]"
+          >
+            {authErrorMessage(authError)}
+          </div>
+        ) : null}
         <div className="mb-5 flex flex-col items-center text-center">
           <div className="mb-3 flex size-12 items-center justify-center rounded-full bg-primary/10">
             <Image
