@@ -9,7 +9,9 @@ import {
   WhatsAppGlyph,
 } from "@/components/profile/ProfileSocialIcons";
 
+import { ProfileCover } from "@/components/ProfileCover";
 import { PortfolioViewerPanel } from "@/components/profile/PortfolioViewerPanel";
+import { profileCoverDisplaySrc } from "@/lib/profile-cover";
 import {
   formatStudentSubtitle,
   parseInterests,
@@ -34,7 +36,7 @@ export function StudentProfileViewForMentor({
   const subtitle = formatStudentSubtitle(user);
   const displayName = user.name?.trim() || user.email?.split("@")[0] || "Student";
   const avatarSrc = user.image?.trim() || null;
-  const bannerSrc = user.bannerImageUrl?.trim() || null;
+  const bannerSrc = profileCoverDisplaySrc(user.bannerImageUrl);
 
   const initials = displayName
     .split(/\s+/)
@@ -46,28 +48,7 @@ export function StudentProfileViewForMentor({
   return (
     <div className="w-full">
       <section className="border-b border-black/[0.06] bg-white">
-        <div className="relative w-full overflow-x-hidden">
-          <div className="relative left-1/2 w-screen max-w-[100vw] -translate-x-1/2">
-            <div className="relative h-[clamp(11rem,32vw,18rem)] w-full overflow-hidden sm:h-[clamp(12rem,28vw,17rem)]">
-              {bannerSrc ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={bannerSrc} alt="" className="h-full w-full object-cover object-center" />
-              ) : (
-                <div
-                  className="flex h-full w-full items-end justify-center bg-gradient-to-br from-[#0c3d35] via-[#157a66] to-[#0a3028] pb-6 opacity-[0.98]"
-                  aria-hidden
-                >
-                  <div className="pointer-events-none flex gap-10 opacity-[0.22]">
-                    <span className="text-5xl text-white sm:text-6xl">◆</span>
-                    <span className="text-5xl text-white sm:text-6xl">▣</span>
-                    <span className="text-5xl text-white sm:text-6xl">◉</span>
-                  </div>
-                </div>
-              )}
-              <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/35 via-black/5 to-transparent" />
-            </div>
-          </div>
-        </div>
+        <ProfileCover imageSrc={bannerSrc} alt="" priority />
 
         <div className="relative z-10 mx-auto max-w-6xl px-4 pb-8 pt-0 sm:px-6 sm:pb-10 lg:px-10">
           <div className="mb-4 sm:mb-0">
@@ -81,7 +62,7 @@ export function StudentProfileViewForMentor({
           </div>
 
           <div className="flex flex-col gap-6 sm:flex-row sm:items-start sm:gap-10 lg:gap-12">
-            <div className="-mt-[4.5rem] flex shrink-0 justify-center sm:-mt-[5.25rem] sm:justify-start">
+            <div className="-mt-10 flex shrink-0 justify-center sm:-mt-[4.25rem] lg:-mt-[5rem] sm:justify-start">
               <div className="relative size-[7.75rem] overflow-hidden rounded-full bg-neutral-100 ring-[5px] ring-white shadow-[0_8px_30px_rgb(0,0,0,0.12)] sm:size-[9rem]">
                 {avatarSrc ? (
                   // eslint-disable-next-line @next/next/no-img-element
@@ -117,7 +98,12 @@ export function StudentProfileViewForMentor({
 
               <div className="mt-3 flex justify-center gap-3 sm:justify-end">
                 <SocialIconButton href={user.whatsappUrl} label="WhatsApp" icon={<WhatsAppGlyph />} />
-                <SocialIconButton href={user.linkedinUrl} label="LinkedIn" icon={<LinkedInGlyph />} />
+                <SocialIconButton
+                  href={user.linkedinUrl}
+                  label="LinkedIn"
+                  icon={<LinkedInGlyph profileToolbar brandColor />}
+                  className="flex size-11 shrink-0 items-center justify-center rounded-full border-2 border-primary bg-white shadow-sm transition hover:bg-primary/5 sm:size-12"
+                />
                 <SocialIconButton href={user.instagramUrl} label="Instagram" icon={<InstagramGlyph />} />
               </div>
 

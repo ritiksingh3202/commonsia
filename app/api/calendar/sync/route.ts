@@ -3,9 +3,8 @@ import { NextResponse } from "next/server";
 
 import { auth } from "@/auth";
 import type { MentorAvailabilityJson } from "@/components/mentor/mentor-setup-constants";
-import { getGoogleCalendarRefreshToken } from "@/lib/google-calendar-db";
+import { getGoogleCalendarOAuth2Client } from "@/lib/google-calendar-oauth-client";
 import { buildAvailabilityCalendarEvents } from "@/lib/mentor-calendar-sync";
-import { getGoogleOAuthClient } from "@/lib/oauth-credentials";
 import { prisma } from "@/lib/prisma";
 
 const TZ = process.env.DEFAULT_CALENDAR_TIMEZONE ?? "Asia/Kolkata";
@@ -21,11 +20,6 @@ export async function POST() {
     select: { mentorAvailabilityJson: true },
   });
 
-  const refreshToken = await getGoogleCalendarRefreshToken(session.user.id);
-  if (!refreshToken) {
-    return NextResponse.json({ error: "Connect Google Calendar first." }, { status: 400 });
-  }
-
   const raw = user?.mentorAvailabilityJson;
   if (!raw || typeof raw !== "object") {
     return NextResponse.json({ error: "No saved availability." }, { status: 400 });
@@ -37,20 +31,10 @@ export async function POST() {
     return NextResponse.json({ error: "No time slots to sync." }, { status: 400 });
   }
 
-  const googleCreds = getGoogleOAuthClient();
-  const base = process.env.AUTH_URL ?? "http://localhost:3000";
-  const redirectUri = `${base.replace(/\/$/, "")}/api/calendar/google/callback`;
-
-  if (!googleCreds) {
-    return NextResponse.json({ error: "Server misconfiguration." }, { status: 500 });
+  const oauth2Client = await getGoogleCalendarOAuth2Client(session.user.id);
+  if (!oauth2Client) {
+    return NextResponse.json({ error: "Connect Google Calendar first." }, { status: 400 });
   }
-
-  const oauth2Client = new google.auth.OAuth2(
-    googleCreds.clientId,
-    googleCreds.clientSecret,
-    redirectUri,
-  );
-  oauth2Client.setCredentials({ refresh_token: refreshToken });
 
   const calendar = google.calendar({ version: "v3", auth: oauth2Client });
   let created = 0;

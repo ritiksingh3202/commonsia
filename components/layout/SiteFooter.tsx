@@ -29,7 +29,7 @@ export function SiteFooter() {
                 alt="Commonsia"
                 width={220}
                 height={43}
-                className="h-9 w-auto sm:h-10"
+                className="icon-black-line h-9 w-auto sm:h-10"
               />
             </Link>
             <p className="mt-4 max-w-md text-justify text-xs leading-relaxed text-neutral-800 sm:text-[13px]">
@@ -40,13 +40,25 @@ export function SiteFooter() {
             </p>
             <ul className="mt-5 flex flex-col gap-2.5 text-xs text-neutral-800">
               <li className="flex items-center gap-2.5">
-                <Image src="/home_assets/mail.svg" alt="" width={18} height={18} />
+                <Image
+                  src="/home_assets/mail.svg"
+                  alt=""
+                  width={18}
+                  height={18}
+                  className="icon-black-line shrink-0"
+                />
                 <a href="mailto:admin@commonsia.com" className="hover:text-primary">
                   admin@commonsia.com
                 </a>
               </li>
               <li className="flex items-center gap-2.5">
-                <Image src="/home_assets/phone.svg" alt="" width={18} height={18} />
+                <Image
+                  src="/home_assets/phone.svg"
+                  alt=""
+                  width={18}
+                  height={18}
+                  className="icon-black-line shrink-0"
+                />
                 <span>+91 9876543210</span>
               </li>
               <li className="flex items-start gap-2.5">
@@ -55,7 +67,7 @@ export function SiteFooter() {
                   alt=""
                   width={18}
                   height={18}
-                  className="mt-0.5 shrink-0"
+                  className="icon-black-line mt-0.5 shrink-0"
                 />
                 <span>DAP IIT Roorkee, Roorkee 247667</span>
               </li>
@@ -66,21 +78,39 @@ export function SiteFooter() {
                 className="transition-opacity hover:opacity-70"
                 aria-label="WhatsApp"
               >
-                <Image src="/home_assets/whatsapp-footer.svg" alt="" width={20} height={20} />
+                <Image
+                  src="/whatsapp.svg"
+                  alt=""
+                  width={20}
+                  height={20}
+                  className="icon-black-line"
+                />
               </a>
               <a
                 href="https://linkedin.com/"
                 className="transition-opacity hover:opacity-70"
                 aria-label="LinkedIn"
               >
-                <Image src="/home_assets/linkedin-footer.svg" alt="" width={20} height={20} />
+                <Image
+                  src="/linkedin.svg"
+                  alt=""
+                  width={20}
+                  height={20}
+                  className="icon-black-line"
+                />
               </a>
               <a
                 href="https://instagram.com/"
                 className="transition-opacity hover:opacity-70"
                 aria-label="Instagram"
               >
-                <Image src="/home_assets/instagram-footer.svg" alt="" width={20} height={20} />
+                <Image
+                  src="/instagram.svg"
+                  alt=""
+                  width={20}
+                  height={20}
+                  className="icon-black-line"
+                />
               </a>
             </div>
           </div>

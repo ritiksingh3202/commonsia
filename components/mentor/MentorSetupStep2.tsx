@@ -1,10 +1,14 @@
 "use client";
 
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { MENTOR_MENTEE_CAPACITY_OPTIONS, MENTOR_SESSION_PREFS } from "@/components/mentor/mentor-setup-constants";
 import { MentorSetupShell } from "@/components/mentor/MentorSetupShell";
+import { SetupLinkedInNotice } from "@/components/setup/SetupLinkedInNotice";
 import { setupField, setupLabel } from "@/components/student/student-ui";
+import { useProfileAutosave } from "@/hooks/useProfileAutosave";
+import type { MentorSetupUserSnapshot } from "@/lib/setup-load-user";
 
 const btnGhost =
   "flex flex-1 items-center justify-center gap-1.5 rounded-md border border-black/10 bg-white py-2.5 text-[13px] font-medium text-[#0a0a0a] transition-colors hover:bg-neutral-50 sm:text-sm";
@@ -12,22 +16,37 @@ const btnGhost =
 const btnPrimary =
   "flex flex-1 items-center justify-center gap-1.5 rounded-md bg-primary py-2.5 text-[13px] font-semibold text-white shadow-sm transition-colors hover:bg-primary/90 sm:text-sm";
 
-export function MentorSetupStep2() {
+export function MentorSetupStep2({
+  initial,
+  linkedInConnected,
+}: {
+  initial?: MentorSetupUserSnapshot;
+  linkedInConnected?: boolean;
+}) {
   const router = useRouter();
+  const scheduleSave = useProfileAutosave();
+
+  const [focus, setFocus] = useState(initial?.mentorMentorshipFocus ?? "");
+  const [avail, setAvail] = useState(() => {
+    const v = initial?.mentorAvailabilityPref;
+    return v && (MENTOR_SESSION_PREFS as readonly string[]).includes(v) ? v : "Weekly session";
+  });
+  const [cap, setCap] = useState(() => {
+    const v = initial?.mentorMaxMenteesPref;
+    return v && (MENTOR_MENTEE_CAPACITY_OPTIONS as readonly string[]).includes(v) ? v : "3–5 students";
+  });
 
   return (
     <MentorSetupShell step={2} backHref="/mentor/setup/1">
       <section>
+        {linkedInConnected ? <SetupLinkedInNotice variant="mentor" /> : null}
         <h2 className="mb-3 text-base font-semibold text-[#0a0a0a]">Mentorship Preferences</h2>
+        <p className="mb-3 text-[12px] text-[#6b7280]">Changes save automatically.</p>
         <form
           className="space-y-3"
           onSubmit={async (e) => {
             e.preventDefault();
-            const fd = new FormData(e.currentTarget);
-            const focus = String(fd.get("mentorMentorshipFocus") ?? "").trim();
-            const avail = String(fd.get("mentorAvailabilityPref") ?? "").trim();
-            const cap = String(fd.get("mentorMaxMenteesPref") ?? "").trim();
-            if (!focus) {
+            if (!focus.trim()) {
               window.alert("Please describe what you would like to mentor students on.");
               return;
             }
@@ -35,7 +54,7 @@ export function MentorSetupStep2() {
               method: "PATCH",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
-                mentorMentorshipFocus: focus,
+                mentorMentorshipFocus: focus.trim(),
                 mentorAvailabilityPref: avail || null,
                 mentorMaxMenteesPref: cap || null,
               }),
@@ -56,6 +75,12 @@ export function MentorSetupStep2() {
               name="mentorMentorshipFocus"
               rows={5}
               required
+              value={focus}
+              onChange={(e) => {
+                const v = e.target.value;
+                setFocus(v);
+                scheduleSave({ mentorMentorshipFocus: v.trim() || null });
+              }}
               placeholder="e.g., Portfolio development, career guidance, software skills, design critique..."
               className={`${setupField} min-h-[120px] resize-y`}
             />
@@ -69,7 +94,12 @@ export function MentorSetupStep2() {
               <select
                 id="mentorAvailabilityPref"
                 name="mentorAvailabilityPref"
-                defaultValue="Weekly session"
+                value={avail}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setAvail(v);
+                  scheduleSave({ mentorAvailabilityPref: v || null });
+                }}
                 className={`${setupField} appearance-none pr-9`}
               >
                 {MENTOR_SESSION_PREFS.map((opt) => (
@@ -92,7 +122,12 @@ export function MentorSetupStep2() {
               <select
                 id="mentorMaxMenteesPref"
                 name="mentorMaxMenteesPref"
-                defaultValue="3–5 students"
+                value={cap}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setCap(v);
+                  scheduleSave({ mentorMaxMenteesPref: v || null });
+                }}
                 className={`${setupField} appearance-none pr-9`}
               >
                 {MENTOR_MENTEE_CAPACITY_OPTIONS.map((opt) => (

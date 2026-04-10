@@ -1,4 +1,4 @@
-import { marketingImages } from "@/lib/marketing-images";
+import { MENTOR_PAGE_HERO_ASSETS } from "@/lib/mentor-page-assets";
 
 export type Mentor = {
   id: string;
@@ -31,7 +31,7 @@ export const mentors: Mentor[] = [
       "Ekistics",
     ],
     slot: "Next Available Slot : Wednesday 6:00 PM - 6:30 PM",
-    image: marketingImages.mentorPortrait,
+    image: MENTOR_PAGE_HERO_ASSETS.mentorPhoto,
   },
   {
     id: "2",
@@ -50,7 +50,7 @@ export const mentors: Mentor[] = [
       "Ekistics",
     ],
     slot: "Next Available Slot : Wednesday 6:00 PM - 6:30 PM",
-    image: marketingImages.mentorPortrait,
+    image: MENTOR_PAGE_HERO_ASSETS.mentorPhoto,
   },
   {
     id: "3",
@@ -69,7 +69,7 @@ export const mentors: Mentor[] = [
       "Ekistics",
     ],
     slot: "Next Available Slot : Wednesday 6:00 PM - 6:30 PM",
-    image: marketingImages.mentorPortrait,
+    image: MENTOR_PAGE_HERO_ASSETS.mentorPhoto,
   },
   {
     id: "4",
@@ -88,7 +88,7 @@ export const mentors: Mentor[] = [
       "Ekistics",
     ],
     slot: "Next Available Slot : Wednesday 6:00 PM - 6:30 PM",
-    image: marketingImages.mentorPortrait,
+    image: MENTOR_PAGE_HERO_ASSETS.mentorPhoto,
   },
   {
     id: "5",
@@ -107,7 +107,7 @@ export const mentors: Mentor[] = [
       "Ekistics",
     ],
     slot: "Next Available Slot : Wednesday 6:00 PM - 6:30 PM",
-    image: marketingImages.mentorPortrait,
+    image: MENTOR_PAGE_HERO_ASSETS.mentorPhoto,
   },
   {
     id: "6",
@@ -126,7 +126,7 @@ export const mentors: Mentor[] = [
       "Ekistics",
     ],
     slot: "Next Available Slot : Wednesday 6:00 PM - 6:30 PM",
-    image: marketingImages.mentorPortrait,
+    image: MENTOR_PAGE_HERO_ASSETS.mentorPhoto,
   },
   {
     id: "7",
@@ -145,7 +145,7 @@ export const mentors: Mentor[] = [
       "Ekistics",
     ],
     slot: "Next Available Slot : Wednesday 6:00 PM - 6:30 PM",
-    image: marketingImages.mentorPortrait,
+    image: MENTOR_PAGE_HERO_ASSETS.mentorPhoto,
   },
   {
     id: "8",
@@ -164,7 +164,7 @@ export const mentors: Mentor[] = [
       "Ekistics",
     ],
     slot: "Next Available Slot : Wednesday 6:00 PM - 6:30 PM",
-    image: marketingImages.mentorPortrait,
+    image: MENTOR_PAGE_HERO_ASSETS.mentorPhoto,
   },
   {
     id: "9",
@@ -183,7 +183,7 @@ export const mentors: Mentor[] = [
       "Ekistics",
     ],
     slot: "Next Available Slot : Wednesday 6:00 PM - 6:30 PM",
-    image: marketingImages.mentorPortrait,
+    image: MENTOR_PAGE_HERO_ASSETS.mentorPhoto,
   },
   {
     id: "10",
@@ -202,7 +202,7 @@ export const mentors: Mentor[] = [
       "Ekistics",
     ],
     slot: "Next Available Slot : Wednesday 6:00 PM - 6:30 PM",
-    image: marketingImages.mentorPortrait,
+    image: MENTOR_PAGE_HERO_ASSETS.mentorPhoto,
   },
 ];
 

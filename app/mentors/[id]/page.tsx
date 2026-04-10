@@ -33,6 +33,9 @@ export default async function PublicMentorPage({ params }: Props) {
   const session = await auth();
   const back = `/mentors/${mentor.id}`;
   const linked = mentor.linkedUserId?.trim();
+  const scheduleHref = linked
+    ? `/schedule?mentorUserId=${encodeURIComponent(linked)}`
+    : "/schedule";
 
   let messageHref: string;
   if (session?.user?.role === "student" && linked) {
@@ -81,7 +84,7 @@ export default async function PublicMentorPage({ params }: Props) {
       <PublicMentorProfile
         mentor={mentor}
         messageHref={messageHref}
-        scheduleHref="/schedule"
+        scheduleHref={scheduleHref}
         viewerPortfolio={viewerPortfolio}
       />
     </MarketingShell>

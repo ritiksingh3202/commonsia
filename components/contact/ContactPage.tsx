@@ -55,7 +55,13 @@ export function ContactPage() {
             className="flex flex-col items-center gap-5 rounded-[20px] bg-black px-8 py-9 text-center text-white shadow-lg"
           >
             <IconDisc variant="dark">
-              <Image src="/contact_assets/mail.svg" alt="" width={36} height={36} />
+              <Image
+                src="/contact_assets/mail.svg"
+                alt=""
+                width={36}
+                height={36}
+                className="icon-brand-line"
+              />
             </IconDisc>
             <p className="text-xl text-white/90">Send a Message</p>
             <p className="text-xl font-semibold sm:text-2xl">admin@commonsia.com</p>
@@ -85,7 +91,13 @@ export function ContactPage() {
             className="flex flex-col items-center gap-5 rounded-[20px] border-2 border-primary bg-white px-8 py-9 text-center shadow-md"
           >
             <IconDisc variant="black">
-              <Image src="/contact_assets/location.svg" alt="" width={36} height={36} />
+              <Image
+                src="/contact_assets/location.svg"
+                alt=""
+                width={36}
+                height={36}
+                className="icon-brand-line"
+              />
             </IconDisc>
             <p className="text-xl text-black">Work Station</p>
             <p className="text-xl font-semibold text-black sm:text-2xl">DAP, IIT Roorkee</p>

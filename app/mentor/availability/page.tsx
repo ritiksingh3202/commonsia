@@ -4,7 +4,7 @@ import { Suspense } from "react";
 
 import { auth } from "@/auth";
 import { MentorAvailabilityForm } from "@/components/mentor/MentorAvailabilityForm";
-import { getGoogleCalendarRefreshToken } from "@/lib/google-calendar-db";
+import { getGoogleCalendarRefreshTokenForUser } from "@/lib/google-calendar-oauth-client";
 import { getMentorOnboardingRedirectPath } from "@/lib/mentor-onboarding";
 import { prisma } from "@/lib/prisma";
 
@@ -43,7 +43,7 @@ export default async function MentorAvailabilityPage() {
     redirect(next);
   }
 
-  const googleCalendarConnected = !!(await getGoogleCalendarRefreshToken(session.user.id));
+  const googleCalendarConnected = !!(await getGoogleCalendarRefreshTokenForUser(session.user.id));
 
   return (
     <Suspense fallback={<div className="p-10 text-center text-[13px] text-[#6b7280]">Loading…</div>}>

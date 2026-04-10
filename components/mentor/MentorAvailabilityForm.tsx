@@ -344,7 +344,7 @@ export function MentorAvailabilityForm({
       setSavedBanner(true);
       window.setTimeout(() => setSavedBanner(false), 3000);
       router.refresh();
-      router.push("/mentor");
+      router.push(mentorOnboardingComplete ? "/mentor" : "/mentor?welcome=1");
     } catch {
       window.alert("Could not save availability. Try again.");
     } finally {
@@ -904,7 +904,7 @@ export function MentorAvailabilityForm({
           </div>
           <div className="flex flex-col gap-2 sm:flex-row">
             <Link
-              href="/api/calendar/google/authorize"
+              href={`/api/calendar/google/authorize?returnTo=${encodeURIComponent("/mentor/availability")}`}
               className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-neutral-200 bg-white py-2.5 text-sm font-medium hover:bg-neutral-50"
             >
               <GoogleGlyph className="size-5" />

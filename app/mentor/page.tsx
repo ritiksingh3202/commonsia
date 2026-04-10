@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
+import { Suspense } from "react";
 
 import { auth } from "@/auth";
 import { MentorDashboard } from "@/components/mentor/MentorDashboard";
+import { ProfileCompletionWelcome } from "@/components/onboarding/ProfileCompletionWelcome";
 import { getMentorOnboardingRedirectPath } from "@/lib/mentor-onboarding";
 import { prisma } from "@/lib/prisma";
 
@@ -43,7 +45,7 @@ export default async function MentorHomePage() {
     redirect("/auth/login?callbackUrl=/mentor");
   }
 
-  if (user.role !== "mentor") {
+  if (user.role === "student") {
     redirect("/student");
   }
 
@@ -52,5 +54,12 @@ export default async function MentorHomePage() {
     redirect(next);
   }
 
-  return <MentorDashboard user={user} />;
+  return (
+    <>
+      <MentorDashboard user={user} />
+      <Suspense fallback={null}>
+        <ProfileCompletionWelcome variant="mentor" />
+      </Suspense>
+    </>
+  );
 }

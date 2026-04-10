@@ -18,7 +18,10 @@ export default async function MentorSetupLayout({ children }: { children: React.
     select: { role: true, mentorOnboardingComplete: true },
   });
 
-  if (!user || user.role !== "mentor") {
+  if (!user) {
+    return <>{children}</>;
+  }
+  if (user.role === "student") {
     redirect("/student");
   }
 

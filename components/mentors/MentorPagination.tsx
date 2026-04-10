@@ -21,7 +21,13 @@ export function MentorPagination({ page, total, onPageChange }: Props) {
         onClick={() => onPageChange(page - 1)}
         className="flex size-8 items-center justify-center rounded-full border border-primary disabled:opacity-30 sm:size-9"
       >
-        <Image src="/left_arrow.svg" alt="" width={12} height={10} className="h-2.5 w-3.5" />
+        <Image
+          src="/left_arrow.svg"
+          alt=""
+          width={12}
+          height={10}
+          className="icon-brand-line h-2.5 w-3.5"
+        />
       </motion.button>
       {Array.from({ length: total }, (_, i) => i + 1).map((p) => (
         <motion.button
@@ -47,7 +53,13 @@ export function MentorPagination({ page, total, onPageChange }: Props) {
         onClick={() => onPageChange(page + 1)}
         className="flex size-8 items-center justify-center rounded-full border border-primary disabled:opacity-30 sm:size-9"
       >
-        <Image src="/right_arrow.svg" alt="" width={12} height={10} className="h-2.5 w-3.5" />
+        <Image
+          src="/right_arrow.svg"
+          alt=""
+          width={12}
+          height={10}
+          className="icon-brand-line h-2.5 w-3.5"
+        />
       </motion.button>
     </div>
   );

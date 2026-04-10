@@ -1,15 +1,24 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { SetupLinkedInNotice } from "@/components/setup/SetupLinkedInNotice";
+import { MENTOR_EXPERTISE_OTHER, MENTOR_YEARS_OPTIONS } from "@/components/mentor/mentor-setup-constants";
 import {
-  MENTOR_EXPERTISE_OPTIONS,
-  MENTOR_EXPERTISE_OTHER,
-  MENTOR_YEARS_OPTIONS,
-} from "@/components/mentor/mentor-setup-constants";
+  mentorExpertiseListFromSelection,
+  mentorExpertiseStateFromServer,
+} from "@/components/shared/architecture-taxonomy";
+import {
+  ArchitectureGroupedPills,
+  architectureOthersSectionRule,
+  architectureOthersSectionTitle,
+  architecturePillBase,
+} from "@/components/shared/ArchitectureGroupedPills";
 import { MentorSetupShell } from "@/components/mentor/MentorSetupShell";
 import { setupField, setupLabel } from "@/components/student/student-ui";
+import { useProfileAutosave } from "@/hooks/useProfileAutosave";
+import { expertiseToStringList, type MentorSetupUserSnapshot } from "@/lib/setup-load-user";
 
 const btnPrimary =
   "mt-1 flex w-full items-center justify-center gap-2 rounded-md bg-primary px-3 py-2.5 text-[13px] font-semibold text-white shadow-sm transition-colors hover:bg-primary/90 sm:text-sm";
@@ -17,33 +26,60 @@ const btnPrimary =
 const chipOn = "border-primary bg-primary/5 text-[#0a0a0a] ring-1 ring-primary/25";
 const chipOff = "border-[#e5e7eb] bg-white text-[#0a0a0a] hover:border-neutral-300";
 
-export function MentorSetupStep1() {
-  const router = useRouter();
-  const [expertise, setExpertise] = useState<Set<string>>(new Set());
-  const [otherExpertise, setOtherExpertise] = useState("");
+function expertiseFromSnapshot(raw: MentorSetupUserSnapshot["mentorExpertise"] | undefined) {
+  const saved = expertiseToStringList(raw ?? null);
+  return mentorExpertiseStateFromServer(saved, MENTOR_EXPERTISE_OTHER);
+}
 
-  const toggle = (label: string) => {
-    setExpertise((prev) => {
-      const next = new Set(prev);
-      if (next.has(label)) next.delete(label);
-      else next.add(label);
-      return next;
+export function MentorSetupStep1({
+  initial,
+  linkedInConnected,
+}: {
+  initial?: MentorSetupUserSnapshot;
+  linkedInConnected?: boolean;
+}) {
+  const router = useRouter();
+  const scheduleSave = useProfileAutosave();
+
+  const expertiseDerived = useMemo(
+    () => expertiseFromSnapshot(initial?.mentorExpertise),
+    [initial?.mentorExpertise],
+  );
+
+  const [title, setTitle] = useState(initial?.mentorTitle ?? "");
+  const [company, setCompany] = useState(initial?.mentorCompany ?? "");
+  const [years, setYears] = useState(initial?.mentorYearsExperience ?? "");
+  const [expertise, setExpertise] = useState<Set<string>>(() => new Set(expertiseDerived.sel));
+  const [otherExpertise, setOtherExpertise] = useState(expertiseDerived.other);
+
+  useEffect(() => {
+    const d = expertiseFromSnapshot(initial?.mentorExpertise);
+    setExpertise(new Set(d.sel));
+    setOtherExpertise(d.other);
+  }, [initial?.mentorExpertise]);
+
+  const toggleExpertise = (opt: string) => {
+    const next = new Set(expertise);
+    if (next.has(opt)) next.delete(opt);
+    else next.add(opt);
+    setExpertise(next);
+    scheduleSave({
+      role: "mentor",
+      mentorExpertise: mentorExpertiseListFromSelection(next, otherExpertise, MENTOR_EXPERTISE_OTHER),
     });
   };
 
   return (
     <MentorSetupShell step={1} backHref="/auth/register/mentor">
       <section>
+        {linkedInConnected ? <SetupLinkedInNotice variant="mentor" /> : null}
         <h2 className="mb-3 text-base font-semibold text-[#0a0a0a]">Professional Information</h2>
+        <p className="mb-3 text-[12px] text-[#6b7280]">Changes save automatically.</p>
         <form
           className="space-y-3"
           onSubmit={async (e) => {
             e.preventDefault();
-            const fd = new FormData(e.currentTarget);
-            const title = String(fd.get("mentorTitle") ?? "").trim();
-            const company = String(fd.get("mentorCompany") ?? "").trim();
-            const years = String(fd.get("mentorYears") ?? "").trim();
-            if (!title || !company || !years) {
+            if (!title.trim() || !company.trim() || !years.trim()) {
               window.alert("Please fill in your position, organization, and years of experience.");
               return;
             }
@@ -55,22 +91,19 @@ export function MentorSetupStep1() {
               window.alert('Please describe your area under "Other".');
               return;
             }
-            const expertiseList: string[] = [];
-            for (const label of expertise) {
-              if (label === MENTOR_EXPERTISE_OTHER) {
-                expertiseList.push(otherExpertise.trim());
-              } else {
-                expertiseList.push(label);
-              }
-            }
+            const expertiseList = mentorExpertiseListFromSelection(
+              expertise,
+              otherExpertise,
+              MENTOR_EXPERTISE_OTHER,
+            );
             const res = await fetch("/api/profile", {
               method: "PATCH",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
                 role: "mentor",
-                mentorTitle: title,
-                mentorCompany: company,
-                mentorYearsExperience: years,
+                mentorTitle: title.trim(),
+                mentorCompany: company.trim(),
+                mentorYearsExperience: years.trim(),
                 mentorExpertise: expertiseList,
               }),
             });
@@ -90,6 +123,11 @@ export function MentorSetupStep1() {
               name="mentorTitle"
               type="text"
               required
+              value={title}
+              onChange={(e) => {
+                setTitle(e.target.value);
+                scheduleSave({ role: "mentor", mentorTitle: e.target.value.trim() || null });
+              }}
               placeholder="e.g., Senior Architect, Design Director"
               className={setupField}
               autoComplete="organization-title"
@@ -104,6 +142,11 @@ export function MentorSetupStep1() {
               name="mentorCompany"
               type="text"
               required
+              value={company}
+              onChange={(e) => {
+                setCompany(e.target.value);
+                scheduleSave({ role: "mentor", mentorCompany: e.target.value.trim() || null });
+              }}
               placeholder="e.g., ABC Architects, XYZ Design Studio"
               className={setupField}
               autoComplete="organization"
@@ -117,7 +160,12 @@ export function MentorSetupStep1() {
               <select
                 id="mentorYears"
                 name="mentorYears"
-                defaultValue=""
+                value={years}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setYears(v);
+                  scheduleSave({ role: "mentor", mentorYearsExperience: v.trim() || null });
+                }}
                 className={`${setupField} appearance-none pr-9`}
                 required
               >
@@ -138,38 +186,54 @@ export function MentorSetupStep1() {
 
           <div className="space-y-2 pt-1">
             <p className={setupLabel}>Areas of Expertise</p>
-            <div className="grid grid-cols-2 gap-2">
-              {MENTOR_EXPERTISE_OPTIONS.map((opt) => (
-                <button
-                  key={opt}
-                  type="button"
-                  onClick={() => toggle(opt)}
-                  className={`rounded-xl border py-2.5 text-center text-[12px] font-medium leading-snug transition sm:text-[13px] ${
-                    expertise.has(opt) ? chipOn : chipOff
-                  }`}
-                >
-                  {opt}
-                </button>
-              ))}
-            </div>
-            {expertise.has(MENTOR_EXPERTISE_OTHER) ? (
-              <div className="space-y-1.5">
-                <label htmlFor="mentorExpertiseOther" className={setupLabel}>
-                  Describe your other expertise
-                </label>
-                <input
-                  id="mentorExpertiseOther"
-                  name="mentorExpertiseOther"
-                  type="text"
-                  value={otherExpertise}
-                  onChange={(e) => setOtherExpertise(e.target.value)}
-                  placeholder="e.g., Exhibition design, Computational design"
-                  className={setupField}
-                  autoComplete="off"
-                />
-              </div>
-            ) : null}
             <p className="text-[12px] text-[#9ca3af]">Select all that apply</p>
+            <ArchitectureGroupedPills
+              selected={expertise}
+              onToggle={toggleExpertise}
+              classNameOn={chipOn}
+              classNameOff={chipOff}
+            />
+            <div>
+              <h3 className={architectureOthersSectionTitle}>{MENTOR_EXPERTISE_OTHER}</h3>
+              <div className={architectureOthersSectionRule} aria-hidden />
+              <div className="mt-4 flex flex-wrap gap-3">
+                <button
+                  type="button"
+                  onClick={() => toggleExpertise(MENTOR_EXPERTISE_OTHER)}
+                  className={`${architecturePillBase} ${expertise.has(MENTOR_EXPERTISE_OTHER) ? chipOn : chipOff}`}
+                >
+                  {MENTOR_EXPERTISE_OTHER}
+                </button>
+              </div>
+              {expertise.has(MENTOR_EXPERTISE_OTHER) ? (
+                <div className="mt-4 space-y-1.5">
+                  <label htmlFor="mentorExpertiseOther" className={setupLabel}>
+                    Describe your other expertise
+                  </label>
+                  <input
+                    id="mentorExpertiseOther"
+                    name="mentorExpertiseOther"
+                    type="text"
+                    value={otherExpertise}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setOtherExpertise(v);
+                      scheduleSave({
+                        role: "mentor",
+                        mentorExpertise: mentorExpertiseListFromSelection(
+                          expertise,
+                          v,
+                          MENTOR_EXPERTISE_OTHER,
+                        ),
+                      });
+                    }}
+                    placeholder="e.g., Exhibition design, Computational design"
+                    className={setupField}
+                    autoComplete="off"
+                  />
+                </div>
+              ) : null}
+            </div>
           </div>
 
           <button type="submit" className={btnPrimary}>

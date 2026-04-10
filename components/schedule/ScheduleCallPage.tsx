@@ -1,9 +1,11 @@
 "use client";
 
 import Link from "next/link";
+import { useSession } from "next-auth/react";
 import { useMemo, useState } from "react";
 
 import { monthName, MENTOR_TIME_SLOTS_HALF } from "@/components/mentor/mentor-setup-constants";
+import { istSlotRangeToISO } from "@/lib/schedule-slot-ist";
 
 const CREAM = "bg-[#FFF8F1]";
 const WEEK_HEADERS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
@@ -55,7 +57,14 @@ const SLOT_RANGES = build30MinuteRanges();
 const EVENING_START_INDEX = SLOT_RANGES.findIndex((r) => r.startsWith("06:00 PM"));
 const DEFAULT_SLOT_SLICE = EVENING_START_INDEX >= 0 ? EVENING_START_INDEX : Math.max(0, SLOT_RANGES.length - 8);
 
-export function ScheduleCallPage() {
+export function ScheduleCallPage({
+  mentorUserId = null,
+  mentorDisplayName = null,
+}: {
+  mentorUserId?: string | null;
+  mentorDisplayName?: string | null;
+}) {
+  const { status } = useSession();
   const [viewYear, setViewYear] = useState(2026);
   const [viewMonth, setViewMonth] = useState(2); // March 0-based
   const [selectedDay, setSelectedDay] = useState(18);
@@ -66,6 +75,8 @@ export function ScheduleCallPage() {
   const [durationMin, setDurationMin] = useState<30 | 45 | 60>(30);
   const [selectedSlotIndex, setSelectedSlotIndex] = useState(0);
   const [notifyEmail, setNotifyEmail] = useState(true);
+  const [booking, setBooking] = useState(false);
+  const [feedback, setFeedback] = useState<string | null>(null);
 
   const dim = daysInMonth(viewYear, viewMonth);
   const displayDay = Math.min(selectedDay, dim);
@@ -121,10 +132,67 @@ export function ScheduleCallPage() {
 
   const removeGuest = (id: string) => setGuests((g) => g.filter((x) => x.id !== id));
 
-  const scheduleCall = () => {
-    window.alert(
-      `Call scheduled:\n${summaryDate}\n${summaryTime}\nDuration: ${durationMin} minutes\nGuests: ${guests.length}`,
-    );
+  const scheduleCall = async () => {
+    setFeedback(null);
+    if (status !== "authenticated") {
+      const q = `${window.location.pathname}${window.location.search}`;
+      window.location.href = `/auth/login?callbackUrl=${encodeURIComponent(q)}`;
+      return;
+    }
+    setBooking(true);
+    try {
+      const { startISO, endISO } = istSlotRangeToISO(
+        viewYear,
+        viewMonth,
+        displayDay,
+        startLabel,
+        durationMin,
+      );
+      const res = await fetch("/api/calendar/create-event", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          mentorUserId: mentorUserId ?? undefined,
+          startISO,
+          endISO,
+          title: mentorDisplayName ? `Commonsia: Session with ${mentorDisplayName}` : undefined,
+          description: mentorDisplayName
+            ? `Mentoring session via Commonsia with ${mentorDisplayName}.`
+            : "Mentoring session via Commonsia.",
+          notifyAttendees: notifyEmail,
+        }),
+      });
+      const data = (await res.json()) as {
+        ok?: boolean;
+        error?: string;
+        message?: string;
+        calendarSynced?: boolean;
+        htmlLink?: string;
+      };
+      if (!res.ok) {
+        setFeedback(data.error ?? "Could not complete booking.");
+        return;
+      }
+      const lines = [
+        `Call scheduled:\n${summaryDate}`,
+        summaryTime,
+        `Duration: ${durationMin} minutes`,
+        `Guests (UI): ${guests.length}`,
+      ];
+      if (data.calendarSynced) {
+        lines.push(
+          "Google Calendar: event added; invite/reminder emails sent when Google has addresses for attendees.",
+        );
+        if (data.htmlLink) lines.push(`Open: ${data.htmlLink}`);
+      } else if (data.message) {
+        lines.push(data.message);
+      }
+      window.alert(lines.join("\n"));
+    } catch {
+      setFeedback("Something went wrong. Try again.");
+    } finally {
+      setBooking(false);
+    }
   };
 
   return (
@@ -142,6 +210,11 @@ export function ScheduleCallPage() {
           <div className="grid gap-8 lg:grid-cols-[minmax(0,260px)_1fr_minmax(0,280px)] lg:gap-10">
             {/* Left — invite & summary */}
             <aside className="order-3 flex flex-col gap-5 lg:order-1">
+              {mentorDisplayName ? (
+                <p className="rounded-xl border border-primary/25 bg-primary/5 px-3 py-2 text-xs font-medium text-[#0a0a0a] sm:text-sm">
+                  Booking with <span className="text-primary">{mentorDisplayName}</span>
+                </p>
+              ) : null}
               <div>
                 <h2 className="text-base font-bold text-[#0a0a0a]">Who needs to be invited?</h2>
                 <p className="mt-1 text-xs text-neutral-500 sm:text-sm">
@@ -211,12 +284,18 @@ export function ScheduleCallPage() {
                 </div>
               </div>
 
+              {feedback ? (
+                <p className="text-center text-xs font-medium text-red-600 sm:text-sm" role="alert">
+                  {feedback}
+                </p>
+              ) : null}
               <button
                 type="button"
-                onClick={scheduleCall}
-                className="w-full rounded-xl bg-primary py-3.5 text-sm font-semibold text-white shadow-md transition hover:bg-primary/90"
+                disabled={booking}
+                onClick={() => void scheduleCall()}
+                className="w-full rounded-xl bg-primary py-3.5 text-sm font-semibold text-white shadow-md transition hover:bg-primary/90 disabled:opacity-60"
               >
-                Schedule Call
+                {booking ? "Scheduling…" : "Schedule Call"}
               </button>
             </aside>
 

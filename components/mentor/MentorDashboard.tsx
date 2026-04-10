@@ -145,7 +145,7 @@ export function MentorDashboard({ user }: Props) {
                   <img
                     src="/rocket.svg"
                     alt=""
-                    className="size-5 object-contain"
+                    className="icon-brand-line size-5 object-contain"
                   />
                 </div>
                 <div>
@@ -161,7 +161,7 @@ export function MentorDashboard({ user }: Props) {
                   <img
                     src="/session.svg"
                     alt=""
-                    className="size-5 object-contain"
+                    className="icon-brand-line size-5 object-contain"
                   />
                 </div>
                 <div>

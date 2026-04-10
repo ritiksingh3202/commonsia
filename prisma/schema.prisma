@@ -87,6 +87,26 @@ model User {
   chatThreadsAsStudent ChatThread[] @relation("ChatStudent")
   chatThreadsAsMentor  ChatThread[] @relation("ChatMentor")
   chatMessages         ChatMessage[]
+  mentoringBookingsAsStudent MentoringBooking[] @relation("BookingStudent")
+  mentoringBookingsAsMentor  MentoringBooking[] @relation("BookingMentor")
+}
+
+/// Student–mentor session booked via Commonsia (persists even when Google Calendar is not connected).
+model MentoringBooking {
+  id             String   @id @default(cuid())
+  createdAt      DateTime @default(now())
+  studentId      String
+  mentorId       String
+  startAt        DateTime
+  endAt          DateTime
+  title          String?
+  googleEventId  String?
+
+  student User @relation("BookingStudent", fields: [studentId], references: [id], onDelete: Cascade)
+  mentor  User @relation("BookingMentor", fields: [mentorId], references: [id], onDelete: Cascade)
+
+  @@index([studentId, startAt])
+  @@index([mentorId])
 }
 
 /// Student ↔ mentor DM thread. `pending` until mentor accepts (message request).

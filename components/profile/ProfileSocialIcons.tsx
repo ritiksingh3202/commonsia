@@ -1,25 +1,27 @@
 import Image from "next/image";
 import type { ReactNode } from "react";
 
-/** Home marketing SVGs (`public/home_assets/*`) — paths use primary fill `#ff571f`. */
-const WHATSAPP = "/home_assets/whatsapp.svg";
-const LINKEDIN = "/home_assets/linkedin.svg";
-const INSTAGRAM = "/home_assets/instagram.svg";
+/** Social glyphs from `public/` — rendered black via `.icon-black-line`. */
+const WHATSAPP = "/whatsapp.svg";
+const LINKEDIN = "/linkedin.svg";
+const INSTAGRAM = "/instagram.svg";
 
-const iconClass = "size-5 max-h-5 max-w-5 object-contain";
+const iconClass = "icon-black-line size-5 max-h-5 max-w-5 object-contain";
 
 /** Shared with student + mentor profile heroes — icons only, no circular background. */
 export function SocialIconButton({
   href,
   label,
   icon,
+  className,
 }: {
   href: string | null;
   label: string;
   icon: ReactNode;
+  /** e.g. circular shell to match edit / messages buttons on profile toolbar */
+  className?: string;
 }) {
-  const shell =
-    "inline-flex items-center justify-center transition hover:opacity-80";
+  const shell = ["inline-flex items-center justify-center transition", className].filter(Boolean).join(" ");
   if (!href?.trim()) {
     return (
       <span
@@ -56,14 +58,32 @@ export function WhatsAppGlyph({ className }: { className?: string }) {
   );
 }
 
-export function LinkedInGlyph({ className }: { className?: string }) {
+export function LinkedInGlyph({
+  className,
+  /** Larger in toolbar circles so the glyph matches edit / message weight */
+  profileToolbar,
+  /** True = site primary (globals `.icon-brand-line`). False = black glyph for footer etc. */
+  brandColor,
+}: {
+  className?: string;
+  profileToolbar?: boolean;
+  brandColor?: boolean;
+}) {
+  const dim = profileToolbar ? 22 : 20;
+  const sizeClass = brandColor
+    ? profileToolbar
+      ? "icon-brand-line size-[22px] max-h-[22px] max-w-[22px] object-contain"
+      : "icon-brand-line size-5 max-h-5 max-w-5 object-contain"
+    : profileToolbar
+      ? "icon-black-line size-[22px] max-h-[22px] max-w-[22px] object-contain"
+      : iconClass;
   return (
     <Image
       src={LINKEDIN}
       alt=""
-      width={20}
-      height={20}
-      className={[iconClass, className].filter(Boolean).join(" ")}
+      width={dim}
+      height={dim}
+      className={[sizeClass, className].filter(Boolean).join(" ")}
     />
   );
 }

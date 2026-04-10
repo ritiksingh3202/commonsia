@@ -51,7 +51,7 @@ function RoleCard({
             alt={iconAlt}
             width={52}
             height={52}
-            className="size-12 object-contain sm:size-14"
+            className="icon-brand-line size-12 object-contain sm:size-14"
           />
         </div>
         <h2 className="mt-3 text-base font-semibold text-[#0a0a0a] sm:text-lg">{title}</h2>

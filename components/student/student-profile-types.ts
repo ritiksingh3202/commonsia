@@ -21,6 +21,7 @@ export type StudentProfileUser = Pick<
   | "instagramUrl"
   | "portfolioUrl"
   | "portfolioFileName"
+  | "portfolioFileDataUrl"
   | "portfolioVisibleToOthers"
 >;
 
@@ -42,10 +43,25 @@ export function formatStudentSubtitle(u: Pick<User, "major" | "yearOfStudy" | "u
   return head || "Student";
 }
 
+/** Strip internal `Other: detail` encoding so profiles show e.g. "AutoCAD" not "Other: AutoCAD". */
+function displaySoftwareToken(raw: string): string | null {
+  const t = raw.trim();
+  if (!t) return null;
+  const m = t.match(/^Other:\s*(.*)$/i);
+  if (m) {
+    const rest = m[1]?.trim() ?? "";
+    return rest || null;
+  }
+  if (t === "Other") return null;
+  return t;
+}
+
 export function parseSoftwarePills(softwareSkills: string | null): string[] {
   if (!softwareSkills?.trim()) return [];
-  return softwareSkills
-    .split(/[,，]/)
-    .map((s) => s.trim())
-    .filter(Boolean);
+  const out: string[] = [];
+  for (const part of softwareSkills.split(/[,，]/)) {
+    const label = displaySoftwareToken(part);
+    if (label) out.push(label);
+  }
+  return out;
 }

@@ -3,11 +3,12 @@
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 
-import { countWords } from "./student-setup-constants";
 import { StudentSetupShell } from "./StudentSetupShell";
 import { setupField, setupLabel } from "./student-ui";
-
-const MIN_BIO_WORDS = 30;
+import { SetupGoogleCalendarConnect } from "@/components/setup/SetupGoogleCalendarConnect";
+import { SetupLinkedInNotice } from "@/components/setup/SetupLinkedInNotice";
+import { useProfileAutosave } from "@/hooks/useProfileAutosave";
+import type { StudentSetupUserSnapshot } from "@/lib/setup-load-user";
 
 const btnGhost =
   "flex flex-1 items-center justify-center gap-1.5 rounded-md border border-black/10 bg-white py-2.5 text-[13px] font-medium text-[#0a0a0a] transition-colors hover:bg-neutral-50 sm:text-sm";
@@ -15,35 +16,53 @@ const btnGhost =
 const btnPrimary =
   "flex flex-1 items-center justify-center gap-1.5 rounded-md bg-primary py-2.5 text-[13px] font-semibold text-white shadow-sm transition-colors hover:bg-primary/90 sm:text-sm";
 
-export function StudentSetupStep3() {
+export function StudentSetupStep3({
+  initial,
+  linkedInConnected,
+  googleCalendarConnected = false,
+}: {
+  initial?: StudentSetupUserSnapshot;
+  linkedInConnected?: boolean;
+  googleCalendarConnected?: boolean;
+}) {
   const router = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
-  const [bio, setBio] = useState("");
-  const words = countWords(bio);
+  const scheduleSave = useProfileAutosave();
+
+  const [bio, setBio] = useState(initial?.bio ?? "");
+  const [linkedinUrl, setLinkedinUrl] = useState(initial?.linkedinUrl ?? "");
+  const [portfolioUrl, setPortfolioUrl] = useState(initial?.portfolioUrl ?? "");
 
   return (
     <StudentSetupShell step={3} backHref="/student/setup/2">
       <section>
+        {linkedInConnected ? <SetupLinkedInNotice variant="student" /> : null}
         <h2 className="mb-3 text-base font-semibold text-[#0a0a0a]">Portfolio &amp; Bio</h2>
+        <p className="mb-3 text-[12px] text-[#6b7280]">
+          Fields marked <span className="text-primary">*</span> are required. Portfolio link and file upload are
+          optional.
+        </p>
         <form
           className="space-y-3"
           onSubmit={async (e) => {
             e.preventDefault();
             const text = bio.trim();
-            const wc = countWords(text);
-            if (wc < MIN_BIO_WORDS) {
-              window.alert(
-                `Your bio should be at least ${MIN_BIO_WORDS} words (currently ${wc}). Please share a bit more about yourself.`,
-              );
+            if (!text) {
+              window.alert("Please write something in About you.");
               return;
             }
-            const fd = new FormData(e.currentTarget);
+            const li = linkedinUrl.trim();
+            if (!li) {
+              window.alert("Please add your LinkedIn profile URL.");
+              return;
+            }
             const res = await fetch("/api/profile", {
               method: "PATCH",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
-                bio: text || null,
-                portfolioUrl: String(fd.get("portfolioUrl") ?? "").trim() || null,
+                bio: text,
+                linkedinUrl: li,
+                portfolioUrl: portfolioUrl.trim() || null,
                 profileComplete: true,
               }),
             });
@@ -51,50 +70,77 @@ export function StudentSetupStep3() {
               window.alert("Could not save your profile. Try signing in again.");
               return;
             }
-            router.push("/student");
+            router.push("/student?welcome=1");
           }}
         >
           <div className="space-y-1.5">
-            <div className="flex flex-wrap items-baseline justify-between gap-2">
-              <label htmlFor="about" className={setupLabel}>
-                About You
-              </label>
-              <span
-                className={`text-[12px] tabular-nums ${words >= MIN_BIO_WORDS ? "text-emerald-600" : "text-[#717182]"}`}
-              >
-                {words} / {MIN_BIO_WORDS}+ words
-              </span>
-            </div>
+            <label htmlFor="about" className={setupLabel}>
+              About you <span className="text-primary">*</span>
+            </label>
             <textarea
               id="about"
               name="about"
               rows={6}
               value={bio}
-              onChange={(e) => setBio(e.target.value)}
+              onChange={(e) => {
+                const v = e.target.value;
+                setBio(v);
+                scheduleSave({ bio: v.trim() || null });
+              }}
               placeholder="Tell mentors about yourself, your goals, and what you're looking for in a mentor..."
               className={`${setupField} min-h-[120px] resize-y`}
               required
             />
             <p className="text-[11px] leading-snug text-[#6b7280] sm:text-xs">
-              Minimum {MIN_BIO_WORDS} words required so mentors get a clear sense of who you are.
+              A short, genuine bio helps mentors understand how to support you. LinkedIn OpenID does not provide a
+              long bio — write it here.
             </p>
           </div>
 
           <div className="space-y-1.5">
+            <label htmlFor="linkedinUrl" className={setupLabel}>
+              LinkedIn profile URL <span className="text-primary">*</span>
+            </label>
+            <input
+              id="linkedinUrl"
+              name="linkedinUrl"
+              type="url"
+              value={linkedinUrl}
+              onChange={(e) => {
+                const v = e.target.value;
+                setLinkedinUrl(v);
+                scheduleSave({ linkedinUrl: v.trim() || null });
+              }}
+              placeholder="https://linkedin.com/in/your-profile"
+              className={setupField}
+              required
+              autoComplete="url"
+            />
+          </div>
+
+          <div className="space-y-1.5">
             <label htmlFor="portfolioUrl" className={setupLabel}>
-              Portfolio URL (Optional)
+              Portfolio URL <span className="font-normal text-[#9ca3af]">(Optional)</span>
             </label>
             <input
               id="portfolioUrl"
               name="portfolioUrl"
               type="url"
+              value={portfolioUrl}
+              onChange={(e) => {
+                const v = e.target.value;
+                setPortfolioUrl(v);
+                scheduleSave({ portfolioUrl: v.trim() || null });
+              }}
               placeholder="https://yourportfolio.com"
               className={setupField}
             />
           </div>
 
           <div className="space-y-1.5">
-            <span className={setupLabel}>Upload Portfolio (Optional)</span>
+            <span className={setupLabel}>
+              Upload portfolio <span className="font-normal text-[#9ca3af]">(Optional)</span>
+            </span>
             <button
               type="button"
               onClick={() => fileRef.current?.click()}
@@ -107,13 +153,19 @@ export function StudentSetupStep3() {
             </button>
           </div>
 
+          <SetupGoogleCalendarConnect
+            connected={googleCalendarConnected}
+            returnPath="/student/setup/3"
+            description="Optional. Connect so mentoring sessions can be added to your Google Calendar and you get fewer clashes with your schedule."
+          />
+
           <div className="flex flex-col gap-2 pt-1 sm:flex-row sm:gap-2">
             <button type="button" onClick={() => router.push("/student/setup/2")} className={btnGhost}>
               <ArrowLeft className="size-3.5" />
               Previous
             </button>
-            <button type="submit" className={btnPrimary} disabled={words < MIN_BIO_WORDS}>
-              Complete Profile
+            <button type="submit" className={btnPrimary}>
+              Complete profile
             </button>
           </div>
         </form>

@@ -1,6 +1,7 @@
 import { google } from "googleapis";
 import { NextResponse } from "next/server";
 
+import { DEFAULT_CALENDAR_OAUTH_RETURN_PATH } from "@/lib/calendar-oauth-return-to";
 import { setGoogleCalendarRefreshToken } from "@/lib/google-calendar-db";
 import { verifyCalendarOAuthState } from "@/lib/calendar-oauth-state";
 import { getGoogleOAuthClient } from "@/lib/oauth-credentials";
@@ -11,13 +12,16 @@ export async function GET(req: Request) {
   const state = url.searchParams.get("state");
   const err = url.searchParams.get("error");
   const base = process.env.AUTH_URL ?? "http://localhost:3000";
-  const back = `${base.replace(/\/$/, "")}/mentor/availability`;
+  const origin = base.replace(/\/$/, "");
+
+  const parsed = verifyCalendarOAuthState(state ?? "");
+  const path = parsed?.returnTo ?? DEFAULT_CALENDAR_OAUTH_RETURN_PATH;
+  const back = `${origin}${path}`;
 
   if (err) {
     return NextResponse.redirect(`${back}?calendar=error`);
   }
 
-  const parsed = verifyCalendarOAuthState(state ?? "");
   if (!code || !parsed) {
     return NextResponse.redirect(`${back}?calendar=error`);
   }

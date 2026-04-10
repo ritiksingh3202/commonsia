@@ -6,8 +6,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { compressImageToDataUrl } from "@/lib/resize-image-client";
 import {
-  countWords,
-  INTEREST_OPTIONS,
   INTEREST_OTHERS_LABEL,
   PROGRAM_OPTIONS,
   PROGRAM_OTHER_VALUE,
@@ -16,6 +14,13 @@ import {
   YEAR_OPTIONS,
 } from "@/components/student/student-setup-constants";
 import { parseInterests } from "@/components/student/student-profile-types";
+import {
+  ArchitectureGroupedPills,
+  architectureOthersSectionRule,
+  architectureOthersSectionTitle,
+  architecturePillBase,
+} from "@/components/shared/ArchitectureGroupedPills";
+import { interestStateFromServer, interestsPayloadFromSelection } from "@/components/student/student-interest-sync";
 
 const TABS = [
   { id: "personal", label: "Personal Info" },
@@ -52,7 +57,6 @@ const field =
 const label = "mb-1.5 block text-[13px] font-medium text-[#0a0a0a]";
 const chipOn = "border-primary bg-primary/5 text-[#0a0a0a] ring-1 ring-primary/25";
 const chipOff = "border-[#e5e7eb] bg-white text-[#0a0a0a] hover:border-neutral-300";
-const MIN_BIO = 30;
 
 function programFromMajor(major: string | null): { program: string; majorOther: string } {
   if (!major?.trim()) return { program: "", majorOther: "" };
@@ -75,9 +79,55 @@ function initSoftwareSet(skills: string | null): { set: Set<string>; otherDetail
       set.add(p);
     } else if (p === SOFTWARE_OTHER_LABEL) {
       set.add(SOFTWARE_OTHER_LABEL);
+    } else {
+      set.add(SOFTWARE_OTHER_LABEL);
+      otherDetail = otherDetail ? `${otherDetail}; ${p}` : p;
     }
   }
   return { set, otherDetail };
+}
+
+function payloadFromInitialUser(u: EditProfileUser): Record<string, unknown> {
+  const prog = programFromMajor(u.major);
+  let major: string | null = null;
+  if (prog.program === PROGRAM_OTHER_VALUE) {
+    major = prog.majorOther.trim() || null;
+  } else if (prog.program) {
+    major = prog.program;
+  }
+
+  const { sel: interestSel0, others: others0 } = interestStateFromServer(
+    parseInterests(u.interests),
+    u.otherInterests,
+  );
+  const ip = interestsPayloadFromSelection(interestSel0, others0);
+
+  const sw = initSoftwareSet(u.softwareSkills);
+  const softwareParts: string[] = [];
+  for (const n of SOFTWARE_OPTIONS) {
+    if (sw.set.has(n)) softwareParts.push(n);
+  }
+  if (sw.set.has(SOFTWARE_OTHER_LABEL)) {
+    const ex = sw.otherDetail.trim();
+    softwareParts.push(ex ? `Other: ${ex}` : SOFTWARE_OTHER_LABEL);
+  }
+
+  return {
+    name: (u.name ?? "").trim() || null,
+    phone: (u.phone ?? "").trim() || null,
+    whatsappUrl: null,
+    linkedinUrl: (u.linkedinUrl ?? "").trim() || null,
+    instagramUrl: null,
+    university: (u.university ?? "").trim() || null,
+    yearOfStudy: u.yearOfStudy || null,
+    major,
+    interests: ip.interests,
+    otherInterests: ip.otherInterests,
+    softwareSkills: softwareParts.length ? softwareParts.join(", ") : null,
+    bio: (u.bio ?? "").trim() || null,
+    portfolioUrl: (u.portfolioUrl ?? "").trim() || null,
+    portfolioVisibleToOthers: u.portfolioVisibleToOthers ?? true,
+  };
 }
 
 type Props = { user: EditProfileUser };
@@ -99,9 +149,7 @@ export function EditProfileForm({ user: initial }: Props) {
 
   const [name, setName] = useState(initial.name ?? "");
   const [phone, setPhone] = useState(initial.phone ?? "");
-  const [whatsappUrl, setWhatsappUrl] = useState(initial.whatsappUrl ?? "");
   const [linkedinUrl, setLinkedinUrl] = useState(initial.linkedinUrl ?? "");
-  const [instagramUrl, setInstagramUrl] = useState(initial.instagramUrl ?? "");
 
   const [university, setUniversity] = useState(initial.university ?? "");
   const [yearOfStudy, setYearOfStudy] = useState(initial.yearOfStudy ?? "");
@@ -109,8 +157,12 @@ export function EditProfileForm({ user: initial }: Props) {
   const [program, setProgram] = useState(progInit.program);
   const [majorOther, setMajorOther] = useState(progInit.majorOther);
 
-  const [interestSel, setInterestSel] = useState(() => new Set(parseInterests(initial.interests)));
-  const [othersDetail, setOthersDetail] = useState(initial.otherInterests ?? "");
+  const interestInit = useMemo(
+    () => interestStateFromServer(parseInterests(initial.interests), initial.otherInterests),
+    [initial.interests, initial.otherInterests],
+  );
+  const [interestSel, setInterestSel] = useState(() => new Set(interestInit.sel));
+  const [othersDetail, setOthersDetail] = useState(interestInit.others);
 
   const swInit = useMemo(() => initSoftwareSet(initial.softwareSkills), [initial.softwareSkills]);
   const [softwareSel, setSoftwareSel] = useState(() => swInit.set);
@@ -129,16 +181,15 @@ export function EditProfileForm({ user: initial }: Props) {
   useEffect(() => {
     setName(initial.name ?? "");
     setPhone(initial.phone ?? "");
-    setWhatsappUrl(initial.whatsappUrl ?? "");
     setLinkedinUrl(initial.linkedinUrl ?? "");
-    setInstagramUrl(initial.instagramUrl ?? "");
     setUniversity(initial.university ?? "");
     setYearOfStudy(initial.yearOfStudy ?? "");
     const p = programFromMajor(initial.major);
     setProgram(p.program);
     setMajorOther(p.majorOther);
-    setInterestSel(new Set(parseInterests(initial.interests)));
-    setOthersDetail(initial.otherInterests ?? "");
+    const nextI = interestStateFromServer(parseInterests(initial.interests), initial.otherInterests);
+    setInterestSel(new Set(nextI.sel));
+    setOthersDetail(nextI.others);
     const sw = initSoftwareSet(initial.softwareSkills);
     setSoftwareSel(sw.set);
     setSoftwareOtherDetail(sw.otherDetail);
@@ -166,16 +217,18 @@ export function EditProfileForm({ user: initial }: Props) {
     });
   };
 
-  const patch = async (body: Record<string, unknown>) => {
+  const patch = useCallback(async (body: Record<string, unknown>) => {
     const res = await fetch("/api/profile", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
     if (!res.ok) throw new Error("Save failed");
-  };
+  }, []);
 
-  const buildPayload = (): Record<string, unknown> => {
+  const manualSaveRef = useRef(false);
+
+  const buildPayload = useCallback((): Record<string, unknown> => {
     let major: string | null = null;
     if (program === PROGRAM_OTHER_VALUE) {
       major = majorOther.trim() || null;
@@ -183,15 +236,7 @@ export function EditProfileForm({ user: initial }: Props) {
       major = program;
     }
 
-    const interestsList: string[] = [];
-    for (const opt of INTEREST_OPTIONS) {
-      if (interestSel.has(opt)) interestsList.push(opt);
-    }
-    let otherInt: string | null = null;
-    if (interestSel.has(INTEREST_OTHERS_LABEL)) {
-      otherInt = othersDetail.trim() || null;
-      interestsList.push(INTEREST_OTHERS_LABEL);
-    }
+    const ip = interestsPayloadFromSelection(interestSel, othersDetail);
 
     const softwareParts: string[] = [];
     for (const n of SOFTWARE_OPTIONS) {
@@ -205,42 +250,155 @@ export function EditProfileForm({ user: initial }: Props) {
     return {
       name: name.trim() || null,
       phone: phone.trim() || null,
-      whatsappUrl: whatsappUrl.trim() || null,
+      whatsappUrl: null,
       linkedinUrl: linkedinUrl.trim() || null,
-      instagramUrl: instagramUrl.trim() || null,
+      instagramUrl: null,
       university: university.trim() || null,
       yearOfStudy: yearOfStudy || null,
       major,
-      interests: interestsList.length ? interestsList : null,
-      otherInterests: interestSel.has(INTEREST_OTHERS_LABEL) ? otherInt : null,
+      interests: ip.interests,
+      otherInterests: ip.otherInterests,
       softwareSkills: softwareParts.length ? softwareParts.join(", ") : null,
       bio: bio.trim() || null,
       portfolioUrl: portfolioUrl.trim() || null,
       portfolioVisibleToOthers,
     };
-  };
+  }, [
+    name,
+    phone,
+    linkedinUrl,
+    university,
+    yearOfStudy,
+    program,
+    majorOther,
+    interestSel,
+    othersDetail,
+    softwareSel,
+    softwareOtherDetail,
+    bio,
+    portfolioUrl,
+    portfolioVisibleToOthers,
+  ]);
+
+  const initialPayloadJson = useMemo(() => JSON.stringify(payloadFromInitialUser(initial)), [initial]);
+
+  const lastSavedJsonRef = useRef(initialPayloadJson);
+  const [autoSave, setAutoSave] = useState<"idle" | "saving" | "saved" | "error">("idle");
+
+  useEffect(() => {
+    lastSavedJsonRef.current = initialPayloadJson;
+  }, [initialPayloadJson]);
+
+  useEffect(() => {
+    const json = JSON.stringify(buildPayload());
+    if (json === lastSavedJsonRef.current) return;
+    setAutoSave((s) => (s === "error" ? "idle" : s));
+    let cancelled = false;
+    const t = window.setTimeout(async () => {
+      if (cancelled || manualSaveRef.current) return;
+      const payload = buildPayload();
+      const j = JSON.stringify(payload);
+      if (j === lastSavedJsonRef.current) return;
+      setAutoSave("saving");
+      try {
+        await patch(payload);
+        if (cancelled) return;
+        lastSavedJsonRef.current = JSON.stringify(buildPayload());
+        setAutoSave("saved");
+        router.refresh();
+        window.setTimeout(() => {
+          if (!cancelled) setAutoSave("idle");
+        }, 2000);
+      } catch {
+        if (!cancelled) setAutoSave("error");
+      }
+    }, 900);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(t);
+    };
+  }, [buildPayload, patch, router]);
 
   const onSave = async () => {
-    const wc = countWords(bio);
-    if (wc < MIN_BIO) {
-      window.alert(`Bio must be at least ${MIN_BIO} words (currently ${wc}).`);
-      setTab("portfolio");
+    if (!name.trim()) {
+      window.alert("Please enter your full name.");
+      setTab("personal");
       return;
     }
-    const payload = buildPayload();
-    if (interestSel.has(INTEREST_OTHERS_LABEL) && !othersDetail.trim()) {
-      window.alert('Please describe your interests under "Others".');
+    if (!phone.trim()) {
+      window.alert("Please enter your phone number.");
+      setTab("personal");
+      return;
+    }
+    if (!linkedinUrl.trim()) {
+      window.alert("Please enter your LinkedIn profile URL.");
+      setTab("personal");
+      return;
+    }
+    if (!university.trim()) {
+      window.alert("Please enter your university or college.");
+      setTab("academic");
+      return;
+    }
+    if (!yearOfStudy) {
+      window.alert("Please select your year of study.");
+      setTab("academic");
+      return;
+    }
+    if (!program) {
+      window.alert("Please select your major / program.");
+      setTab("academic");
+      return;
+    }
+    if (program === PROGRAM_OTHER_VALUE && !majorOther.trim()) {
+      window.alert("Please specify your program.");
+      setTab("academic");
+      return;
+    }
+
+    const ip = interestsPayloadFromSelection(interestSel, othersDetail);
+    if (interestSel.has(INTEREST_OTHERS_LABEL)) {
+      if (!othersDetail.trim()) {
+        window.alert('Please describe your interests under "Others".');
+        setTab("interests");
+        return;
+      }
+    }
+    if (!ip.interests?.length) {
+      window.alert("Please select at least one interest.");
       setTab("interests");
       return;
     }
+
+    if (softwareSel.size === 0) {
+      window.alert("Please select at least one software skill.");
+      setTab("interests");
+      return;
+    }
+    if (softwareSel.has(SOFTWARE_OTHER_LABEL) && !softwareOtherDetail.trim()) {
+      window.alert('Please name the software you use under "Other".');
+      setTab("interests");
+      return;
+    }
+
+    if (!bio.trim()) {
+      window.alert("Please fill in About you.");
+      setTab("portfolio");
+      return;
+    }
+
+    const payload = buildPayload();
     setSaving(true);
+    manualSaveRef.current = true;
     try {
-      await patch(payload);
+      await patch({ ...payload, profileComplete: true });
+      lastSavedJsonRef.current = JSON.stringify(buildPayload());
       router.push("/student");
       router.refresh();
     } catch {
       window.alert("Could not save. Try again.");
     } finally {
+      manualSaveRef.current = false;
       setSaving(false);
     }
   };
@@ -298,8 +456,6 @@ export function EditProfileForm({ user: initial }: Props) {
     .slice(0, 2)
     .toUpperCase();
 
-  const bioWords = countWords(bio);
-
   return (
     <div className="mx-auto max-w-3xl px-4 pb-12 pt-6 sm:px-6 lg:px-8">
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -309,6 +465,17 @@ export function EditProfileForm({ user: initial }: Props) {
           </h1>
           <p className="mt-1.5 max-w-xl text-[13px] leading-relaxed text-[#6b7280] sm:text-sm">
             Keep your information up to date to get better mentor matches.
+          </p>
+          <p className="mt-2 text-[12px] font-medium text-[#6b7280]" aria-live="polite">
+            {autoSave === "saving" ? (
+              <span className="text-primary">Saving…</span>
+            ) : autoSave === "saved" ? (
+              <span className="text-emerald-700">All changes saved</span>
+            ) : autoSave === "error" ? (
+              <span className="text-red-600">Could not auto-save. Check connection and try again.</span>
+            ) : (
+              <span className="text-[#9ca3af]">Changes save automatically</span>
+            )}
           </p>
         </div>
         <Link
@@ -372,7 +539,7 @@ export function EditProfileForm({ user: initial }: Props) {
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
                 <label className={label} htmlFor="edit-name">
-                  Full Name
+                  Full name <span className="text-primary">*</span>
                 </label>
                 <input id="edit-name" className={field} value={name} onChange={(e) => setName(e.target.value)} />
               </div>
@@ -390,7 +557,7 @@ export function EditProfileForm({ user: initial }: Props) {
             </div>
             <div>
               <label className={label} htmlFor="edit-phone">
-                Phone Number <span className="font-normal text-[#9ca3af]">(Optional)</span>
+                Phone number <span className="text-primary">*</span>
               </label>
               <input
                 id="edit-phone"
@@ -400,22 +567,18 @@ export function EditProfileForm({ user: initial }: Props) {
                 placeholder="+1 (555) 000-0000"
               />
             </div>
-            <div className="border-t border-black/[0.06] pt-5">
-              <p className="mb-3 text-[13px] font-medium text-[#0a0a0a]">Social profile links</p>
-              <div className="space-y-3">
-                <div>
-                  <label className="mb-1 block text-[12px] text-[#6b7280]">WhatsApp (URL)</label>
-                  <input className={field} value={whatsappUrl} onChange={(e) => setWhatsappUrl(e.target.value)} placeholder="https://wa.me/..." />
-                </div>
-                <div>
-                  <label className="mb-1 block text-[12px] text-[#6b7280]">LinkedIn</label>
-                  <input className={field} value={linkedinUrl} onChange={(e) => setLinkedinUrl(e.target.value)} placeholder="https://linkedin.com/in/..." />
-                </div>
-                <div>
-                  <label className="mb-1 block text-[12px] text-[#6b7280]">Instagram</label>
-                  <input className={field} value={instagramUrl} onChange={(e) => setInstagramUrl(e.target.value)} placeholder="https://instagram.com/..." />
-                </div>
-              </div>
+            <div>
+              <label className={label} htmlFor="edit-linkedin">
+                LinkedIn profile URL <span className="text-primary">*</span>
+              </label>
+              <input
+                id="edit-linkedin"
+                type="url"
+                className={field}
+                value={linkedinUrl}
+                onChange={(e) => setLinkedinUrl(e.target.value)}
+                placeholder="https://linkedin.com/in/..."
+              />
             </div>
           </div>
         )}
@@ -428,14 +591,14 @@ export function EditProfileForm({ user: initial }: Props) {
             </div>
             <div>
               <label className={label} htmlFor="edit-uni">
-                University / College
+                University / College <span className="text-primary">*</span>
               </label>
               <input id="edit-uni" className={field} value={university} onChange={(e) => setUniversity(e.target.value)} placeholder="Your university" />
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
                 <label className={label} htmlFor="edit-year">
-                  Year of Study
+                  Year of study <span className="text-primary">*</span>
                 </label>
                 <select
                   id="edit-year"
@@ -453,7 +616,7 @@ export function EditProfileForm({ user: initial }: Props) {
               </div>
               <div>
                 <label className={label} htmlFor="edit-program">
-                  Major / Program
+                  Major / Program <span className="text-primary">*</span>
                 </label>
                 <select
                   id="edit-program"
@@ -496,38 +659,44 @@ export function EditProfileForm({ user: initial }: Props) {
               <p className="mt-0.5 text-[13px] text-[#6b7280]">Share what you&apos;re passionate about and your skillset.</p>
             </div>
             <div>
-              <p className={`${label} mb-2`}>Interests in Architecture</p>
-              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                {INTEREST_OPTIONS.map((opt) => (
+              <p className={`${label} mb-2`}>
+                Interests in Architecture <span className="text-primary">*</span>
+              </p>
+              <ArchitectureGroupedPills
+                selected={interestSel}
+                onToggle={toggleInterest}
+                classNameOn={chipOn}
+                classNameOff="border-[#e5e7eb] bg-white text-neutral-700 hover:border-neutral-300"
+              />
+              <div className="mb-8">
+                <h3 className={architectureOthersSectionTitle}>{INTEREST_OTHERS_LABEL}</h3>
+                <div className={architectureOthersSectionRule} aria-hidden />
+                <div className="mt-4 flex flex-wrap gap-3">
                   <button
-                    key={opt}
                     type="button"
-                    onClick={() => toggleInterest(opt)}
-                    className={`rounded-xl border py-2.5 text-center text-[13px] font-medium transition ${interestSel.has(opt) ? chipOn : chipOff}`}
+                    onClick={() => toggleInterest(INTEREST_OTHERS_LABEL)}
+                    className={`${architecturePillBase} ${interestSel.has(INTEREST_OTHERS_LABEL) ? chipOn : "border-[#e5e7eb] bg-white text-neutral-700 hover:border-neutral-300"}`}
                   >
-                    {opt}
+                    {INTEREST_OTHERS_LABEL}
                   </button>
-                ))}
-                <button
-                  type="button"
-                  onClick={() => toggleInterest(INTEREST_OTHERS_LABEL)}
-                  className={`rounded-xl border py-2.5 text-center text-[13px] font-medium transition ${interestSel.has(INTEREST_OTHERS_LABEL) ? chipOn : chipOff}`}
-                >
-                  {INTEREST_OTHERS_LABEL}
-                </button>
+                </div>
+                {interestSel.has(INTEREST_OTHERS_LABEL) && (
+                  <textarea
+                    className={`${field} mt-4 min-h-[88px] resize-y`}
+                    value={othersDetail}
+                    onChange={(e) => setOthersDetail(e.target.value)}
+                    placeholder="Describe your other architecture interests..."
+                  />
+                )}
               </div>
-              {interestSel.has(INTEREST_OTHERS_LABEL) && (
-                <textarea
-                  className={`${field} mt-3 min-h-[88px] resize-y`}
-                  value={othersDetail}
-                  onChange={(e) => setOthersDetail(e.target.value)}
-                  placeholder="Describe your other architecture interests..."
-                />
-              )}
             </div>
             <div>
-              <p className={`${label} mb-2`}>Software skills</p>
-              <p className="mb-2 text-[12px] text-[#6b7280]">Select tools you use. Add details for Other if needed.</p>
+              <p className={`${label} mb-2`}>
+                Software skills <span className="text-primary">*</span>
+              </p>
+              <p className="mb-2 text-[12px] text-[#6b7280]">
+                Select at least one. If you choose Other, name the tool(s) in the field below.
+              </p>
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                 {SOFTWARE_OPTIONS.map((opt) => (
                   <button
@@ -566,14 +735,9 @@ export function EditProfileForm({ user: initial }: Props) {
               <p className="mt-0.5 text-[13px] text-[#6b7280]">Showcase your work and tell your story.</p>
             </div>
             <div>
-              <div className="mb-1 flex flex-wrap items-baseline justify-between gap-2">
-                <label className={label} htmlFor="edit-bio">
-                  About You
-                </label>
-                <span className={`text-[12px] tabular-nums ${bioWords >= MIN_BIO ? "text-emerald-600" : "text-[#9ca3af]"}`}>
-                  {bioWords} / {MIN_BIO}+ words
-                </span>
-              </div>
+              <label className={label} htmlFor="edit-bio">
+                About you <span className="text-primary">*</span>
+              </label>
               <textarea
                 id="edit-bio"
                 className={`${field} min-h-[140px] resize-y`}
@@ -583,7 +747,7 @@ export function EditProfileForm({ user: initial }: Props) {
                 placeholder="Tell mentors about yourself, your goals, and what you're looking for in a mentor..."
               />
               <p className="mt-1.5 text-[12px] text-[#6b7280]">
-                This helps mentors understand your journey and how they can best support you. Minimum {MIN_BIO} words.
+                Required. A short, genuine bio helps mentors know how to support you.
               </p>
             </div>
             <div>

@@ -1,9 +1,13 @@
 "use client";
 
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { MentorSetupShell } from "@/components/mentor/MentorSetupShell";
+import { SetupLinkedInNotice } from "@/components/setup/SetupLinkedInNotice";
 import { setupField, setupLabel } from "@/components/student/student-ui";
+import { useProfileAutosave } from "@/hooks/useProfileAutosave";
+import type { MentorSetupUserSnapshot } from "@/lib/setup-load-user";
 
 const btnGhost =
   "flex flex-1 items-center justify-center gap-1.5 rounded-md border border-black/10 bg-white py-2.5 text-[13px] font-medium text-[#0a0a0a] transition-colors hover:bg-neutral-50 sm:text-sm";
@@ -11,20 +15,34 @@ const btnGhost =
 const btnPrimary =
   "flex flex-1 items-center justify-center gap-1.5 rounded-md bg-primary py-2.5 text-[13px] font-semibold text-white shadow-sm transition-colors hover:bg-primary/90 sm:text-sm";
 
-export function MentorSetupStep3() {
+export function MentorSetupStep3({
+  initial,
+  linkedInConnected,
+}: {
+  initial?: MentorSetupUserSnapshot;
+  linkedInConnected?: boolean;
+}) {
   const router = useRouter();
+  const scheduleSave = useProfileAutosave();
+
+  const [bio, setBio] = useState(initial?.bio ?? "");
+  const [linkedinUrl, setLinkedinUrl] = useState(initial?.linkedinUrl ?? "");
+  const [portfolioUrl, setPortfolioUrl] = useState(initial?.portfolioUrl ?? "");
+  const [mentorCertifications, setMentorCertifications] = useState(initial?.mentorCertifications ?? "");
+  const [bannerImageUrl, setBannerImageUrl] = useState(initial?.bannerImageUrl ?? "");
+  const [phone, setPhone] = useState(initial?.phone ?? "");
 
   return (
     <MentorSetupShell step={3} backHref="/mentor/setup/2">
       <section>
+        {linkedInConnected ? <SetupLinkedInNotice variant="mentor" /> : null}
         <h2 className="mb-3 text-base font-semibold text-[#0a0a0a]">Professional Profile</h2>
+        <p className="mb-3 text-[12px] text-[#6b7280]">Changes save automatically.</p>
         <form
           className="space-y-3"
           onSubmit={async (e) => {
             e.preventDefault();
-            const fd = new FormData(e.currentTarget);
-            const bio = String(fd.get("bio") ?? "").trim();
-            if (!bio) {
+            if (!bio.trim()) {
               window.alert("Please add a short professional bio.");
               return;
             }
@@ -32,10 +50,12 @@ export function MentorSetupStep3() {
               method: "PATCH",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
-                bio,
-                linkedinUrl: String(fd.get("linkedinUrl") ?? "").trim() || null,
-                portfolioUrl: String(fd.get("portfolioUrl") ?? "").trim() || null,
-                mentorCertifications: String(fd.get("mentorCertifications") ?? "").trim() || null,
+                bio: bio.trim(),
+                linkedinUrl: linkedinUrl.trim() || null,
+                portfolioUrl: portfolioUrl.trim() || null,
+                mentorCertifications: mentorCertifications.trim() || null,
+                bannerImageUrl: bannerImageUrl.trim() || null,
+                phone: phone.trim() || null,
               }),
             });
             if (!res.ok) {
@@ -54,6 +74,12 @@ export function MentorSetupStep3() {
               name="bio"
               rows={5}
               required
+              value={bio}
+              onChange={(e) => {
+                const v = e.target.value;
+                setBio(v);
+                scheduleSave({ bio: v.trim() || null });
+              }}
               placeholder="Tell students about your background, accomplishments, and why you want to mentor..."
               className={`${setupField} min-h-[120px] resize-y`}
             />
@@ -66,6 +92,12 @@ export function MentorSetupStep3() {
               id="linkedinUrl"
               name="linkedinUrl"
               type="url"
+              value={linkedinUrl}
+              onChange={(e) => {
+                const v = e.target.value;
+                setLinkedinUrl(v);
+                scheduleSave({ linkedinUrl: v.trim() || null });
+              }}
               placeholder="https://linkedin.com/in/yourprofile"
               className={setupField}
             />
@@ -78,8 +110,51 @@ export function MentorSetupStep3() {
               id="portfolioUrl"
               name="portfolioUrl"
               type="url"
+              value={portfolioUrl}
+              onChange={(e) => {
+                const v = e.target.value;
+                setPortfolioUrl(v);
+                scheduleSave({ portfolioUrl: v.trim() || null });
+              }}
               placeholder="https://yourportfolio.com"
               className={setupField}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <label htmlFor="bannerImageUrl" className={setupLabel}>
+              Cover / banner image URL <span className="font-normal text-[#9ca3af]">(Optional)</span>
+            </label>
+            <input
+              id="bannerImageUrl"
+              name="bannerImageUrl"
+              type="url"
+              value={bannerImageUrl}
+              onChange={(e) => {
+                const v = e.target.value;
+                setBannerImageUrl(v);
+                scheduleSave({ bannerImageUrl: v.trim() || null });
+              }}
+              placeholder="https://… (HTTPS image — LinkedIn does not expose cover via OpenID)"
+              className={setupField}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <label htmlFor="phone" className={setupLabel}>
+              Phone <span className="font-normal text-[#9ca3af]">(Optional)</span>
+            </label>
+            <input
+              id="phone"
+              name="phone"
+              type="tel"
+              value={phone}
+              onChange={(e) => {
+                const v = e.target.value;
+                setPhone(v);
+                scheduleSave({ phone: v.trim() || null });
+              }}
+              placeholder="Not available from LinkedIn sign-in — enter if you want mentors to reach you"
+              className={setupField}
+              autoComplete="tel"
             />
           </div>
           <div className="space-y-1.5">
@@ -90,6 +165,12 @@ export function MentorSetupStep3() {
               id="mentorCertifications"
               name="mentorCertifications"
               type="text"
+              value={mentorCertifications}
+              onChange={(e) => {
+                const v = e.target.value;
+                setMentorCertifications(v);
+                scheduleSave({ mentorCertifications: v.trim() || null });
+              }}
               placeholder="e.g., LEED AP, AIA, RIBA"
               className={setupField}
             />

@@ -1,74 +1,34 @@
 "use client";
 
 import Link from "next/link";
+import { Suspense, useCallback, useEffect, useState } from "react";
 
+import { ProfileCompletionWelcome } from "@/components/onboarding/ProfileCompletionWelcome";
 import { StudentProfileHero } from "@/components/student/StudentProfileHero";
 import type { StudentProfileUser } from "@/components/student/student-profile-types";
+import type { StudentDashboardPayload } from "@/lib/student-dashboard-data";
 
-const statCards: {
-  title: string;
-  value: string;
-  footer: string;
-  border: string;
-  footerTone?: "default" | "green" | "orange";
-  icon?: "calendar" | "message" | "trophy";
-}[] = [
-  {
-    title: "Active Mentorships",
-    value: "2",
-    footer: "+1 this month",
-    footerTone: "green",
-    border: "border-l-primary",
-  },
-  {
-    title: "Upcoming Sessions",
-    value: "3",
-    footer: "Next: Tomorrow",
-    icon: "calendar",
-    border: "border-l-[#2b7fff]",
-  },
-  {
-    title: "Messages",
-    value: "5",
-    footer: "2 unread",
-    footerTone: "orange",
-    icon: "message",
-    border: "border-l-[#ad46ff]",
-  },
-  {
-    title: "Achievement",
-    value: "85%",
-    footer: "Profile complete",
-    icon: "trophy",
-    border: "border-l-emerald-500",
-  },
-];
+const POLL_MS = 18_000;
 
-const mentors = [
+const recommendations: { title: string; meta: string; href: string; cta: string }[] = [
   {
-    initials: "DSJ",
-    name: "Dr. Sarah Johnson",
-    role: "Senior Architect",
-    focus: "Sustainable Design",
+    title: "Join the discussion",
+    meta: "Community • Ask questions and meet peers on Contact",
+    href: "/contact",
+    cta: "Open",
   },
   {
-    initials: "MC",
-    name: "Michael Chen",
-    role: "Design Director",
-    focus: "Urban Planning",
+    title: "Browse upcoming opportunities",
+    meta: "Events & workshops • Stay in the loop via Who We Are",
+    href: "/#who-we-are",
+    cta: "Explore",
   },
-];
-
-const recommended = [
-  { title: "Sustainable Design Workshop", meta: "Event • March 25, 2026" },
-  { title: "Introduction to Parametric Design", meta: "Course • Available now" },
-  { title: "Portfolio Review Session", meta: "Event • March 28, 2026" },
-];
-
-const sessions = [
-  { name: "Dr. Sarah Johnson", time: "Tomorrow at 2:00 PM" },
-  { name: "Michael Chen", time: "Mar 23 at 4:30 PM" },
-  { name: "Dr. Sarah Johnson", time: "Mar 25 at 2:00 PM" },
+  {
+    title: "Find your next mentor",
+    meta: "Mentors • Match by skills, software, and focus areas",
+    href: "/mentors",
+    cta: "Browse",
+  },
 ];
 
 const card =
@@ -78,91 +38,230 @@ const sectionDesc = "mt-1 text-[13px] leading-snug text-[#6b7280]";
 const rowBtn =
   "inline-flex h-9 shrink-0 items-center justify-center rounded-md px-4 text-[13px] font-medium transition-colors sm:min-w-[5.5rem]";
 
-export function StudentDashboard({ user }: { user: StudentProfileUser }) {
+function initialsFromName(name: string | null | undefined): string {
+  const n = name?.trim();
+  if (!n) return "?";
+  return n
+    .split(/\s+/)
+    .map((w) => w[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+}
+
+function formatSessionTime(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleString(undefined, {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+export function StudentDashboard({
+  user,
+  initialDashboard,
+}: {
+  user: StudentProfileUser;
+  initialDashboard: StudentDashboardPayload;
+}) {
+  const [data, setData] = useState(initialDashboard);
+
+  const load = useCallback(async () => {
+    try {
+      const r = await fetch("/api/student/dashboard", { cache: "no-store" });
+      if (!r.ok) return;
+      const j = (await r.json()) as StudentDashboardPayload;
+      setData(j);
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  useEffect(() => {
+    void load();
+    const id = window.setInterval(() => void load(), POLL_MS);
+    return () => window.clearInterval(id);
+  }, [load]);
+
+  useEffect(() => {
+    const onFocus = () => void load();
+    const onVis = () => {
+      if (document.visibilityState === "visible") void load();
+    };
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onVis);
+    };
+  }, [load]);
+
+  useEffect(() => {
+    setData(initialDashboard);
+  }, [initialDashboard]);
+
+  const hasPortfolio = Boolean(
+    user.portfolioUrl?.trim() || user.portfolioFileName?.trim() || user.portfolioFileDataUrl?.trim(),
+  );
+
+  const pendingFooter =
+    data.pendingMentorshipRequests > 0
+      ? `${data.pendingMentorshipRequests} request${data.pendingMentorshipRequests === 1 ? "" : "s"} pending`
+      : "No pending requests";
+
+  const messagesFooter =
+    data.unreadThreads > 0
+      ? `${data.unreadThreads} thread${data.unreadThreads === 1 ? "" : "s"} awaiting your reply`
+      : "You’re all caught up";
+
+  const profileFooter =
+    data.profileCompletionPercent >= 100 ? "Profile complete" : "Finish your profile to reach 100%";
+
   return (
     <div className="w-full">
+      <Suspense fallback={null}>
+        <ProfileCompletionWelcome variant="student" />
+      </Suspense>
       <StudentProfileHero user={user} />
 
       <div className="mx-auto max-w-6xl px-4 py-9 sm:px-6 lg:px-10 lg:py-11">
-        <div className="border-b border-black/[0.06] pb-6">
-          <h2 className="font-heading text-lg font-semibold tracking-tight text-[#0a0a0a] sm:text-xl">
-            My Dashboard
-          </h2>
-          <p className="mt-1.5 text-[13px] text-[#5c5c66] sm:text-sm">
-            Overview of your mentorships, sessions, and progress.
+        <div className="flex flex-col gap-1 border-b border-black/[0.06] pb-6 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h2 className="font-heading text-lg font-semibold tracking-tight text-[#0a0a0a] sm:text-xl">
+              My Dashboard
+            </h2>
+            <p className="mt-1.5 text-[13px] text-[#5c5c66] sm:text-sm">
+              Live overview — updates every few seconds and when you return to this tab.
+            </p>
+          </div>
+          <p className="text-[11px] font-medium text-[#9ca3af]" aria-live="polite">
+            Auto-refresh on
           </p>
         </div>
 
         <div className="mb-8 mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-4 xl:grid-cols-4">
-          {statCards.map((c) => (
-            <div
-              key={c.title}
-              className={`${card} flex min-h-[118px] flex-col justify-between border-l-4 p-5 ${c.border}`}
-            >
-              <div>
-                <p className="text-[13px] leading-snug text-[#6b7280]">{c.title}</p>
-                <p className="mt-1.5 text-2xl font-semibold tabular-nums tracking-tight text-[#0a0a0a]">
-                  {c.value}
-                </p>
-              </div>
-              <div className="mt-3 flex items-center gap-1.5 text-[12px] leading-tight">
-                {c.icon === "calendar" && <CalendarIcon className="size-3.5 shrink-0 text-[#9ca3af]" />}
-                {c.icon === "message" && <MessageIcon className="size-3.5 shrink-0 text-[#9ca3af]" />}
-                {c.icon === "trophy" && <TrophyIcon className="size-3.5 shrink-0 text-[#9ca3af]" />}
-                <span
-                  className={
-                    c.footerTone === "green"
-                      ? "text-emerald-600"
-                      : c.footerTone === "orange"
-                        ? "text-primary"
-                        : "text-[#4b5563]"
-                  }
-                >
-                  {c.footer}
-                </span>
-              </div>
+          <div className={`${card} flex min-h-[118px] flex-col justify-between border-l-4 border-l-primary p-5`}>
+            <div>
+              <p className="text-[13px] leading-snug text-[#6b7280]">Active mentorships</p>
+              <p className="mt-1.5 text-2xl font-semibold tabular-nums tracking-tight text-[#0a0a0a]">
+                {data.activeMentorships}
+              </p>
             </div>
-          ))}
+            <p className="mt-3 text-[12px] leading-tight text-emerald-600">{pendingFooter}</p>
+          </div>
+
+          <div className={`${card} flex min-h-[118px] flex-col justify-between border-l-4 border-l-[#2b7fff] p-5`}>
+            <div>
+              <p className="text-[13px] leading-snug text-[#6b7280]">Upcoming sessions</p>
+              <p className="mt-1.5 text-2xl font-semibold tabular-nums tracking-tight text-[#0a0a0a]">
+                {data.upcomingSessionsCount}
+              </p>
+            </div>
+            <div className="mt-3 flex items-center gap-1.5 text-[12px] leading-tight text-[#4b5563]">
+              <CalendarIcon className="size-3.5 shrink-0 text-[#9ca3af]" />
+              <span>{data.nextSessionSummary}</span>
+            </div>
+          </div>
+
+          <div className={`${card} flex min-h-[118px] flex-col justify-between border-l-4 border-l-[#ad46ff] p-5`}>
+            <div>
+              <p className="text-[13px] leading-snug text-[#6b7280]">Messages</p>
+              <p className="text-[11px] font-medium uppercase tracking-wide text-[#9ca3af]">Mentor threads</p>
+              <p className="mt-1.5 text-2xl font-semibold tabular-nums tracking-tight text-[#0a0a0a]">
+                {data.messageThreadsTotal}
+              </p>
+            </div>
+            <div className="mt-3 flex items-center gap-1.5 text-[12px] leading-tight text-primary">
+              <MessageIcon className="size-3.5 shrink-0 text-[#9ca3af]" />
+              <span>{messagesFooter}</span>
+            </div>
+          </div>
+
+          <div className={`${card} flex min-h-[118px] flex-col justify-between border-l-4 border-l-emerald-500 p-5`}>
+            <div>
+              <p className="text-[13px] leading-snug text-[#6b7280]">Profile</p>
+              <p className="mt-1.5 text-2xl font-semibold tabular-nums tracking-tight text-[#0a0a0a]">
+                {data.profileCompletionPercent}%
+              </p>
+            </div>
+            <p className="mt-3 text-[12px] leading-tight text-emerald-600">{profileFooter}</p>
+          </div>
         </div>
 
-        {/* Main ~65% fluid + sidebar ~340–380px — aligned columns */}
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_min(100%,22rem)] xl:grid-cols-[minmax(0,1fr)_23.75rem] lg:gap-8">
           <div className="flex min-w-0 flex-col gap-6">
             <section className={`${card} p-5 sm:p-6`}>
-              <h2 className={sectionTitle}>Your Mentors</h2>
-              <p className={sectionDesc}>Connect with your active mentors</p>
-              <ul className="mt-5 flex flex-col gap-3">
-                {mentors.map((m) => (
-                  <li
-                    key={m.name}
-                    className="flex min-h-[4.75rem] flex-col justify-center gap-3 rounded-xl border border-black/[0.08] bg-white px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
+              <h2 className={sectionTitle}>Your mentors</h2>
+              <p className={sectionDesc}>Mentors you have an upcoming session with</p>
+              {data.mentorsWithUpcomingSessions.length === 0 ? (
+                <div className="mt-6 flex flex-col items-center gap-4 rounded-xl border border-dashed border-black/[0.12] bg-neutral-50/80 px-4 py-10 text-center">
+                  <p className="max-w-sm text-[13px] leading-relaxed text-[#6b7280]">
+                    No scheduled sessions yet. Browse mentors and book a time that works for you.
+                  </p>
+                  <Link
+                    href="/mentors"
+                    className="inline-flex h-10 items-center justify-center rounded-lg bg-primary px-6 text-[13px] font-semibold text-white shadow-sm transition hover:bg-primary/90"
                   >
-                    <div className="flex min-w-0 flex-1 items-center gap-3.5">
-                      <div className="flex size-11 shrink-0 items-center justify-center rounded-full bg-primary/10">
-                        <span className="text-[13px] font-semibold text-primary">{m.initials}</span>
-                      </div>
-                      <div className="min-w-0">
-                        <p className="truncate text-[15px] font-semibold text-[#0a0a0a]">{m.name}</p>
-                        <p className="mt-0.5 text-[13px] text-[#4b5563]">{m.role}</p>
-                        <p className="mt-0.5 text-[12px] text-[#9ca3af]">{m.focus}</p>
-                      </div>
-                    </div>
-                    <Link
-                      href="/messages"
-                      className={`${rowBtn} bg-primary text-white hover:bg-primary/92`}
+                    Find a mentor
+                  </Link>
+                </div>
+              ) : (
+                <ul className="mt-5 flex flex-col gap-3">
+                  {data.mentorsWithUpcomingSessions.map((m) => (
+                    <li
+                      key={m.id}
+                      className="flex min-h-[4.75rem] flex-col justify-center gap-3 rounded-xl border border-black/[0.08] bg-white px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
                     >
-                      Message
-                    </Link>
-                  </li>
-                ))}
-              </ul>
+                      <div className="flex min-w-0 flex-1 items-center gap-3.5">
+                        <div className="flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary/10">
+                          {m.image?.trim() ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={m.image} alt="" className="size-full object-cover" />
+                          ) : (
+                            <span className="text-[13px] font-semibold text-primary">{initialsFromName(m.name)}</span>
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="truncate text-[15px] font-semibold text-[#0a0a0a]">
+                            {m.name?.trim() || "Mentor"}
+                          </p>
+                          <p className="mt-0.5 truncate text-[13px] text-[#4b5563]">
+                            {[m.mentorTitle, m.mentorCompany].filter(Boolean).join(" · ") || "Mentor"}
+                          </p>
+                          <p className="mt-0.5 text-[12px] text-[#9ca3af]">
+                            Next: {formatSessionTime(m.nextSessionStart)}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex shrink-0 flex-wrap gap-2 sm:justify-end">
+                        <Link
+                          href={`/schedule?mentorUserId=${encodeURIComponent(m.id)}`}
+                          className={`${rowBtn} border border-black/[0.1] bg-white text-[#0a0a0a] hover:bg-neutral-50`}
+                        >
+                          Schedule
+                        </Link>
+                        <Link
+                          href="/messages"
+                          className={`${rowBtn} bg-primary text-white hover:bg-primary/92`}
+                        >
+                          Message
+                        </Link>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </section>
 
             <section className={`${card} p-5 sm:p-6`}>
-              <h2 className={sectionTitle}>Recommended for You</h2>
-              <p className={sectionDesc}>Resources based on your interests</p>
+              <h2 className={sectionTitle}>Recommended for you</h2>
+              <p className={sectionDesc}>Communities, events, and next steps</p>
               <ul className="mt-5 flex flex-col gap-3">
-                {recommended.map((r) => (
+                {recommendations.map((r) => (
                   <li
                     key={r.title}
                     className="flex min-h-[4.25rem] flex-col justify-center gap-3 rounded-xl border border-black/[0.08] bg-white px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
@@ -171,12 +270,12 @@ export function StudentDashboard({ user }: { user: StudentProfileUser }) {
                       <p className="text-[15px] font-medium text-[#0a0a0a]">{r.title}</p>
                       <p className="mt-0.5 text-[13px] text-[#6b7280]">{r.meta}</p>
                     </div>
-                    <button
-                      type="button"
+                    <Link
+                      href={r.href}
                       className={`${rowBtn} border border-black/[0.12] bg-white text-[#0a0a0a] hover:bg-neutral-50`}
                     >
-                      View
-                    </button>
+                      {r.cta}
+                    </Link>
                   </li>
                 ))}
               </ul>
@@ -185,72 +284,54 @@ export function StudentDashboard({ user }: { user: StudentProfileUser }) {
 
           <aside className="flex min-w-0 flex-col gap-6 lg:max-w-none">
             <section className={`${card} p-5 sm:p-6`}>
-              <h2 className={sectionTitle}>Quick Actions</h2>
+              <h2 className={sectionTitle}>Quick actions</h2>
               <div className="mt-4 flex flex-col gap-2.5">
                 <Link
                   href="/mentors"
                   className="flex h-10 items-center justify-center rounded-lg bg-primary text-[13px] font-semibold text-white transition-colors hover:bg-primary/90"
                 >
-                  Browse Mentors
+                  Browse mentors
                 </Link>
                 <Link
-                  href="/schedule"
+                  href="/student/profile/edit?tab=portfolio"
                   className="flex h-10 items-center justify-center rounded-lg border border-black/[0.1] bg-white text-[13px] font-medium text-[#0a0a0a] transition-colors hover:bg-neutral-50"
                 >
-                  Schedule Session
-                </Link>
-                <Link
-                  href="/student/setup/3"
-                  className="flex h-10 items-center justify-center rounded-lg border border-black/[0.1] bg-white text-[13px] font-medium text-[#0a0a0a] transition-colors hover:bg-neutral-50"
-                >
-                  Upload Portfolio
+                  {hasPortfolio ? "View portfolio" : "Upload portfolio"}
                 </Link>
                 <Link
                   href="/contact"
                   className="flex h-10 items-center justify-center rounded-lg border border-black/[0.1] bg-white text-[13px] font-medium text-[#0a0a0a] transition-colors hover:bg-neutral-50"
                 >
-                  Join Discussion
+                  Join discussion
                 </Link>
               </div>
             </section>
 
             <section className={`${card} p-5 sm:p-6`}>
-              <h2 className={sectionTitle}>Upcoming Sessions</h2>
-              <ul className="mt-4 flex flex-col gap-2.5">
-                {sessions.map((s, i) => (
-                  <li
-                    key={`${s.name}-${i}`}
-                    className="rounded-xl border border-black/[0.08] bg-white px-3.5 py-3"
-                  >
-                    <p className="text-[13px] font-semibold text-[#0a0a0a]">{s.name}</p>
-                    <p className="mt-1 text-[12px] text-[#6b7280]">{s.time}</p>
-                  </li>
-                ))}
-              </ul>
+              <h2 className={sectionTitle}>Upcoming sessions</h2>
+              {data.upcomingSessions.length === 0 ? (
+                <p className="mt-4 rounded-xl border border-black/[0.06] bg-neutral-50/80 px-3.5 py-6 text-center text-[13px] text-[#6b7280]">
+                  No sessions yet
+                </p>
+              ) : (
+                <ul className="mt-4 flex flex-col gap-2.5">
+                  {data.upcomingSessions.map((s) => (
+                    <li
+                      key={s.id}
+                      className="rounded-xl border border-black/[0.08] bg-white px-3.5 py-3"
+                    >
+                      <p className="text-[13px] font-semibold text-[#0a0a0a]">{s.mentorName}</p>
+                      <p className="mt-1 text-[12px] text-[#6b7280]">{formatSessionTime(s.startAt)}</p>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </section>
 
             <section className={`${card} p-5 sm:p-6`}>
-              <h2 className={sectionTitle}>Your Progress</h2>
-              <div className="mt-4 space-y-5">
-                <div>
-                  <div className="flex items-baseline justify-between gap-3 text-[13px]">
-                    <span className="font-medium text-[#0a0a0a]">Profile Completion</span>
-                    <span className="shrink-0 font-semibold tabular-nums text-primary">85%</span>
-                  </div>
-                  <div className="mt-2 h-2 overflow-hidden rounded-full bg-neutral-200">
-                    <div className="h-full w-[85%] rounded-full bg-primary" />
-                  </div>
-                </div>
-                <div>
-                  <div className="flex items-baseline justify-between gap-3 text-[13px]">
-                    <span className="font-medium text-[#0a0a0a]">Sessions Completed</span>
-                    <span className="shrink-0 font-semibold tabular-nums text-primary">12/20</span>
-                  </div>
-                  <div className="mt-2 h-2 overflow-hidden rounded-full bg-neutral-200">
-                    <div className="h-full w-[60%] rounded-full bg-primary" />
-                  </div>
-                </div>
-              </div>
+              <h2 className={sectionTitle}>Sessions completed</h2>
+              <p className="mt-2 text-2xl font-semibold tabular-nums text-[#0a0a0a]">{data.sessionsCompleted}</p>
+              <p className="mt-1 text-[12px] text-[#6b7280]">Past bookings on Commonsia</p>
             </section>
           </aside>
         </div>
@@ -278,20 +359,6 @@ function MessageIcon({ className }: { className?: string }) {
     <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden>
       <path
         d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8.5z"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
-function TrophyIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden>
-      <path
-        d="M8 21h8M12 17v4M7 4h10v5a5 5 0 01-10 0V4zM5 4H3v3a3 3 0 003 3M19 4h2v3a3 3 0 01-3 3"
         stroke="currentColor"
         strokeWidth="1.5"
         strokeLinecap="round"

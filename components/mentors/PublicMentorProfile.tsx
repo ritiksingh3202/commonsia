@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
+import { ProfileCover } from "@/components/ProfileCover";
 import { PortfolioViewerPanel } from "@/components/profile/PortfolioViewerPanel";
 import {
   InstagramGlyph,
@@ -97,25 +98,16 @@ export function PublicMentorProfile({
   return (
     <div className="bg-white pb-16">
       <section className="border-b border-black/[0.06] bg-white">
-        <div className="relative w-full overflow-x-hidden">
-          <div className="relative left-1/2 w-screen max-w-[100vw] -translate-x-1/2">
-            <div className="relative h-[clamp(11rem,32vw,18rem)] w-full overflow-hidden sm:h-[clamp(12rem,28vw,17rem)]">
-              <Image
-                src={mentor.image}
-                alt=""
-                fill
-                className="object-cover object-center"
-                priority
-                sizes="100vw"
-              />
-              <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/40 via-black/10 to-transparent" />
-            </div>
-          </div>
-        </div>
+        <ProfileCover
+          imageSrc={mentor.image}
+          alt=""
+          priority
+          readableGradientClassName="bg-gradient-to-t from-black/[0.42] via-black/[0.12] to-transparent"
+        />
 
         <div className="relative z-10 mx-auto max-w-6xl px-4 pb-8 pt-0 sm:px-6 sm:pb-10 lg:px-10">
           <div className="flex flex-col gap-6 sm:flex-row sm:items-start sm:gap-10 lg:gap-12">
-            <div className="-mt-[4.5rem] flex shrink-0 justify-center sm:-mt-[5.25rem] sm:justify-start">
+            <div className="-mt-10 flex shrink-0 justify-center sm:-mt-[4.25rem] lg:-mt-[5rem] sm:justify-start">
               <div className="relative size-[7.75rem] overflow-hidden rounded-full bg-neutral-100 ring-[5px] ring-white shadow-[0_8px_30px_rgb(0,0,0,0.12)] sm:size-[9rem]">
                 <Image src={mentor.image} alt="" fill className="object-cover object-center" sizes="144px" />
               </div>
@@ -148,7 +140,12 @@ export function PublicMentorProfile({
                   </div>
                   <div className="flex justify-center gap-3 lg:justify-end">
                     <SocialIconButton href={null} label="WhatsApp" icon={<WhatsAppGlyph />} />
-                    <SocialIconButton href={null} label="LinkedIn" icon={<LinkedInGlyph />} />
+                    <SocialIconButton
+                      href={null}
+                      label="LinkedIn"
+                      icon={<LinkedInGlyph profileToolbar brandColor />}
+                      className="flex size-11 shrink-0 items-center justify-center rounded-full border-2 border-primary bg-white shadow-sm transition hover:bg-primary/5"
+                    />
                     <SocialIconButton href={null} label="Instagram" icon={<InstagramGlyph />} />
                   </div>
                 </div>
@@ -225,7 +222,7 @@ export function PublicMentorProfile({
                 <div className="flex gap-3 rounded-xl border border-sky-100 bg-sky-50/80 p-3">
                   <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-sky-100">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src="/rocket.svg" alt="" className="size-5 object-contain" />
+                    <img src="/rocket.svg" alt="" className="icon-brand-line size-5 object-contain" />
                   </div>
                   <div>
                     <p className="text-lg font-semibold tabular-nums text-[#0a0a0a]">500 Minutes</p>
@@ -235,7 +232,7 @@ export function PublicMentorProfile({
                 <div className="flex gap-3 rounded-xl border border-amber-100 bg-amber-50/80 p-3">
                   <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-amber-100">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src="/session.svg" alt="" className="size-5 object-contain" />
+                    <img src="/session.svg" alt="" className="icon-brand-line size-5 object-contain" />
                   </div>
                   <div>
                     <p className="text-lg font-semibold tabular-nums text-[#0a0a0a]">60 Sessions</p>

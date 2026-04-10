@@ -76,7 +76,13 @@ export function SignupForm({ role, oauthCallbackUrl }: SignupFormProps) {
       <div className="rounded-xl border border-[#e5e5e5] bg-white px-5 py-6 shadow-sm sm:px-6 sm:py-7">
         <div className="mb-5 flex flex-col items-center text-center">
           <div className="mb-3 flex size-12 items-center justify-center rounded-full bg-primary/10">
-            <Image src={icon} alt="" width={28} height={28} className="size-7 object-contain" />
+            <Image
+              src={icon}
+              alt=""
+              width={28}
+              height={28}
+              className="icon-brand-line size-7 object-contain"
+            />
           </div>
           <h1 className="font-heading text-lg font-semibold tracking-tight text-[#0a0a0a] sm:text-xl">
             {c.title}
@@ -141,8 +147,8 @@ export function SignupForm({ role, oauthCallbackUrl }: SignupFormProps) {
                 router.push(c.loginHref);
                 return;
               }
-              router.push(afterAuth);
-              router.refresh();
+              // Full navigation so the session cookie is always present on the setup page (avoids RSC race).
+              window.location.assign(afterAuth);
             } finally {
               setSubmitting(false);
             }

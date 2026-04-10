@@ -7,16 +7,9 @@ import { useRef, useState } from "react";
 import { SectionReveal } from "@/components/motion/SectionReveal";
 import { FaqAccordion } from "@/components/ui/FaqAccordion";
 import { defaultFaqItems } from "@/lib/faq-content";
-import { heroTitleGradientStyle } from "@/lib/hero-title-gradient";
+import { HOME_MARKETING_ASSETS } from "@/lib/home-marketing-assets";
+import { MENTOR_PAGE_HERO_ASSETS } from "@/lib/mentor-page-assets";
 import { marketingImages } from "@/lib/marketing-images";
-
-const heroAvatars = [
-  marketingImages.avatar1,
-  marketingImages.avatar2,
-  marketingImages.avatar3,
-  marketingImages.avatar4,
-  marketingImages.avatar5,
-];
 
 const studentStories = [
   {
@@ -25,7 +18,7 @@ const studentStories = [
     leadQuote:
       "This platform made studio critiques feel less lonely — I finally get mentors who speak my language.",
     text: "This platform has helped me a lot during my architecture studies. Being able to ask design questions and get guidance from experienced mentors makes learning much easier and gives me new perspectives on my studio projects.",
-    face: marketingImages.avatar1,
+    face: HOME_MARKETING_ASSETS.student1,
   },
   {
     name: "Raman Kumar",
@@ -33,7 +26,7 @@ const studentStories = [
     leadQuote:
       "Honest feedback on portfolios and sheets, without the jargon overload.",
     text: "I really like the community here. Whenever I face difficulties with my studio work or portfolio ideas, I can discuss them and get helpful feedback from mentors and other architecture students.",
-    face: marketingImages.avatar2,
+    face: HOME_MARKETING_ASSETS.student2,
   },
   {
     name: "Amar Kumar",
@@ -41,7 +34,7 @@ const studentStories = [
     leadQuote:
       "Industry perspective early in B.Arch changed how I frame every design decision.",
     text: "What makes this platform valuable is the opportunity to learn from people who have real industry experience. The mentorship and discussions have helped me improve my design thinking and confidence in presenting ideas.",
-    face: marketingImages.avatar3,
+    face: HOME_MARKETING_ASSETS.student3,
   },
   {
     name: "Nayan Singh",
@@ -49,7 +42,7 @@ const studentStories = [
     leadQuote:
       "A calm place to ask “dumb” questions and still leave with clarity.",
     text: "As an architecture student, it’s great to have a place where I can ask questions, share ideas, and learn from mentors. The community discussions also expose me to different approaches to design.",
-    face: marketingImages.avatar4,
+    face: HOME_MARKETING_ASSETS.student4,
   },
 ];
 
@@ -77,15 +70,14 @@ const mentorSpotlights = [
       "Mentoring students through this platform has been a rewarding experience. It allows us to guide young architects, review their ideas, and share industry perspectives that help them grow academically and professionally.",
     name: "Ar. Saurabh Singh",
     cred: "IIT Roorkee",
-    /** Was `/assets/saurabh.png` — add `public/assets/saurabh.png` to use a local headshot. */
-    avatar: marketingImages.mentorPortrait,
+    avatar: MENTOR_PAGE_HERO_ASSETS.mentorPhoto,
   },
   {
     quote:
       "The questions students bring here are sharp — we work through representation, structure, and narrative so their juries land with clarity and confidence.",
     name: "Ar. Kavita Menon",
     cred: "Principal Architect",
-    avatar: marketingImages.avatar2,
+    avatar: HOME_MARKETING_ASSETS.student2,
   },
 ];
 
@@ -137,7 +129,7 @@ function WhyIcon({ src, className }: { src: string; className?: string }) {
         alt=""
         width={56}
         height={56}
-        className="icon-orange-line max-h-full max-w-full object-contain"
+        className="icon-brand-line max-h-full max-w-full object-contain"
       />
     </div>
   );
@@ -187,20 +179,21 @@ export function HomePage() {
 
           <div className="relative z-20 mx-auto flex w-full min-w-0 max-w-2xl flex-col items-center justify-center px-1 text-center sm:max-w-4xl sm:px-2 lg:max-w-5xl xl:max-w-[65rem] 2xl:max-w-[75rem]">
             <motion.div
-              className="mb-4 flex justify-center gap-0"
+              className="relative mb-4 flex w-full max-w-[min(100%,360px)] justify-center sm:max-w-[420px]"
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.08 }}
             >
-              {heroAvatars.map((src, i) => (
-                <div
-                  key={src}
-                  className="-ml-2 first:ml-0 relative size-10 overflow-hidden rounded-full border-2 border-white shadow sm:size-11"
-                  style={{ zIndex: heroAvatars.length - i }}
-                >
-                  <Image src={src} alt="" fill className="object-cover" sizes="40px" />
-                </div>
-              ))}
+              <div className="relative h-11 w-full sm:h-14">
+                <Image
+                  src={HOME_MARKETING_ASSETS.heroTop}
+                  alt=""
+                  fill
+                  className="object-contain object-center"
+                  sizes="(max-width:640px) 360px, 420px"
+                  priority
+                />
+              </div>
             </motion.div>
             <motion.p
               className="text-[11px] font-normal text-neutral-600 sm:text-xs lg:text-[13px]"
@@ -213,16 +206,17 @@ export function HomePage() {
 
             <motion.h1
               className="mx-auto mt-4 w-full min-w-0 max-w-[1117px] px-1 text-center text-[clamp(1.3rem,5.2vw+0.4rem,2.2rem)] font-semibold leading-[1.25] tracking-tight sm:px-2 sm:text-[2.5rem] sm:leading-[1.2] md:text-[3.15rem] md:leading-[1.18] lg:text-[3.65rem] xl:text-[4.1rem] 2xl:text-[4.75rem]"
-              style={heroTitleGradientStyle}
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
             >
               <span className="block max-w-full text-balance break-words [overflow-wrap:anywhere]">
-                Learn & Discuss Architecture
+                <span className="text-[#0a0a0a]">Learn &amp; Discuss </span>
+                <span className="text-primary">Architecture</span>
               </span>
               <span className="mt-1 block max-w-full text-balance break-words [overflow-wrap:anywhere] md:mt-0">
-                Beyond the Classroom
+                <span className="text-[#0a0a0a]">Beyond the </span>
+                <span className="text-primary">Classroom</span>
               </span>
             </motion.h1>
             <p className="mx-auto mt-4 max-w-4xl text-pretty text-center text-[14px] leading-relaxed text-neutral-600 sm:mt-6 sm:text-[16px] lg:text-lg">
@@ -507,7 +501,7 @@ export function HomePage() {
                           alt=""
                           width={28}
                           height={28}
-                          className="object-contain"
+                          className="icon-brand-line object-contain"
                         />
                       </motion.span>
                     </button>
@@ -619,7 +613,13 @@ export function HomePage() {
                   onClick={() => scrollStudentRow(-1)}
                   className="flex size-10 items-center justify-center rounded-full border-2 border-primary bg-white shadow-sm"
                 >
-                  <Image src="/left_arrow.svg" alt="" width={16} height={12} className="h-3 w-4" />
+                  <Image
+                    src="/left_arrow.svg"
+                    alt=""
+                    width={16}
+                    height={12}
+                    className="icon-brand-line h-3 w-4"
+                  />
                 </motion.button>
                 <motion.button
                   type="button"
@@ -629,7 +629,13 @@ export function HomePage() {
                   onClick={() => scrollStudentRow(1)}
                   className="flex size-10 items-center justify-center rounded-full border-2 border-primary bg-white shadow-sm"
                 >
-                  <Image src="/right_arrow.svg" alt="" width={16} height={12} className="h-3 w-4" />
+                  <Image
+                    src="/right_arrow.svg"
+                    alt=""
+                    width={16}
+                    height={12}
+                    className="icon-brand-line h-3 w-4"
+                  />
                 </motion.button>
               </div>
             </div>
@@ -643,7 +649,7 @@ export function HomePage() {
           <SectionReveal>
             <h2 className="text-heading-display text-center text-black">
               <span>What </span>
-              <span className="text-[#ff571f]">Mentors</span>
+              <span className="text-primary">Mentors</span>
               <span> Say</span>
             </h2>
           </SectionReveal>
@@ -713,7 +719,7 @@ export function HomePage() {
                     onClick={prevM}
                     className="flex size-10 items-center justify-center rounded-full border-2 border-primary bg-white"
                   >
-                    <Image src="/left_arrow.svg" alt="" width={14} height={11} />
+                    <Image src="/left_arrow.svg" alt="" width={14} height={11} className="icon-brand-line" />
                   </motion.button>
                   <motion.button
                     type="button"
@@ -723,7 +729,7 @@ export function HomePage() {
                     onClick={nextM}
                     className="flex size-10 items-center justify-center rounded-full border-2 border-primary bg-white"
                   >
-                    <Image src="/right_arrow.svg" alt="" width={14} height={11} />
+                    <Image src="/right_arrow.svg" alt="" width={14} height={11} className="icon-brand-line" />
                   </motion.button>
                 </div>
               </div>

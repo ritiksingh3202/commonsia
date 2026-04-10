@@ -2,11 +2,10 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type { MentorEditProfileInitial } from "@/components/mentor/mentor-edit-profile-types";
 import {
-  MENTOR_EXPERTISE_OPTIONS,
   MENTOR_EXPERTISE_OTHER,
   MENTOR_MENTEE_CAPACITY_OPTIONS,
   MENTOR_SESSION_PREFS,
@@ -16,6 +15,16 @@ import {
   SOFTWARE_OPTIONS,
   SOFTWARE_OTHER_LABEL,
 } from "@/components/student/student-setup-constants";
+import {
+  mentorExpertiseListFromSelection,
+  mentorExpertiseStateFromServer,
+} from "@/components/shared/architecture-taxonomy";
+import {
+  ArchitectureGroupedPills,
+  architectureOthersSectionRule,
+  architectureOthersSectionTitle,
+  architecturePillBase,
+} from "@/components/shared/ArchitectureGroupedPills";
 
 type TabId = "personal" | "professional" | "mentorship" | "profile";
 
@@ -40,23 +49,11 @@ const tabs: { id: TabId; label: string }[] = [
 const MAX_PHOTO_BYTES = 1.8 * 1024 * 1024;
 
 function parseExpertiseFromDb(raw: unknown): { set: Set<string>; other: string } {
-  const presets = new Set<string>(
-    MENTOR_EXPERTISE_OPTIONS.filter((o) => o !== MENTOR_EXPERTISE_OTHER),
-  );
   const list = Array.isArray(raw)
     ? raw.filter((x): x is string => typeof x === "string" && x.trim().length > 0)
     : [];
-  const set = new Set<string>();
-  let other = "";
-  for (const item of list) {
-    if (presets.has(item)) {
-      set.add(item);
-    } else {
-      set.add(MENTOR_EXPERTISE_OTHER);
-      other = other ? `${other}, ${item}` : item;
-    }
-  }
-  return { set, other };
+  const { sel, other } = mentorExpertiseStateFromServer(list, MENTOR_EXPERTISE_OTHER);
+  return { set: sel, other };
 }
 
 function parseSoftwareFromDb(raw: string | null): { set: Set<string>; other: string } {
@@ -105,6 +102,41 @@ function initials(name: string | null): string {
     .join("")
     .slice(0, 2)
     .toUpperCase();
+}
+
+function mentorPayloadFromInitial(i: MentorEditProfileInitial): Record<string, unknown> {
+  const { set: exp, other } = parseExpertiseFromDb(i.mentorExpertise);
+  const expertiseList = mentorExpertiseListFromSelection(exp, other, MENTOR_EXPERTISE_OTHER);
+  const sw = parseSoftwareFromDb(i.softwareSkills);
+  const years = normalizeYear(i.mentorYearsExperience);
+  const availRaw = i.mentorAvailabilityPref?.trim();
+  const availability =
+    availRaw && MENTOR_SESSION_PREFS.includes(availRaw as (typeof MENTOR_SESSION_PREFS)[number])
+      ? availRaw
+      : MENTOR_SESSION_PREFS[0];
+  const maxRaw = i.mentorMaxMenteesPref?.trim();
+  const maxMentees =
+    maxRaw && MENTOR_MENTEE_CAPACITY_OPTIONS.includes(maxRaw as (typeof MENTOR_MENTEE_CAPACITY_OPTIONS)[number])
+      ? maxRaw
+      : MENTOR_MENTEE_CAPACITY_OPTIONS[1];
+
+  return {
+    name: (i.name ?? "").trim(),
+    phone: (i.phone ?? "").trim() || null,
+    mentorTitle: (i.mentorTitle ?? "").trim() || null,
+    mentorCompany: (i.mentorCompany ?? "").trim() || null,
+    mentorYearsExperience: years.trim() || null,
+    mentorExpertise: expertiseList,
+    softwareSkills: serializeSoftware(sw.set, sw.other),
+    mentorMentorshipFocus: (i.mentorMentorshipFocus ?? "").trim(),
+    mentorAvailabilityPref: availability,
+    mentorMaxMenteesPref: maxMentees,
+    bio: (i.bio ?? "").trim(),
+    linkedinUrl: (i.linkedinUrl ?? "").trim() || null,
+    portfolioUrl: (i.portfolioUrl ?? "").trim() || null,
+    portfolioVisibleToOthers: i.portfolioVisibleToOthers ?? true,
+    mentorCertifications: (i.mentorCertifications ?? "").trim() || null,
+  };
 }
 
 export function MentorEditProfileForm({ initial }: { initial: MentorEditProfileInitial }) {
@@ -240,6 +272,106 @@ export function MentorEditProfileForm({ initial }: { initial: MentorEditProfileI
     });
   };
 
+  const patchProfile = useCallback(async (body: Record<string, unknown>) => {
+    const res = await fetch("/api/profile", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) throw new Error("save failed");
+  }, []);
+
+  const buildMentorPayload = useCallback((): Record<string, unknown> => {
+    const expertiseList = mentorExpertiseListFromSelection(
+      expertise,
+      otherExpertise,
+      MENTOR_EXPERTISE_OTHER,
+    );
+    return {
+      name: fullName.trim(),
+      phone: phone.trim() || null,
+      mentorTitle: currentPosition.trim() || null,
+      mentorCompany: company.trim() || null,
+      mentorYearsExperience: yearsOfExperience.trim() || null,
+      mentorExpertise: expertiseList,
+      softwareSkills: serializeSoftware(software, softwareOther),
+      mentorMentorshipFocus: mentoringAreas.trim(),
+      mentorAvailabilityPref: availability,
+      mentorMaxMenteesPref: maxMentees,
+      bio: bio.trim(),
+      linkedinUrl: linkedinUrl.trim() || null,
+      portfolioUrl: portfolioUrl.trim() || null,
+      portfolioVisibleToOthers,
+      mentorCertifications: certifications.trim() || null,
+    };
+  }, [
+    fullName,
+    phone,
+    currentPosition,
+    company,
+    yearsOfExperience,
+    expertise,
+    otherExpertise,
+    software,
+    softwareOther,
+    mentoringAreas,
+    availability,
+    maxMentees,
+    bio,
+    linkedinUrl,
+    portfolioUrl,
+    portfolioVisibleToOthers,
+    certifications,
+  ]);
+
+  const initialPayloadJson = useMemo(() => JSON.stringify(mentorPayloadFromInitial(initial)), [initial]);
+
+  const lastSavedJsonRef = useRef(initialPayloadJson);
+  const manualSaveRef = useRef(false);
+  const [autoSave, setAutoSave] = useState<"idle" | "saving" | "saved" | "error">("idle");
+
+  useEffect(() => {
+    lastSavedJsonRef.current = initialPayloadJson;
+  }, [initialPayloadJson]);
+
+  useEffect(() => {
+    const base = buildMentorPayload();
+    const payload: Record<string, unknown> = { ...base };
+    if (imageDataUrl) payload.image = imageDataUrl;
+    const json = JSON.stringify(payload);
+    if (json === lastSavedJsonRef.current) return;
+    setAutoSave((s) => (s === "error" ? "idle" : s));
+    let cancelled = false;
+    const t = window.setTimeout(async () => {
+      if (cancelled || manualSaveRef.current) return;
+      const p: Record<string, unknown> = { ...buildMentorPayload() };
+      if (imageDataUrl) p.image = imageDataUrl;
+      const j = JSON.stringify(p);
+      if (j === lastSavedJsonRef.current) return;
+      setAutoSave("saving");
+      try {
+        await patchProfile(p);
+        if (cancelled) return;
+        if (imageDataUrl) {
+          revokePreview();
+          setImageDataUrl(null);
+        }
+        lastSavedJsonRef.current = JSON.stringify(buildMentorPayload());
+        setAutoSave("saved");
+        router.refresh();
+        window.setTimeout(() => {
+          if (!cancelled) setAutoSave("idle");
+        }, 2000);
+      } catch {
+        if (!cancelled) setAutoSave("error");
+      }
+    }, 900);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(t);
+    };
+  }, [buildMentorPayload, imageDataUrl, patchProfile, revokePreview, router]);
+
   const handleSave = async () => {
     if (!fullName.trim()) {
       window.alert("Please enter your full name.");
@@ -267,50 +399,25 @@ export function MentorEditProfileForm({ initial }: { initial: MentorEditProfileI
       return;
     }
 
-    const expertiseList: string[] = [];
-    for (const label of expertise) {
-      if (label === MENTOR_EXPERTISE_OTHER) expertiseList.push(otherExpertise.trim());
-      else expertiseList.push(label);
-    }
+    const payload: Record<string, unknown> = { ...buildMentorPayload() };
+    if (imageDataUrl) payload.image = imageDataUrl;
 
     setSaving(true);
+    manualSaveRef.current = true;
     setBanner(null);
     try {
-      const payload: Record<string, unknown> = {
-        name: fullName.trim(),
-        phone: phone.trim() || null,
-        mentorTitle: currentPosition.trim() || null,
-        mentorCompany: company.trim() || null,
-        mentorYearsExperience: yearsOfExperience.trim() || null,
-        mentorExpertise: expertiseList,
-        softwareSkills: serializeSoftware(software, softwareOther),
-        mentorMentorshipFocus: mentoringAreas.trim(),
-        mentorAvailabilityPref: availability,
-        mentorMaxMenteesPref: maxMentees,
-        bio: bio.trim(),
-        linkedinUrl: linkedinUrl.trim() || null,
-        portfolioUrl: portfolioUrl.trim() || null,
-        portfolioVisibleToOthers,
-        mentorCertifications: certifications.trim() || null,
-      };
-      if (imageDataUrl) payload.image = imageDataUrl;
-
-      const res = await fetch("/api/profile", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      if (!res.ok) {
-        throw new Error("save failed");
-      }
+      await patchProfile(payload);
+      lastSavedJsonRef.current = JSON.stringify(buildMentorPayload());
       setBanner("ok");
       revokePreview();
+      setImageDataUrl(null);
       router.refresh();
       window.setTimeout(() => setBanner(null), 3200);
     } catch {
       setBanner("err");
       window.alert("Could not save your profile. Try again.");
     } finally {
+      manualSaveRef.current = false;
       setSaving(false);
     }
   };
@@ -325,6 +432,17 @@ export function MentorEditProfileForm({ initial }: { initial: MentorEditProfileI
             </h1>
             <p className="mt-1.5 text-sm text-neutral-600 sm:text-base">
               Update your information to help students find you
+            </p>
+            <p className="mt-2 text-xs font-medium text-neutral-500 sm:text-sm" aria-live="polite">
+              {autoSave === "saving" ? (
+                <span className="text-primary">Saving…</span>
+              ) : autoSave === "saved" ? (
+                <span className="text-emerald-700">All changes saved</span>
+              ) : autoSave === "error" ? (
+                <span className="text-red-600">Could not auto-save. Check connection and try again.</span>
+              ) : (
+                <span className="text-neutral-400">Changes save automatically</span>
+              )}
             </p>
           </div>
           <Link
@@ -507,32 +625,39 @@ export function MentorEditProfileForm({ initial }: { initial: MentorEditProfileI
                 <div>
                   <p className={label}>Areas of Expertise</p>
                   <p className="mb-2 mt-1 text-xs text-neutral-500">Select all that apply</p>
-                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                    {MENTOR_EXPERTISE_OPTIONS.map((opt) => (
+                  <ArchitectureGroupedPills
+                    selected={expertise}
+                    onToggle={toggleExpertise}
+                    classNameOn={chipOn}
+                    classNameOff={chipOff}
+                  />
+                  <div className="mb-8">
+                    <h3 className={architectureOthersSectionTitle}>{MENTOR_EXPERTISE_OTHER}</h3>
+                    <div className={architectureOthersSectionRule} aria-hidden />
+                    <div className="mt-4 flex flex-wrap gap-3">
                       <button
-                        key={opt}
                         type="button"
-                        onClick={() => toggleExpertise(opt)}
-                        className={`${chipBase} ${expertise.has(opt) ? chipOn : chipOff}`}
+                        onClick={() => toggleExpertise(MENTOR_EXPERTISE_OTHER)}
+                        className={`${architecturePillBase} ${expertise.has(MENTOR_EXPERTISE_OTHER) ? chipOn : chipOff}`}
                       >
-                        {opt}
+                        {MENTOR_EXPERTISE_OTHER}
                       </button>
-                    ))}
-                  </div>
-                  {expertise.has(MENTOR_EXPERTISE_OTHER) ? (
-                    <div className="mt-3 space-y-2">
-                      <label htmlFor="otherExpertise" className={label}>
-                        Describe your other expertise
-                      </label>
-                      <input
-                        id="otherExpertise"
-                        value={otherExpertise}
-                        onChange={(e) => setOtherExpertise(e.target.value)}
-                        placeholder="e.g., Exhibition design, Computational design"
-                        className={field}
-                      />
                     </div>
-                  ) : null}
+                    {expertise.has(MENTOR_EXPERTISE_OTHER) ? (
+                      <div className="mt-4 space-y-2">
+                        <label htmlFor="otherExpertise" className={label}>
+                          Describe your other expertise
+                        </label>
+                        <input
+                          id="otherExpertise"
+                          value={otherExpertise}
+                          onChange={(e) => setOtherExpertise(e.target.value)}
+                          placeholder="e.g., Exhibition design, Computational design"
+                          className={field}
+                        />
+                      </div>
+                    ) : null}
+                  </div>
                 </div>
 
                 <div className="border-t border-neutral-100 pt-5">

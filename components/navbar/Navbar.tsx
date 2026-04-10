@@ -3,7 +3,7 @@
 import { AnimatePresence, motion } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
-import { useSession } from "next-auth/react";
+import { signOut, useSession } from "next-auth/react";
 import { usePathname } from "next/navigation";
 import { startTransition, useEffect, useState } from "react";
 
@@ -26,6 +26,7 @@ export function Navbar() {
   const authed = status === "authenticated";
   const loading = status === "loading";
   const dashboardHref = session?.user?.role === "mentor" ? "/mentor" : "/student";
+  const studentOnDashboard = pathname === "/student" && session?.user?.role === "student";
 
   useEffect(() => {
     if (menuOpen) {
@@ -91,7 +92,7 @@ export function Navbar() {
               alt=""
               width={22}
               height={22}
-              className="size-[22px]"
+              className="icon-brand-line size-[22px]"
             />
           </Link>
           {loading ? (
@@ -100,7 +101,28 @@ export function Navbar() {
               aria-hidden
             />
           ) : null}
-          {!loading && authed ? (
+          {!loading && authed && studentOnDashboard ? (
+            <div className="group relative hidden sm:inline-block">
+              <Link
+                href="/student"
+                className="inline-flex rounded-full bg-primary px-4 py-2 text-xs font-semibold text-white shadow-sm transition-transform hover:scale-[1.02] active:scale-[0.98] sm:px-8 sm:py-2.5 sm:text-sm"
+              >
+                <span className="max-w-[7rem] truncate sm:max-w-none">My profile</span>
+              </Link>
+              <div className="pointer-events-none invisible absolute right-0 top-full z-[60] pt-1 opacity-0 transition-all duration-150 group-hover:pointer-events-auto group-hover:visible group-hover:opacity-100">
+                <div className="min-w-[9rem] rounded-xl border border-black/[0.08] bg-white py-1 shadow-lg ring-1 ring-black/5">
+                  <button
+                    type="button"
+                    className="w-full px-3 py-2.5 text-left text-[13px] font-medium text-[#b91c1c] transition hover:bg-red-50"
+                    onClick={() => void signOut({ callbackUrl: "/" })}
+                  >
+                    Log out
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : null}
+          {!loading && authed && !studentOnDashboard ? (
             <Link
               href={dashboardHref}
               className="hidden rounded-full bg-primary px-4 py-2 text-xs font-semibold text-white shadow-sm transition-transform hover:scale-[1.02] active:scale-[0.98] sm:inline-flex sm:px-8 sm:py-2.5 sm:text-sm"
@@ -177,7 +199,13 @@ export function Navbar() {
                   className="flex items-center gap-2 rounded-xl px-3 py-3 text-[15px] font-normal text-ink hover:bg-neutral-50"
                   onClick={() => setMenuOpen(false)}
                 >
-                  <Image src="/mentors_assets/search.svg" alt="" width={20} height={20} className="size-5 opacity-80" />
+                  <Image
+                    src="/mentors_assets/search.svg"
+                    alt=""
+                    width={20}
+                    height={20}
+                    className="icon-brand-line size-5 opacity-90"
+                  />
                   Search mentors
                 </Link>
                 {!loading && (
@@ -189,6 +217,18 @@ export function Navbar() {
                     {authed ? "My profile" : "Login / Register"}
                   </Link>
                 )}
+                {!loading && authed && studentOnDashboard ? (
+                  <button
+                    type="button"
+                    className="mt-2 w-full rounded-xl border border-red-200 bg-white px-3 py-3 text-center text-[15px] font-semibold text-red-700 shadow-sm"
+                    onClick={() => {
+                      setMenuOpen(false);
+                      void signOut({ callbackUrl: "/" });
+                    }}
+                  >
+                    Log out
+                  </button>
+                ) : null}
               </nav>
             </motion.div>
         )}

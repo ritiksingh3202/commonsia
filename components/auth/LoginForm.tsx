@@ -3,7 +3,6 @@
 import Image from "next/image";
 import Link from "next/link";
 import { signIn } from "next-auth/react";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { authErrorMessage } from "@/lib/auth-error-messages";
 import { AUTH_ASSETS } from "./auth-assets";
@@ -14,14 +13,13 @@ const field =
   "w-full rounded-md border border-[#e5e5e5] bg-white px-2.5 py-2 text-[13px] text-[#0a0a0a] placeholder:text-[#717182] outline-none transition-[box-shadow,border-color] focus:border-primary focus:ring-[1.5px] focus:ring-primary/20";
 
 type LoginFormProps = {
-  /** Safe post-login redirect (must be a same-origin path). */
+  /** Post-login URL (typically `/auth/continue` or `/auth/continue?next=…` from the login page). */
   callbackUrl?: string;
   /** Auth.js error code from ?error= when redirected from OAuth or sign-in. */
   authError?: string;
 };
 
-export function LoginForm({ callbackUrl = "/", authError }: LoginFormProps) {
-  const router = useRouter();
+export function LoginForm({ callbackUrl = "/auth/continue", authError }: LoginFormProps) {
   const [submitting, setSubmitting] = useState(false);
 
   return (
@@ -46,7 +44,7 @@ export function LoginForm({ callbackUrl = "/", authError }: LoginFormProps) {
               alt=""
               width={28}
               height={28}
-              className="size-7 object-contain"
+              className="icon-brand-line size-7 object-contain"
             />
           </div>
           <h1 className="font-heading text-lg font-semibold tracking-tight text-[#0a0a0a] sm:text-xl">
@@ -80,8 +78,7 @@ export function LoginForm({ callbackUrl = "/", authError }: LoginFormProps) {
                 window.alert("Invalid email or password. If you signed up with Google or LinkedIn, use that button below.");
                 return;
               }
-              router.push(callbackUrl);
-              router.refresh();
+              window.location.assign(callbackUrl);
             } finally {
               setSubmitting(false);
             }

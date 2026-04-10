@@ -28,7 +28,7 @@ export function MentorSearchBar({ value, onChange }: Props) {
             alt=""
             width={18}
             height={18}
-            className="icon-orange-line opacity-90"
+            className="icon-brand-line opacity-90"
           />
         </span>
       </label>

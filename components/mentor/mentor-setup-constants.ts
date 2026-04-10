@@ -1,17 +1,13 @@
-/** Areas of expertise — mentor setup step 1 (same family as student interests). */
+import { ARCHITECTURE_FLAT_INTERESTS } from "@/components/shared/architecture-taxonomy";
+
+/** Re-export for grouped expertise UI. */
+export { ARCHITECTURE_INTEREST_GROUPS } from "@/components/shared/architecture-taxonomy";
+
+/** Areas of expertise — same taxonomy as student interests + free-text Other. */
 export const MENTOR_EXPERTISE_OTHER = "Other" as const;
 
 export const MENTOR_EXPERTISE_OPTIONS = [
-  "Residential Design",
-  "Commercial Architecture",
-  "Sustainable Design",
-  "Urban Planning",
-  "Interior Architecture",
-  "Landscape Architecture",
-  "Historic Preservation",
-  "Digital Fabrication",
-  "BIM & Technology",
-  "Construction Management",
+  ...ARCHITECTURE_FLAT_INTERESTS,
   MENTOR_EXPERTISE_OTHER,
 ] as const;
 

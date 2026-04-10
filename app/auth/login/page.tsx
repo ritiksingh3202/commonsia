@@ -13,10 +13,13 @@ export default async function LoginPage({
   searchParams: Promise<{ callbackUrl?: string; error?: string }>;
 }) {
   const sp = await searchParams;
-  const callbackUrl =
-    sp.callbackUrl && sp.callbackUrl.startsWith("/") && !sp.callbackUrl.startsWith("//")
-      ? sp.callbackUrl
-      : "/";
+  const raw = sp.callbackUrl;
+  const safeNext =
+    raw && typeof raw === "string" && raw.startsWith("/") && !raw.startsWith("//") ? raw : null;
+  /** Onboarding-aware landing; optional `next` preserved for completed profiles */
+  const callbackUrl = safeNext
+    ? `/auth/continue?next=${encodeURIComponent(safeNext)}`
+    : "/auth/continue";
 
   return (
     <MarketingShell>

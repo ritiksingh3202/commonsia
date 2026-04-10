@@ -4,6 +4,8 @@ import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { StudentDashboard } from "@/components/student/StudentDashboard";
 import { prisma } from "@/lib/prisma";
+import { getStudentDashboardPayload } from "@/lib/student-dashboard-data";
+import { getStudentOnboardingRedirectPath } from "@/lib/student-onboarding";
 
 export const metadata: Metadata = {
   title: { absolute: "Dashboard" },
@@ -20,6 +22,7 @@ export default async function StudentHomePage() {
     where: { id: session.user.id },
     select: {
       id: true,
+      role: true,
       name: true,
       email: true,
       phone: true,
@@ -37,7 +40,9 @@ export default async function StudentHomePage() {
       instagramUrl: true,
       portfolioUrl: true,
       portfolioFileName: true,
+      portfolioFileDataUrl: true,
       portfolioVisibleToOthers: true,
+      profileComplete: true,
     },
   });
 
@@ -45,5 +50,32 @@ export default async function StudentHomePage() {
     redirect("/auth/login?callbackUrl=/student");
   }
 
-  return <StudentDashboard user={user} />;
+  if (user.role === "mentor") {
+    redirect("/mentor");
+  }
+  if (user.role !== "student") {
+    redirect("/auth");
+  }
+
+  const onboarding = getStudentOnboardingRedirectPath({
+    profileComplete: user.profileComplete,
+    university: user.university,
+    yearOfStudy: user.yearOfStudy,
+    major: user.major,
+    phone: user.phone,
+    interests: user.interests,
+    otherInterests: user.otherInterests,
+    softwareSkills: user.softwareSkills,
+  });
+  if (onboarding) {
+    redirect(onboarding);
+  }
+
+  const dashboardInitial = await getStudentDashboardPayload(session.user.id);
+  if (!dashboardInitial) {
+    redirect("/auth");
+  }
+
+  const { profileComplete: _p, role: _r, ...dashboardUser } = user;
+  return <StudentDashboard user={dashboardUser} initialDashboard={dashboardInitial} />;
 }

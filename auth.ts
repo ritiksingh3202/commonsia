@@ -17,10 +17,14 @@ import { prisma } from "@/lib/prisma";
  * - DATABASE_URL — Neon Postgres (see `.env.example`)
  *
  * LinkedIn app must include the "Sign in with LinkedIn using OpenID Connect" product.
+ * That product only returns lite OpenID claims (name, picture, email, locale) — not headline, employer, cover, or phone.
  *
  * Callback URLs:
  * - Google: {AUTH_URL}/api/auth/callback/google
  * - LinkedIn: {AUTH_URL}/api/auth/callback/linkedin
+ *
+ * Google Calendar: sign-in requests `calendar` scope so refresh tokens can live on the Account row.
+ * Booking uses server routes only (`/api/calendar/create-event`) — OAuth access tokens are not exposed on the client session.
  */
 const authSecret = process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET;
 
@@ -38,6 +42,12 @@ if (googleOAuth) {
        * @see https://authjs.dev/concepts#security
        */
       allowDangerousEmailAccountLinking: true,
+      authorization: {
+        params: {
+          access_type: "offline",
+          scope: "openid email profile https://www.googleapis.com/auth/calendar",
+        },
+      },
     }),
   );
 }

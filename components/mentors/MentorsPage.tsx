@@ -8,8 +8,7 @@ import { MentorCard } from "@/components/mentors/MentorCard";
 import { MentorPagination } from "@/components/mentors/MentorPagination";
 import { MentorSearchBar } from "@/components/mentors/MentorSearchBar";
 import { SectionReveal } from "@/components/motion/SectionReveal";
-import { heroTitleGradientStyle } from "@/lib/hero-title-gradient";
-import { marketingImages } from "@/lib/marketing-images";
+import { MENTOR_PAGE_HERO_ASSETS } from "@/lib/mentor-page-assets";
 import { mentors } from "@/lib/mentors-data";
 
 const PAGE_SIZE = 10;
@@ -34,14 +33,6 @@ export function MentorsPage() {
   const safePage = Math.min(page, totalPages);
   const slice = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
 
-  const heroAvatars = [
-    marketingImages.avatar1,
-    marketingImages.avatar2,
-    marketingImages.avatar3,
-    marketingImages.avatar4,
-    marketingImages.avatar5,
-  ];
-
   return (
     <div className="bg-white pb-6 sm:pb-8">
       {/* Hero — same proportions / rhythm as home (padding, type scale, CTAs, side art) */}
@@ -56,7 +47,7 @@ export function MentorsPage() {
           >
             <div className="relative aspect-[3/5] w-full">
               <Image
-                src={marketingImages.mentorsHeroLeft}
+                src={MENTOR_PAGE_HERO_ASSETS.leftFigure}
                 alt=""
                 fill
                 className="object-contain object-bottom object-center"
@@ -67,20 +58,21 @@ export function MentorsPage() {
 
           <div className="relative z-20 mx-auto flex w-full min-w-0 max-w-2xl flex-col items-center justify-center px-2 text-center sm:max-w-4xl sm:px-3 lg:max-w-5xl xl:max-w-[65rem] 2xl:max-w-[75rem]">
             <motion.div
-              className="mb-4 flex justify-center gap-0"
+              className="relative mb-4 flex w-full max-w-[min(100%,360px)] justify-center sm:max-w-[420px]"
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.08 }}
             >
-              {heroAvatars.map((src, i) => (
-                <div
-                  key={src}
-                  className="relative -ml-2 size-10 overflow-hidden rounded-full border-2 border-white shadow first:ml-0 sm:size-11"
-                  style={{ zIndex: heroAvatars.length - i }}
-                >
-                  <Image src={src} alt="" fill className="object-cover" sizes="40px" />
-                </div>
-              ))}
+              <div className="relative h-11 w-full sm:h-14">
+                <Image
+                  src={MENTOR_PAGE_HERO_ASSETS.topStrip}
+                  alt=""
+                  fill
+                  className="object-contain object-center"
+                  sizes="(max-width:640px) 360px, 420px"
+                  priority
+                />
+              </div>
             </motion.div>
             <motion.p
               className="text-[11px] font-normal text-neutral-600 sm:text-xs lg:text-[13px]"
@@ -92,19 +84,20 @@ export function MentorsPage() {
             </motion.p>
 
             <motion.h1
-              className="mx-auto mt-4 w-full min-w-0 max-w-[1117px] px-3 text-center text-[clamp(1.3rem,5.2vw+0.4rem,2.2rem)] font-semibold leading-[1.25] tracking-tight sm:px-4 sm:text-[2.5rem] sm:leading-[1.2] md:text-[3.15rem] md:leading-[1.18] lg:text-[3.65rem] xl:text-[4.1rem] 2xl:text-[4.75rem]"
-              style={heroTitleGradientStyle}
+              className="mx-auto mt-4 flex w-full min-w-0 max-w-[1117px] flex-col items-center gap-y-2 px-3 text-center text-[clamp(1.3rem,5.2vw+0.4rem,2.2rem)] font-semibold leading-[1.25] tracking-tight sm:gap-y-2.5 sm:px-4 sm:text-[2.5rem] sm:leading-[1.2] md:gap-y-3 md:text-[3.15rem] md:leading-[1.18] lg:text-[3.65rem] xl:text-[4.1rem] 2xl:text-[4.75rem]"
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
             >
-              <span className="block max-w-full text-balance break-words [overflow-wrap:anywhere]">
-                <span className="inline">Stuck in Your Design </span>
-                <span className="inline">Journey?</span>
+              {/* Mobile / tablet: lines may wrap; lg+: one line each (desktop) */}
+              <span className="block w-full max-w-full text-balance break-words [overflow-wrap:anywhere] lg:whitespace-nowrap">
+                <span className="text-[#0a0a0a]">Stuck in Your </span>
+                <span className="text-primary">Design Journey?</span>
               </span>
-              <span className="mt-1 block max-w-full text-balance break-words [overflow-wrap:anywhere] md:mt-0">
-                <span className="inline">Find a </span>
-                <span className="inline">Mentor.</span>
+              <span className="block w-full max-w-full text-balance break-words [overflow-wrap:anywhere] lg:whitespace-nowrap">
+                <span className="text-[#0a0a0a]">Find a </span>
+                <span className="text-primary">Mentor</span>
+                <span className="text-[#0a0a0a]">.</span>
               </span>
             </motion.h1>
 
@@ -142,7 +135,7 @@ export function MentorsPage() {
           >
             <div className="relative aspect-[3/5] w-full">
               <Image
-                src={marketingImages.mentorsHeroRight}
+                src={MENTOR_PAGE_HERO_ASSETS.rightFigure}
                 alt=""
                 fill
                 className="object-contain object-bottom object-center"

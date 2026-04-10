@@ -14,7 +14,7 @@ export default async function MentorRegisterPage({
 }) {
   const { callbackUrl: raw } = await searchParams;
   const oauthCallbackUrl =
-    raw && raw.startsWith("/") && !raw.startsWith("//") ? raw : "/";
+    raw && raw.startsWith("/") && !raw.startsWith("//") ? raw : "/mentor/setup/1";
 
   return (
     <MarketingShell>
