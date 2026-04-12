@@ -1,10 +1,11 @@
 "use client";
 
 import { motion } from "framer-motion";
-import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import type { Mentor } from "@/lib/mentors-data";
+
+import { MentorAvatar } from "@/components/mentors/MentorAvatar";
+import type { Mentor } from "@/lib/mentor-directory";
 
 export function MentorCard({
   mentor,
@@ -14,16 +15,17 @@ export function MentorCard({
   index: number;
 }) {
   const router = useRouter();
+  const scheduleHref = `/schedule?mentorUserId=${encodeURIComponent(mentor.id)}`;
+
   return (
     <motion.article
-      layout
       initial={{ opacity: 0, y: 24 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: "-40px" }}
       transition={{ duration: 0.45, delay: index * 0.05, ease: [0.22, 1, 0.36, 1] }}
       whileHover={{
         y: -4,
-        boxShadow: "0 12px 40px rgba(0,0,0,0.12)",
+        boxShadow: "0 16px 44px rgba(0,0,0,0.1)",
         transition: { duration: 0.2 },
       }}
       role="link"
@@ -35,52 +37,58 @@ export function MentorCard({
           router.push(`/mentors/${mentor.id}`);
         }
       }}
-      className="grid min-h-0 cursor-pointer grid-cols-1 overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-sm md:grid-cols-[minmax(0,1fr)_minmax(0,34%)]"
+      className="group flex h-full min-h-[280px] w-full min-w-0 flex-col-reverse overflow-hidden rounded-xl border border-neutral-200/90 bg-white shadow-sm ring-1 ring-black/[0.04] md:min-h-[300px] md:flex-row md:items-stretch"
     >
-      <div className="order-1 flex flex-col justify-between gap-1.5 p-3 sm:gap-2 sm:p-3.5 md:order-1 md:max-w-none md:pr-3 md:py-3">
-        <div>
-          <h3 className="text-sm font-semibold leading-tight text-[#1a1a1a] sm:text-[15px]">
-            {mentor.name}
-          </h3>
-          <p className="mt-0.5 text-[10px] font-semibold text-neutral-600 sm:text-[11px]">
-            {mentor.role}
-          </p>
+      {/* Text — fills remaining width; footer pinned to bottom for equal card heights */}
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col justify-between gap-3 p-3.5 sm:p-4 md:py-5 md:pl-5 md:pr-4">
+        <div className="min-w-0 space-y-2">
+          <div>
+            <h3 className="break-words text-[15px] font-semibold leading-tight text-[#0f0f0f] sm:text-base">
+              {mentor.name}
+            </h3>
+            <p className="mt-0.5 break-words text-[11px] font-medium leading-snug text-neutral-600 sm:text-xs">
+              {mentor.role}
+            </p>
+          </div>
+          <div className="min-h-[2.5rem]">
+            {mentor.tags.length > 0 ? (
+              <div className="flex flex-wrap gap-2">
+                {mentor.tags.map((t) => (
+                  <span key={t} className="mentor-tag-expertise-pill">
+                    {t}
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <p className="text-[10px] italic leading-snug text-neutral-400 sm:text-[11px]">Expertise not listed yet</p>
+            )}
+          </div>
         </div>
-        <p className="text-[11px] leading-snug text-[#1a1a1a] sm:text-xs">
-          {mentor.shortBio}
-        </p>
-        <p className="text-[11px] leading-snug text-neutral-700 sm:text-xs">
-          {mentor.detail}
-        </p>
-        <div className="flex flex-wrap gap-1">
-          {mentor.tags.map((t) => (
-            <span
-              key={t}
-              className="rounded bg-primary px-1.5 py-px text-[9px] font-semibold text-white sm:text-[10px]"
-            >
-              {t}
-            </span>
-          ))}
+
+        <div className="mt-auto space-y-2 border-t border-neutral-100/90 pt-3">
+          <p className="break-words text-[10px] font-semibold leading-snug text-neutral-800 sm:text-[11px]">{mentor.slot}</p>
+          <Link
+            href={scheduleHref}
+            onClick={(e) => e.stopPropagation()}
+            className="inline-flex w-full items-center justify-center rounded-full bg-primary px-4 py-2.5 text-[11px] font-semibold text-white shadow-sm transition group-hover:bg-primary/95 sm:w-fit sm:px-5 sm:text-sm"
+          >
+            Book a session
+          </Link>
         </div>
-        <p className="text-[9px] font-semibold leading-snug text-neutral-800 sm:text-[10px]">
-          {mentor.slot}
-        </p>
-        <Link
-          href="/schedule"
-          onClick={(e) => e.stopPropagation()}
-          className="inline-flex w-fit items-center justify-center rounded-full bg-primary px-3 py-1.5 text-[10px] font-semibold text-white transition-transform hover:scale-[1.02] sm:px-4 sm:py-2 sm:text-[11px]"
-        >
-          Schedule A Call
-        </Link>
       </div>
-      <div className="relative order-2 min-h-[160px] w-full md:order-2 md:min-h-[168px]">
-        <Image
-          src={mentor.image}
-          alt={mentor.name}
-          fill
-          className="object-cover object-center md:rounded-r-xl"
-          sizes="(max-width: 768px) 100vw, 34vw"
-          priority={index < 10}
+
+      {/* Photo / initials — fixed width on laptop so column never collapses; full width band on mobile */}
+      <div
+        className="relative aspect-[5/3] w-full min-h-[168px] max-h-[220px] shrink-0 overflow-hidden rounded-t-xl bg-neutral-100 sm:aspect-[16/10] sm:min-h-[180px] md:aspect-auto md:h-full md:max-h-none md:min-h-[260px] md:w-[min(240px,36%)] md:max-w-[260px] md:shrink-0 md:rounded-none md:rounded-r-xl md:rounded-t-none"
+        aria-hidden
+      >
+        <MentorAvatar
+          name={mentor.name}
+          imageUrl={mentor.image}
+          hasProfilePhoto={mentor.hasProfilePhoto}
+          className="rounded-t-xl md:rounded-none md:rounded-r-xl"
+          sizes="(max-width:767px) 96vw, 260px"
+          priority={index < 8}
         />
       </div>
     </motion.article>

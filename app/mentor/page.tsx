@@ -5,6 +5,7 @@ import { Suspense } from "react";
 import { auth } from "@/auth";
 import { MentorDashboard } from "@/components/mentor/MentorDashboard";
 import { ProfileCompletionWelcome } from "@/components/onboarding/ProfileCompletionWelcome";
+import { getMentorDashboardLiveData } from "@/lib/mentor-dashboard-stats";
 import { getMentorOnboardingRedirectPath } from "@/lib/mentor-onboarding";
 import { prisma } from "@/lib/prisma";
 
@@ -54,9 +55,11 @@ export default async function MentorHomePage() {
     redirect(next);
   }
 
+  const dashboardLive = await getMentorDashboardLiveData(session.user.id);
+
   return (
     <>
-      <MentorDashboard user={user} />
+      <MentorDashboard user={{ ...user, dashboardLive }} />
       <Suspense fallback={null}>
         <ProfileCompletionWelcome variant="mentor" />
       </Suspense>

@@ -16,7 +16,7 @@ import {
 } from "@/components/shared/ArchitectureGroupedPills";
 import { interestStateFromServer, interestsPayloadFromSelection } from "@/components/student/student-interest-sync";
 import { StudentSetupShell } from "./StudentSetupShell";
-import { setupField, setupLabel } from "./student-ui";
+import { setupField, setupLabel, setupRequiredStar } from "./student-ui";
 import { SetupLinkedInNotice } from "@/components/setup/SetupLinkedInNotice";
 import { useProfileAutosave } from "@/hooks/useProfileAutosave";
 import { interestsToStringList, type StudentSetupUserSnapshot } from "@/lib/setup-load-user";
@@ -84,8 +84,10 @@ export function StudentSetupStep2({
   const [othersDetail, setOthersDetail] = useState(interestDerived.others);
 
   useEffect(() => {
+    /* eslint-disable react-hooks/set-state-in-effect -- sync local selections when saved interests snapshot changes */
     setSelectedInterests(new Set(interestDerived.sel));
     setOthersDetail(interestDerived.others);
+    /* eslint-enable react-hooks/set-state-in-effect */
   }, [interestDerived]);
   const [softwareOtherDetail, setSoftwareOtherDetail] = useState(softwareOtherInit);
 
@@ -130,8 +132,16 @@ export function StudentSetupStep2({
     <StudentSetupShell step={2} backHref="/student/setup/1">
       <section>
         {linkedInConnected ? <SetupLinkedInNotice variant="student" /> : null}
-        <h2 className="mb-3 text-base font-semibold text-[#0a0a0a]">Interests &amp; Skills</h2>
-        <p className="mb-3 text-[12px] text-[#6b7280]">Changes save automatically.</p>
+        <h2 className="mb-1 text-base font-semibold text-[#0a0a0a]">
+          Interests &amp; skills
+          <span className={setupRequiredStar} title="Required" aria-hidden>
+            *
+          </span>
+        </h2>
+        <p className="mb-1 text-[12px] leading-snug text-[#6b7280]">
+          Choose your architecture interests and software skills. Select all that apply where relevant.
+        </p>
+        <p className="mb-4 text-[12px] text-[#6b7280]">Changes save automatically.</p>
         <form
           className="space-y-5"
           onSubmit={async (e) => {

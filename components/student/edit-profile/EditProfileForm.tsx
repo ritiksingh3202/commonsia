@@ -177,6 +177,23 @@ export function EditProfileForm({ user: initial }: Props) {
   const [saving, setSaving] = useState(false);
   const photoInputRef = useRef<HTMLInputElement>(null);
   const portfolioFileRef = useRef<HTMLInputElement>(null);
+  const pickPhotoPendingRef = useRef(false);
+
+  useEffect(() => {
+    if (searchParams.get("addPhoto") !== "1") return;
+    pickPhotoPendingRef.current = true;
+    const u = new URLSearchParams(searchParams.toString());
+    u.delete("addPhoto");
+    u.set("tab", "personal");
+    router.replace(`/student/profile/edit?${u.toString()}`, { scroll: false });
+  }, [searchParams, router]);
+
+  useEffect(() => {
+    if (!pickPhotoPendingRef.current) return;
+    if (activeTab !== "personal") return;
+    pickPhotoPendingRef.current = false;
+    queueMicrotask(() => photoInputRef.current?.click());
+  }, [activeTab]);
 
   useEffect(() => {
     setName(initial.name ?? "");

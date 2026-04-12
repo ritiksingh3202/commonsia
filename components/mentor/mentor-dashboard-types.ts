@@ -1,3 +1,5 @@
+import type { MentorDashboardLiveData } from "@/lib/mentor-dashboard-stats";
+
 export type MentorDashboardUser = {
   name: string | null;
   image: string | null;
@@ -13,4 +15,6 @@ export type MentorDashboardUser = {
   mentorExpertise: unknown;
   bio: string | null;
   mentorAvailabilityJson: unknown;
+  /** Bookings, mentees, reviews, activity — from DB on the server. */
+  dashboardLive?: MentorDashboardLiveData;
 };

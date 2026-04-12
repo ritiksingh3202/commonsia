@@ -9,6 +9,10 @@ export type MentorChatPageProps = {
   mentorInitials: string;
   mentorCredentials: string;
   backHref: string;
+  /** When set (from saved mentor availability), replaces mock slots. */
+  availabilitySummary?: string | null;
+  /** Deep-link booking to this mentor. */
+  mentorUserId?: string | null;
 };
 
 type ChatMessage = {
@@ -43,7 +47,7 @@ const SEED_MESSAGES: ChatMessage[] = [
   },
   {
     id: 4,
-    text: "Hi, I'm currently working on my studio project and I'm stuck with the facade design.",
+    text: "Hi, I'm currently working on my studio project, and I'm stuck on the façade design.",
     time: "11:23 AM",
     isMentor: false,
     dateGroup: "today",
@@ -93,6 +97,8 @@ export function MentorChatPage({
   mentorInitials,
   mentorCredentials,
   backHref,
+  availabilitySummary = null,
+  mentorUserId = null,
 }: MentorChatPageProps) {
   const [messages, setMessages] = useState<ChatMessage[]>(SEED_MESSAGES);
   const [message, setMessage] = useState("");
@@ -302,31 +308,39 @@ export function MentorChatPage({
                 </div>
               </div>
               <div>
-                <h4 className="mb-3 font-semibold text-[#0a0a0a]">Available Time Slots</h4>
-                <div className="space-y-4">
-                  {AVAILABLE_SLOTS.map((block) => (
-                    <div key={block.date}>
-                      <p className="mb-2 text-sm font-medium text-neutral-700">{block.date}</p>
-                      <div className="space-y-2">
-                        {block.slots.map((slot) => (
-                          <button
-                            key={slot.time}
-                            type="button"
-                            className="w-full rounded-lg border border-neutral-200 bg-white py-2.5 text-center text-sm font-medium text-[#0a0a0a] transition hover:border-primary hover:bg-primary/5"
-                          >
-                            {slot.time}
-                          </button>
-                        ))}
+                <h4 className="mb-3 font-semibold text-[#0a0a0a]">Availability</h4>
+                {availabilitySummary ? (
+                  <p className="text-sm leading-relaxed text-neutral-700">{availabilitySummary}</p>
+                ) : (
+                  <div className="space-y-4">
+                    {AVAILABLE_SLOTS.map((block) => (
+                      <div key={block.date}>
+                        <p className="mb-2 text-sm font-medium text-neutral-700">{block.date}</p>
+                        <div className="space-y-2">
+                          {block.slots.map((slot) => (
+                            <button
+                              key={slot.time}
+                              type="button"
+                              className="w-full rounded-lg border border-neutral-200 bg-white py-2.5 text-center text-sm font-medium text-[#0a0a0a] transition hover:border-primary hover:bg-primary/5"
+                            >
+                              {slot.time}
+                            </button>
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
 
             <div className="shrink-0 border-t border-neutral-200 p-5 sm:p-6">
               <Link
-                href="/schedule"
+                href={
+                  mentorUserId
+                    ? `/schedule?mentorUserId=${encodeURIComponent(mentorUserId)}`
+                    : "/schedule"
+                }
                 className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-3.5 text-sm font-semibold text-white shadow-md transition hover:bg-primary/90"
               >
                 <IconCalendar className="size-4" />

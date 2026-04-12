@@ -1,71 +1,55 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
+import { MentorAvatar } from "@/components/mentors/MentorAvatar";
+import { MentorCard } from "@/components/mentors/MentorCard";
+import { MentorCarouselArrows } from "@/components/mentors/MentorCarouselArrows";
+import { profileHero } from "@/components/profile/profile-hero-classes";
 import { ProfileCover } from "@/components/ProfileCover";
 import { PortfolioViewerPanel } from "@/components/profile/PortfolioViewerPanel";
-import {
-  InstagramGlyph,
-  LinkedInGlyph,
-  SocialIconButton,
-  WhatsAppGlyph,
-} from "@/components/profile/ProfileSocialIcons";
-import type { Mentor } from "@/lib/mentors-data";
-import { mentors as allMentors } from "@/lib/mentors-data";
+import { LinkedInGlyph, SocialIconButton } from "@/components/profile/ProfileSocialIcons";
+import { avatarColorsFromSeed } from "@/lib/avatar-initials";
+import type { Mentor } from "@/lib/mentor-directory";
+import { profileCoverDisplaySrc } from "@/lib/profile-cover";
+import type { PublicMentorReview } from "@/lib/mentor-reviews";
 
-const pill =
-  "inline-flex items-center rounded-full bg-primary/95 px-3 py-1.5 text-[11px] font-medium text-white shadow-sm ring-1 ring-primary/20 sm:text-xs";
-
-const MOCK_REVIEWS = [
-  {
-    text: "Incredibly helpful on my studio jury prep — clear feedback and very approachable.",
-    name: "Rohit Kohli",
-    meta: "B.Arch 2nd Year, IIT Kharagpur",
-    initials: "RK",
-  },
-  {
-    text: "Guided me through portfolio layout and narrative. Would recommend to anyone in fourth year.",
-    name: "Ananya Sharma",
-    meta: "B.Arch 4th Year, SPA Delhi",
-    initials: "AS",
-  },
-  {
-    text: "Great perspective on sustainable urban systems and how to frame competition entries.",
-    name: "Vikram Desai",
-    meta: "B.Arch 3rd Year, CEPT",
-    initials: "VD",
-  },
-];
-
-const MOCK_ACHIEVEMENTS = [
-  {
-    title: "Excellence in Teaching Award",
-    body: "Recognized for sustained student mentorship and studio instruction.",
-    year: "2024",
-  },
-  {
-    title: "Urban Design Lab — Lead Researcher",
-    body: "Led a public-realm morphology study adopted by the city planning cell.",
-    year: "2022",
-  },
-  {
-    title: "Portfolio: Selected Works",
-    body: "Curated exhibition of adaptive reuse and transit-oriented development projects.",
-    year: "2021",
-  },
-];
+const expertisePill = "mentor-tag-expertise-pill";
 
 type Tab = "overview" | "reviews" | "achievements";
 
+/** Lines from mentor profile “Certifications” (setup step) — split on `;` or newlines. */
+function achievementsFromCertifications(raw: string | null): { title: string; body: string; year: string }[] {
+  if (!raw?.trim()) return [];
+  return raw
+    .split(/[;\n]+/)
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const y = line.match(/\b(19|20)\d{2}\b/);
+      const year = y?.[0] ?? "";
+      const title =
+        year && y?.[0] ? line.replace(y[0], "").replace(/[\s,;·\-–]+$/g, "").trim() : line;
+      return { title: title || line, body: "", year };
+    });
+}
+
 export function PublicMentorProfile({
   mentor,
+  mentorReviews,
+  similarMentors,
   messageHref,
   scheduleHref,
   viewerPortfolio,
+  similarMentorsPersonalized = false,
 }: {
   mentor: Mentor;
+  /** Session reviews for this mentor (from `SessionReview` where `mentorId` matches). */
+  mentorReviews: PublicMentorReview[];
+  similarMentors: Mentor[];
+  /** When true (student signed in), suggestions use the student’s interests plus this mentor’s expertise. */
+  similarMentorsPersonalized?: boolean;
   messageHref: string;
   scheduleHref: string;
   /** When this marketing card is linked to a real mentor `User`, students can open their shared portfolio. */
@@ -80,40 +64,62 @@ export function PublicMentorProfile({
   const [reviewIdx, setReviewIdx] = useState(0);
   const [similarIdx, setSimilarIdx] = useState(0);
 
-  const similar = useMemo(
-    () => allMentors.filter((m) => m.id !== mentor.id).slice(0, 6),
-    [mentor.id],
-  );
+  const similar = useMemo(() => similarMentors.filter((m) => m.id !== mentor.id), [mentor.id, similarMentors]);
 
-  const experienceLines = [mentor.shortBio, mentor.detail].filter(Boolean);
+  const experienceLines = mentor.experienceLines;
 
   const reviewVisible = 2;
-  const maxReviewStart = Math.max(0, MOCK_REVIEWS.length - reviewVisible);
+  const maxReviewStart = Math.max(0, mentorReviews.length - reviewVisible);
   const reviewStart = Math.min(reviewIdx, maxReviewStart);
 
   const similarPageSize = 2;
   const maxSimilarStart = Math.max(0, similar.length - similarPageSize);
   const similarStart = Math.min(similarIdx, maxSimilarStart);
 
+  const achievementRows = useMemo(
+    () => achievementsFromCertifications(mentor.certifications),
+    [mentor.certifications],
+  );
+
+  const hasPortfolioForAchievements = useMemo(() => {
+    if (!viewerPortfolio) return false;
+    const hasFile = Boolean(viewerPortfolio.portfolioFileName?.trim());
+    const url = viewerPortfolio.portfolioUrl?.trim() ?? "";
+    const hasUrl = url.length > 0 && /^https?:\/\//i.test(url);
+    return hasFile || hasUrl;
+  }, [viewerPortfolio]);
+
+  const coverTint = mentor.hasProfilePhoto ? undefined : avatarColorsFromSeed(mentor.name).bg;
+  const coverSrc = profileCoverDisplaySrc(mentor.bannerImageUrl);
+
   return (
     <div className="bg-white pb-16">
       <section className="border-b border-black/[0.06] bg-white">
         <ProfileCover
-          imageSrc={mentor.image}
+          imageSrc={coverSrc}
+          noImageTintBg={coverTint}
           alt=""
           priority
           readableGradientClassName="bg-gradient-to-t from-black/[0.42] via-black/[0.12] to-transparent"
         />
 
-        <div className="relative z-10 mx-auto max-w-6xl px-4 pb-8 pt-0 sm:px-6 sm:pb-10 lg:px-10">
-          <div className="flex flex-col gap-6 sm:flex-row sm:items-start sm:gap-10 lg:gap-12">
-            <div className="-mt-10 flex shrink-0 justify-center sm:-mt-[4.25rem] lg:-mt-[5rem] sm:justify-start">
-              <div className="relative size-[7.75rem] overflow-hidden rounded-full bg-neutral-100 ring-[5px] ring-white shadow-[0_8px_30px_rgb(0,0,0,0.12)] sm:size-[9rem]">
-                <Image src={mentor.image} alt="" fill className="object-cover object-center" sizes="144px" />
+        <div className={profileHero.inner}>
+          <div className={profileHero.row}>
+            <div className={profileHero.avatarOuter}>
+              <div className={profileHero.avatarRing}>
+                <MentorAvatar
+                  variant="profile"
+                  name={mentor.name}
+                  imageUrl={mentor.image}
+                  hasProfilePhoto={mentor.hasProfilePhoto}
+                  className="size-full rounded-full"
+                  sizes="(max-width:640px) 42vw, 184px"
+                  priority
+                />
               </div>
             </div>
 
-            <div className="min-w-0 flex-1 pt-1 sm:pt-[4.75rem]">
+            <div className={profileHero.content}>
               <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:gap-x-10 lg:gap-y-1">
                 <h1 className="text-center font-heading text-[1.35rem] font-semibold tracking-tight text-[#0a0a0a] sm:text-2xl lg:text-left lg:text-[1.75rem] lg:col-start-1 lg:row-start-1">
                   {mentor.name}
@@ -131,28 +137,32 @@ export function PublicMentorProfile({
                     >
                       <ChatBubbleIcon className="size-[18px] text-white" />
                     </Link>
+                    {mentor.linkedinUrl ? (
+                      <SocialIconButton
+                        href={mentor.linkedinUrl}
+                        label="LinkedIn"
+                        icon={<LinkedInGlyph profileToolbar brandColor />}
+                        className="flex size-11 shrink-0 items-center justify-center rounded-full border-2 border-primary bg-white shadow-sm transition hover:bg-primary/5"
+                      />
+                    ) : null}
                     <Link
                       href={scheduleHref}
                       className="inline-flex items-center rounded-xl bg-primary px-4 py-2.5 text-[13px] font-semibold text-white shadow-md ring-1 ring-primary/25 transition hover:bg-primary/90"
                     >
-                      Schedule a Call
+                      Book a session
                     </Link>
-                  </div>
-                  <div className="flex justify-center gap-3 lg:justify-end">
-                    <SocialIconButton href={null} label="WhatsApp" icon={<WhatsAppGlyph />} />
-                    <SocialIconButton
-                      href={null}
-                      label="LinkedIn"
-                      icon={<LinkedInGlyph profileToolbar brandColor />}
-                      className="flex size-11 shrink-0 items-center justify-center rounded-full border-2 border-primary bg-white shadow-sm transition hover:bg-primary/5"
-                    />
-                    <SocialIconButton href={null} label="Instagram" icon={<InstagramGlyph />} />
                   </div>
                 </div>
 
-                <p className="text-left text-[13px] leading-relaxed text-[#3e3e3e] sm:text-sm lg:col-start-1 lg:row-start-3 lg:max-w-2xl lg:pt-1">
-                  {mentor.detail}
-                </p>
+                <div className="min-h-[4.5rem] lg:col-start-1 lg:row-start-3 lg:max-w-2xl lg:pt-1">
+                  {mentor.summary ? (
+                    <p className="text-left text-[13px] leading-relaxed text-[#3e3e3e] sm:text-sm">
+                      {mentor.summary}
+                    </p>
+                  ) : (
+                    <p className="text-left text-[13px] text-neutral-400 sm:text-sm">&nbsp;</p>
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -190,20 +200,28 @@ export function PublicMentorProfile({
               <div>
                 <h2 className="text-base font-semibold text-[#0a0a0a]">Specialization</h2>
                 <div className="mt-3 flex flex-wrap gap-2">
-                  {mentor.tags.map((t) => (
-                    <span key={t} className={pill}>
-                      {t}
-                    </span>
-                  ))}
+                  {mentor.tags.length > 0 ? (
+                    mentor.tags.map((t) => (
+                      <span key={t} className={expertisePill}>
+                        {t}
+                      </span>
+                    ))
+                  ) : (
+                    <p className="text-[13px] text-[#9ca3af]">Expertise will appear here from the mentor profile.</p>
+                  )}
                 </div>
               </div>
               <div>
                 <h2 className="text-base font-semibold text-[#0a0a0a]">Experience &amp; Background</h2>
-                <ul className="mt-3 list-inside list-disc space-y-1.5 text-[14px] leading-relaxed text-[#374151] marker:text-primary">
-                  {experienceLines.map((line, i) => (
-                    <li key={`${i}-${line.slice(0, 24)}`}>{line}</li>
-                  ))}
-                </ul>
+                {experienceLines.length > 0 ? (
+                  <ul className="mt-3 list-inside list-disc space-y-1.5 text-[14px] leading-relaxed text-[#374151] marker:text-primary">
+                    {experienceLines.map((line, i) => (
+                      <li key={`${i}-${line.slice(0, 24)}`}>{line}</li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="mt-2 text-[13px] text-[#9ca3af]">Background details from the mentor profile will show here.</p>
+                )}
               </div>
               {viewerPortfolio ? (
                 <PortfolioViewerPanel
@@ -222,7 +240,7 @@ export function PublicMentorProfile({
                 <div className="flex gap-3 rounded-xl border border-sky-100 bg-sky-50/80 p-3">
                   <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-sky-100">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src="/rocket.svg" alt="" className="icon-brand-line size-5 object-contain" />
+                    <img src="/rocket.svg" alt="" className="icon-black-line size-5 object-contain" />
                   </div>
                   <div>
                     <p className="text-lg font-semibold tabular-nums text-[#0a0a0a]">500 Minutes</p>
@@ -232,7 +250,7 @@ export function PublicMentorProfile({
                 <div className="flex gap-3 rounded-xl border border-amber-100 bg-amber-50/80 p-3">
                   <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-amber-100">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src="/session.svg" alt="" className="icon-brand-line size-5 object-contain" />
+                    <img src="/session.svg" alt="" className="icon-black-line size-5 object-contain" />
                   </div>
                   <div>
                     <p className="text-lg font-semibold tabular-nums text-[#0a0a0a]">60 Sessions</p>
@@ -246,137 +264,136 @@ export function PublicMentorProfile({
 
         {tab === "reviews" ? (
           <div className="mt-8">
-            <div className="grid gap-4 sm:grid-cols-2">
-              {MOCK_REVIEWS.slice(reviewStart, reviewStart + reviewVisible).map((r) => (
-                <article
-                  key={r.name + r.text.slice(0, 12)}
-                  className="flex min-h-[200px] flex-col rounded-xl border border-neutral-200 bg-white p-4 shadow-sm"
-                >
-                  <div className="flex size-10 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
-                    {r.initials}
+            {mentorReviews.length === 0 ? (
+              <p className="text-[13px] leading-relaxed text-[#6b7280]">
+                No reviews yet. When students complete a session and submit feedback, their reviews appear here in
+                real time.
+              </p>
+            ) : (
+              <>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  {mentorReviews.slice(reviewStart, reviewStart + reviewVisible).map((r) => (
+                    <article
+                      key={r.id}
+                      className="flex min-h-[200px] flex-col rounded-xl border border-neutral-200 bg-white p-4 shadow-sm"
+                    >
+                      <div className="flex size-10 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
+                        {r.initials}
+                      </div>
+                      <p className="mt-3 flex-1 text-[13px] leading-relaxed text-[#374151]">{r.text}</p>
+                      <div className="mt-4 flex items-end justify-between gap-2">
+                        <div>
+                          <p className="text-sm font-semibold text-[#0a0a0a]">{r.name}</p>
+                          <p className="text-xs text-neutral-500">{r.meta}</p>
+                        </div>
+                        <span className="text-sm font-semibold text-primary tabular-nums" title={`${r.rating}/5`}>
+                          {r.rating}/5
+                        </span>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+                {mentorReviews.length > reviewVisible ? (
+                  <div className="mt-6 flex justify-center">
+                    <MentorCarouselArrows
+                      ariaPrev="Previous reviews"
+                      ariaNext="Next reviews"
+                      prevDisabled={reviewStart <= 0}
+                      nextDisabled={reviewStart >= maxReviewStart}
+                      onPrev={() =>
+                        setReviewIdx((i) => {
+                          const cur = Math.min(i, maxReviewStart);
+                          return Math.max(0, cur - 1);
+                        })
+                      }
+                      onNext={() =>
+                        setReviewIdx((i) => {
+                          const cur = Math.min(i, maxReviewStart);
+                          return Math.min(maxReviewStart, cur + 1);
+                        })
+                      }
+                    />
                   </div>
-                  <p className="mt-3 flex-1 text-[13px] leading-relaxed text-[#374151]">{r.text}</p>
-                  <div className="mt-4 flex items-end justify-between gap-2">
-                    <div>
-                      <p className="text-sm font-semibold text-[#0a0a0a]">{r.name}</p>
-                      <p className="text-xs text-neutral-500">{r.meta}</p>
-                    </div>
-                    <span className="text-primary" aria-hidden>
-                      ★
-                    </span>
-                  </div>
-                </article>
-              ))}
-            </div>
-            <div className="mt-6 flex justify-center gap-3">
-              <CarouselBtn
-                dir="prev"
-                disabled={reviewStart <= 0}
-                onClick={() => setReviewIdx((i) => Math.max(0, i - 1))}
-              />
-              <CarouselBtn
-                dir="next"
-                disabled={reviewStart >= maxReviewStart}
-                onClick={() => setReviewIdx((i) => Math.min(maxReviewStart, i + 1))}
-              />
-            </div>
+                ) : null}
+              </>
+            )}
           </div>
         ) : null}
 
         {tab === "achievements" ? (
-          <ul className="mt-8 space-y-4">
-            {MOCK_ACHIEVEMENTS.map((a) => (
-              <li
-                key={a.title}
-                className="rounded-xl border border-neutral-200 bg-white p-5 shadow-sm"
-              >
-                <div className="flex flex-wrap items-baseline justify-between gap-2">
-                  <h3 className="text-base font-semibold text-[#0a0a0a]">{a.title}</h3>
-                  <span className="rounded-full bg-neutral-100 px-2.5 py-0.5 text-xs font-medium text-neutral-600">
-                    {a.year}
-                  </span>
-                </div>
-                <p className="mt-2 text-sm leading-relaxed text-[#4b5563]">{a.body}</p>
-              </li>
-            ))}
-          </ul>
+          <div className="mt-8 space-y-8">
+            {achievementRows.length > 0 ? (
+              <section>
+                <h2 className="text-base font-semibold text-[#0a0a0a]">Certifications &amp; credentials</h2>
+                <ul className="mt-3 space-y-4">
+                  {achievementRows.map((a) => (
+                    <li
+                      key={a.title + a.year}
+                      className="rounded-xl border border-neutral-200 bg-white p-5 shadow-sm"
+                    >
+                      <div className="flex flex-wrap items-baseline justify-between gap-2">
+                        <h3 className="text-base font-semibold text-[#0a0a0a]">{a.title}</h3>
+                        {a.year ? (
+                          <span className="rounded-full bg-neutral-100 px-2.5 py-0.5 text-xs font-medium text-neutral-600">
+                            {a.year}
+                          </span>
+                        ) : null}
+                      </div>
+                      {a.body ? <p className="mt-2 text-sm leading-relaxed text-[#4b5563]">{a.body}</p> : null}
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            ) : null}
+            {viewerPortfolio ? (
+              <PortfolioViewerPanel
+                userId={viewerPortfolio.userId}
+                portfolioUrl={viewerPortfolio.portfolioUrl}
+                portfolioFileName={viewerPortfolio.portfolioFileName}
+                portfolioVisibleToOthers={viewerPortfolio.portfolioVisibleToOthers}
+                className="!mt-0"
+              />
+            ) : null}
+            {achievementRows.length === 0 && !hasPortfolioForAchievements ? (
+              <div className="rounded-xl border border-dashed border-neutral-200 bg-neutral-50/80 p-5 text-[13px] leading-relaxed text-[#6b7280]">
+                <p className="font-medium text-[#0a0a0a]">Nothing listed yet</p>
+                <p className="mt-2">
+                  Achievements include <strong>certifications and credentials</strong> from mentor profile setup
+                  (semicolons or new lines) and any <strong>portfolio</strong> they upload or link when sharing is
+                  enabled.
+                </p>
+              </div>
+            ) : null}
+          </div>
         ) : null}
 
         <section className="mt-14 border-t border-black/[0.06] pt-10">
-          <h2 className="text-base font-semibold text-[#0a0a0a]">Mentors With Similar Expertise</h2>
-          <div className="mt-5 grid gap-4 md:grid-cols-2">
+          <h2 className="text-base font-semibold text-[#0a0a0a]">
+            {similarMentorsPersonalized ? "Suggested mentors for you" : "More mentors to explore"}
+          </h2>
+          <p className="mt-1 text-[12px] leading-relaxed text-neutral-500">
+            {similarMentorsPersonalized
+              ? "Based on your profile interests and this mentor’s areas of expertise — not a random list."
+              : "Ranked by overlap with this mentor’s expertise. Sign in as a student to tailor suggestions to your interests."}
+          </p>
+          <div className="mt-5 grid min-w-0 gap-4 sm:gap-5 md:grid-cols-2">
             {similar.slice(similarStart, similarStart + similarPageSize).map((m, i) => (
-              <article
-                key={`${m.id}-${similarStart}-${i}`}
-                className="grid grid-cols-1 overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-sm md:grid-cols-[minmax(0,1fr)_minmax(0,34%)]"
-              >
-                <div className="flex flex-col justify-between gap-2 p-4">
-                  <div>
-                    <h3 className="text-sm font-semibold text-[#0a0a0a]">{m.name}</h3>
-                    <p className="mt-0.5 text-[11px] font-semibold text-neutral-600">{m.role}</p>
-                    <p className="mt-2 text-xs leading-snug text-[#374151]">{m.shortBio}</p>
-                    <div className="mt-2 flex flex-wrap gap-1">
-                      {m.tags.slice(0, 5).map((t) => (
-                        <span
-                          key={t}
-                          className="rounded bg-primary px-1.5 py-px text-[9px] font-semibold text-white"
-                        >
-                          {t}
-                        </span>
-                      ))}
-                    </div>
-                    <p className="mt-2 text-[10px] font-semibold text-neutral-800">{m.slot}</p>
-                  </div>
-                  <Link
-                    href={`/mentors/${m.id}`}
-                    className="mt-2 inline-flex w-fit rounded-full bg-primary px-3 py-1.5 text-[10px] font-semibold text-white"
-                  >
-                    View profile
-                  </Link>
-                </div>
-                <div className="relative min-h-[140px] w-full">
-                  <Image src={m.image} alt="" fill className="object-cover object-center md:rounded-r-xl" />
-                </div>
-              </article>
+              <MentorCard key={`${m.id}-${similarStart}-${i}`} mentor={m} index={similarStart + i} />
             ))}
           </div>
-          <div className="mt-6 flex justify-center gap-3">
-            <CarouselBtn
-              dir="prev"
-              disabled={similarStart <= 0}
-              onClick={() => setSimilarIdx((i) => Math.max(0, i - 1))}
-            />
-            <CarouselBtn
-              dir="next"
-              disabled={similarStart >= maxSimilarStart}
-              onClick={() => setSimilarIdx((i) => Math.min(maxSimilarStart, i + 1))}
+          <div className="mt-6 flex justify-center">
+            <MentorCarouselArrows
+              ariaPrev="Previous similar mentors"
+              ariaNext="Next similar mentors"
+              prevDisabled={similarStart <= 0}
+              nextDisabled={similarStart >= maxSimilarStart}
+              onPrev={() => setSimilarIdx((i) => Math.max(0, i - 1))}
+              onNext={() => setSimilarIdx((i) => Math.min(maxSimilarStart, i + 1))}
             />
           </div>
         </section>
       </div>
     </div>
-  );
-}
-
-function CarouselBtn({
-  dir,
-  disabled,
-  onClick,
-}: {
-  dir: "prev" | "next";
-  disabled: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      disabled={disabled}
-      onClick={onClick}
-      className="flex size-10 items-center justify-center rounded-full bg-primary text-sm font-bold text-white shadow-md disabled:opacity-40"
-      aria-label={dir === "prev" ? "Previous" : "Next"}
-    >
-      {dir === "prev" ? "‹" : "›"}
-    </button>
   );
 }
 

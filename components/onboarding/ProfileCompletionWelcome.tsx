@@ -2,7 +2,7 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 
 const CONFETTI_COLORS = [
   "#ff571f",
@@ -45,11 +45,9 @@ const copy: Record<Variant, { title: string; subtitle: ReactNode; cta: string }>
 export function ProfileCompletionWelcome({ variant }: { variant: Variant }) {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const [open, setOpen] = useState(false);
-
-  useEffect(() => {
-    if (searchParams.get("welcome") === "1") setOpen(true);
-  }, [searchParams]);
+  const [dismissed, setDismissed] = useState(false);
+  const welcomeOn = searchParams.get("welcome") === "1";
+  const open = welcomeOn && !dismissed;
 
   const pieces = useMemo(
     () =>
@@ -66,7 +64,7 @@ export function ProfileCompletionWelcome({ variant }: { variant: Variant }) {
   );
 
   const dismiss = () => {
-    setOpen(false);
+    setDismissed(true);
     router.replace(variant === "student" ? "/student" : "/mentor");
   };
 

@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 
 import { StudentSetupShell } from "./StudentSetupShell";
-import { setupField, setupLabel } from "./student-ui";
+import { setupField, setupLabel, setupRequiredStar } from "./student-ui";
 import { SetupGoogleCalendarConnect } from "@/components/setup/SetupGoogleCalendarConnect";
 import { SetupLinkedInNotice } from "@/components/setup/SetupLinkedInNotice";
 import { useProfileAutosave } from "@/hooks/useProfileAutosave";
@@ -37,11 +37,16 @@ export function StudentSetupStep3({
     <StudentSetupShell step={3} backHref="/student/setup/2">
       <section>
         {linkedInConnected ? <SetupLinkedInNotice variant="student" /> : null}
-        <h2 className="mb-3 text-base font-semibold text-[#0a0a0a]">Portfolio &amp; Bio</h2>
-        <p className="mb-3 text-[12px] text-[#6b7280]">
-          Fields marked <span className="text-primary">*</span> are required. Portfolio link and file upload are
-          optional.
+        <h2 className="mb-1 text-base font-semibold text-[#0a0a0a]">
+          Portfolio &amp; bio
+          <span className={setupRequiredStar} title="Required fields below" aria-hidden>
+            *
+          </span>
+        </h2>
+        <p className="mb-1 text-[12px] leading-snug text-[#6b7280]">
+          About you and LinkedIn are required. Portfolio link and file upload are optional.
         </p>
+        <p className="mb-3 text-[12px] text-[#6b7280]">Changes save automatically.</p>
         <form
           className="space-y-3"
           onSubmit={async (e) => {
@@ -60,6 +65,7 @@ export function StudentSetupStep3({
               method: "PATCH",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
+                role: "student",
                 bio: text,
                 linkedinUrl: li,
                 portfolioUrl: portfolioUrl.trim() || null,

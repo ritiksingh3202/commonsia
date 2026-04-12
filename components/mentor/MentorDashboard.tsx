@@ -3,8 +3,21 @@ import type { ReactNode } from "react";
 
 import type { MentorDashboardUser } from "@/components/mentor/mentor-dashboard-types";
 import { MentorProfileHero } from "@/components/mentor/MentorProfileHero";
+import {
+  formatRelativePast,
+  formatSessionBadge,
+} from "@/lib/mentor-dashboard-stats";
 
 type Props = { user: MentorDashboardUser };
+
+function formatMinutesLong(total: number): string {
+  if (total <= 0) return "0 Minutes";
+  if (total < 60) return `${total} Minute${total === 1 ? "" : "s"}`;
+  const h = Math.floor(total / 60);
+  const m = total % 60;
+  if (m === 0) return `${h} Hour${h === 1 ? "" : "s"}`;
+  return `${h}h ${m}m`;
+}
 
 /** Figma Main Content (130:6879) — cards use 14px radius, hairline border */
 const card =
@@ -14,8 +27,13 @@ const pill =
 
 function getMaxMentees(json: unknown): number {
   if (!json || typeof json !== "object") return 10;
-  const m = (json as { maxStudents?: unknown }).maxStudents;
-  return typeof m === "number" && m >= 1 && m <= 100 ? m : 10;
+  const o = json as { maxStudents?: unknown; menteeCapacityBand?: string };
+  const band = o.menteeCapacityBand;
+  if (band === "0-5") return 5;
+  if (band === "10+") return 25;
+  if (band === "5-10") return 10;
+  const m = o.maxStudents;
+  return typeof m === "number" && m >= 1 && m <= 50 ? m : 10;
 }
 
 function buildExperienceBullets(user: MentorDashboardUser): string[] {
@@ -51,37 +69,37 @@ function initials(name: string | null): string {
 
 /** Mentor-only home — profile header + dashboard sections aligned to product mockups. */
 export function MentorDashboard({ user }: Props) {
+  const live = user.dashboardLive;
   const expertise = Array.isArray(user.mentorExpertise)
     ? (user.mentorExpertise as string[]).filter(Boolean)
     : [];
   const experienceBullets = buildExperienceBullets(user);
   const maxSlots = getMaxMentees(user.mentorAvailabilityJson);
-  const currentMentees = 8;
-  const capacityPct = Math.min(100, Math.round((currentMentees / maxSlots) * 100));
+  const currentMentees = live?.activeMenteeCount ?? 0;
+  const capacityPct = Math.min(100, Math.round((currentMentees / Math.max(1, maxSlots)) * 100));
 
-  const SAMPLE_MENTEES = [
-    {
-      name: "Ayan Yadav",
-      uni: "IITR • 3rd Year",
-      focus: "Sustainable Design",
-      last: "2 days ago",
-      progress: 75,
-    },
-    {
-      name: "David Singh",
-      uni: "SPA Delhi • 4th Year",
-      focus: "Urban Planning",
-      last: "5 days ago",
-      progress: 60,
-    },
-    {
-      name: "Aisha Patel",
-      uni: "CEPT • 2nd Year",
-      focus: "Digital Fabrication",
-      last: "1 week ago",
-      progress: 45,
-    },
-  ];
+  const completedSessions = live?.completedSessionCount ?? 0;
+  const totalMentoringMinutes = live?.totalMentoringMinutes ?? 0;
+  const upcomingList = live?.upcomingSessions ?? [];
+  const upcomingCount = live?.upcomingSessionCount ?? 0;
+  const firstUpcoming = upcomingList[0];
+  const upcomingSub = firstUpcoming
+    ? `Next ${new Date(firstUpcoming.startAt).toLocaleString("en-IN", {
+        weekday: "short",
+        month: "short",
+        day: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+        timeZone: "Asia/Kolkata",
+      })} IST`
+    : upcomingCount === 0
+      ? "Nothing scheduled"
+      : `${upcomingCount} scheduled`;
+
+  const avgRating = live?.averageRating;
+  const reviewCount = live?.reviewCount ?? 0;
+  const impactScore = live?.impactScore ?? 0;
+  const joinedMonth = live?.menteesJoinedThisMonth ?? 0;
 
   return (
     <div className="w-full min-w-0 bg-[#ffffff]">
@@ -136,37 +154,37 @@ export function MentorDashboard({ user }: Props) {
               Statistics
             </h2>
             <p className="mb-4 text-[11px] text-[#9ca3af]">
-              Totals update when sessions go live.
+              Live totals from completed bookings on Commonsia.
             </p>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
               <div className="flex gap-3 rounded-xl border border-sky-100 bg-sky-50/80 p-3">
                 <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-sky-100">
-                  {/* eslint-disable-next-line @next/next/no-img-element -- static SVG, native black fill */}
+                  {/* eslint-disable-next-line @next/next/no-img-element -- static SVG + icon-black-line */}
                   <img
                     src="/rocket.svg"
                     alt=""
-                    className="icon-brand-line size-5 object-contain"
+                    className="icon-black-line size-5 object-contain"
                   />
                 </div>
                 <div>
                   <p className="text-lg font-semibold tabular-nums text-[#0a0a0a]">
-                    500 Minutes
+                    {formatMinutesLong(totalMentoringMinutes)}
                   </p>
                   <p className="text-[11px] text-[#6b7280]">Total Mentoring Time</p>
                 </div>
               </div>
               <div className="flex gap-3 rounded-xl border border-amber-100 bg-amber-50/80 p-3">
                 <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-amber-100">
-                  {/* eslint-disable-next-line @next/next/no-img-element -- static SVG, native black fill */}
+                  {/* eslint-disable-next-line @next/next/no-img-element -- static SVG + icon-black-line */}
                   <img
                     src="/session.svg"
                     alt=""
-                    className="icon-brand-line size-5 object-contain"
+                    className="icon-black-line size-5 object-contain"
                   />
                 </div>
                 <div>
                   <p className="text-lg font-semibold tabular-nums text-[#0a0a0a]">
-                    60 Sessions
+                    {completedSessions} Session{completedSessions === 1 ? "" : "s"}
                   </p>
                   <p className="text-[11px] text-[#6b7280]">Sessions Completed</p>
                 </div>
@@ -189,33 +207,51 @@ export function MentorDashboard({ user }: Props) {
       <div className="mb-10 grid gap-3 sm:grid-cols-2 lg:grid-cols-4 lg:gap-4">
         <MetricCard
           accent="primary"
-          label="Total Mentees"
-          value="8"
-          sub="+2 this month"
-          subTone="text-[#00a63e]"
-          icon={<IconTrendUp className="size-4 shrink-0 text-[#00a63e]" />}
+          label="Total mentees"
+          value={String(currentMentees)}
+          sub={
+            joinedMonth > 0
+              ? `+${joinedMonth} new this month`
+              : "Active mentor–student chats"
+          }
+          subTone={joinedMonth > 0 ? "text-[#00a63e]" : "text-[#4a5565]"}
+          icon={
+            joinedMonth > 0 ? (
+              <IconTrendUp className="size-4 shrink-0 text-[#00a63e]" />
+            ) : undefined
+          }
         />
         <MetricCard
           accent="blue"
-          label="Sessions This Month"
-          value="24"
-          sub="18 hours total"
+          label="Upcoming sessions"
+          value={String(upcomingCount)}
+          sub={upcomingSub}
           subTone="text-[#4a5565]"
           icon={<IconClock className="size-4 shrink-0 text-[#4a5565]" />}
         />
         <MetricCard
           accent="violet"
-          label="Avg. Rating"
-          value="4.8"
-          sub="Based on 15 reviews"
+          label="Avg. rating"
+          value={avgRating != null ? String(avgRating) : "—"}
+          sub={
+            reviewCount > 0
+              ? `Based on ${reviewCount} review${reviewCount === 1 ? "" : "s"}`
+              : "No reviews yet"
+          }
           subTone="text-[#d08700]"
           icon={<IconStar className="size-4 shrink-0 text-[#d08700]" />}
         />
         <MetricCard
           accent="green"
-          label="Impact Score"
-          value="94%"
-          sub="Top 10% mentor"
+          label="Impact score"
+          value={`${impactScore}%`}
+          sub={
+            impactScore >= 75
+              ? "Strong engagement"
+              : impactScore >= 40
+                ? "Growing impact"
+                : "Based on sessions & reviews"
+          }
           subTone="text-[#00a63e]"
           icon={<IconAward className="size-4 shrink-0 text-[#00a63e]" />}
         />
@@ -240,63 +276,72 @@ export function MentorDashboard({ user }: Props) {
                 View All
               </button>
             </div>
-            <ul className="space-y-4">
-              {SAMPLE_MENTEES.map((m) => (
-                <li
-                  key={m.name}
-                  className="rounded-[10px] border border-black/10 bg-white p-4 pt-4"
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex gap-4">
-                      <div className="flex size-12 shrink-0 items-center justify-center rounded-full bg-primary/10 text-base font-medium text-primary">
-                        {initials(m.name)}
+            {live && live.mentees.length > 0 ? (
+              <ul className="space-y-4">
+                {live.mentees.map((m) => (
+                  <li
+                    key={m.threadId}
+                    className="rounded-[10px] border border-black/10 bg-white p-4 pt-4"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex min-w-0 gap-4">
+                        <div className="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary/10 text-base font-medium text-primary">
+                          {m.image ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={m.image} alt="" className="size-full object-cover" />
+                          ) : (
+                            initials(m.name)
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-base font-semibold leading-6 text-[#0a0a0a]">
+                            {m.name}
+                          </p>
+                          <p className="text-sm leading-5 text-[#4a5565]">{m.subtitle}</p>
+                          <p className="mt-1 text-xs leading-4 text-[#6a7282]">
+                            Focus: {m.focus}
+                          </p>
+                          <p className="mt-1 text-xs leading-4 text-[#6a7282]">
+                            Last session: {m.lastSessionLabel}
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-base font-semibold leading-6 text-[#0a0a0a]">
-                          {m.name}
-                        </p>
-                        <p className="text-sm leading-5 text-[#4a5565]">{m.uni}</p>
-                        <p className="mt-1 text-xs leading-4 text-[#6a7282]">
-                          Focus: {m.focus}
-                        </p>
-                        <p className="mt-1 text-xs leading-4 text-[#6a7282]">
-                          Last session: {m.last}
-                        </p>
+                      <div className="flex shrink-0 flex-col items-end gap-1.5 sm:flex-row sm:items-center">
+                        <Link
+                          href={`/mentor/students/${m.studentId}`}
+                          className="flex h-8 items-center rounded-lg border border-black/10 bg-white px-3 text-[14px] font-medium text-[#0a0a0a] hover:bg-neutral-50"
+                        >
+                          Profile
+                        </Link>
+                        <Link
+                          href="/messages"
+                          className="flex size-8 items-center justify-center rounded-lg border border-black/10 bg-white text-[#0a0a0a] hover:bg-neutral-50"
+                          aria-label={`Message ${m.name}`}
+                        >
+                          <IconChat className="size-4" />
+                        </Link>
                       </div>
                     </div>
-                    <div className="flex shrink-0 flex-col items-end gap-1.5 sm:flex-row sm:items-center">
-                      <Link
-                        href="/mentor/students/demo"
-                        className="flex h-8 items-center rounded-lg border border-black/10 bg-white px-3 text-[14px] font-medium text-[#0a0a0a] hover:bg-neutral-50"
-                      >
-                        Profile
-                      </Link>
-                      <Link
-                        href="/messages"
-                        className="flex h-8 items-center rounded-lg border border-black/10 bg-white px-3 text-[14px] font-medium text-[#0a0a0a] hover:bg-neutral-50"
-                      >
-                        Message
-                      </Link>
+                    <div className="mt-3">
+                      <div className="mb-1 flex justify-between text-xs leading-4 text-[#6a7282]">
+                        <span>Engagement</span>
+                        <span>{m.progressPct}%</span>
+                      </div>
+                      <div className="h-1.5 overflow-hidden rounded-full bg-neutral-200">
+                        <div
+                          className="h-full rounded-full bg-primary transition-all"
+                          style={{ width: `${m.progressPct}%` }}
+                        />
+                      </div>
                     </div>
-                  </div>
-                  <div className="mt-3">
-                    <div className="mb-1 flex justify-between text-xs leading-4 text-[#6a7282]">
-                      <span>Mentorship Progress</span>
-                      <span>{m.progress}%</span>
-                    </div>
-                    <div className="h-1.5 overflow-hidden rounded-full bg-neutral-200">
-                      <div
-                        className="h-full rounded-full bg-primary transition-all"
-                        style={{ width: `${m.progress}%` }}
-                      />
-                    </div>
-                  </div>
-                </li>
-              ))}
-            </ul>
-            <p className="mt-3 text-[11px] text-[#9ca3af]">
-              Sample rows — mentee lists will connect to booking soon.
-            </p>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="rounded-[10px] border border-dashed border-black/10 bg-neutral-50/80 px-4 py-8 text-center text-sm text-[#6a7282]">
+                No active mentee chats yet. When students connect, they&apos;ll appear here.
+              </p>
+            )}
           </section>
 
           <section className={card}>
@@ -306,63 +351,31 @@ export function MentorDashboard({ user }: Props) {
             <p className="mt-0.5 text-base text-[#717182]">
               Your latest mentoring activities
             </p>
-            <ul className="mt-4 space-y-3">
-              <ActivityRow
-                tone="bg-sky-50 text-sky-600"
-                icon={<IconCalendar className="size-4" />}
-                title="Completed portfolio review with Arnav Alam"
-                time="2 hours ago"
-              />
-              <ActivityRow
-                tone="bg-emerald-50 text-emerald-600"
-                icon={<IconChat className="size-4" />}
-                title="Received message from David Kim about upcoming project"
-                time="5 hours ago"
-              />
-              <ActivityRow
-                tone="bg-amber-50 text-amber-600"
-                icon={<IconStarOutline className="size-4" />}
-                title="Aisha Patel left you a 5-star review"
-                time="1 day ago"
-              />
-              <ActivityRow
-                tone="bg-sky-50 text-sky-600"
-                icon={<IconCalendar className="size-4" />}
-                title="Conducted career guidance session with Ayan Yadav"
-                time="3 days ago"
-              />
-            </ul>
-          </section>
-
-          <section className={card}>
-            <h3 className="text-base font-medium text-[#0a0a0a]">
-              Monthly Overview
-            </h3>
-            <p className="mt-0.5 text-base text-[#717182]">
-              Your mentoring statistics for{" "}
-              {new Date().toLocaleDateString("en-IN", {
-                month: "long",
-                year: "numeric",
-              })}
-            </p>
-            <div className="mt-4 grid gap-3 sm:grid-cols-3">
-              <div className="rounded-xl border border-sky-100 bg-sky-50/80 px-4 py-4 text-center">
-                <p className="text-[32px] font-medium leading-8 text-sky-700">24</p>
-                <p className="mt-1 text-sm font-normal text-sky-800/90">Sessions</p>
-              </div>
-              <div className="rounded-xl border border-emerald-100 bg-emerald-50/80 px-4 py-4 text-center">
-                <p className="text-[32px] font-medium leading-8 text-emerald-700">18h</p>
-                <p className="mt-1 text-sm font-normal text-emerald-800/90">
-                  Hours
-                </p>
-              </div>
-              <div className="rounded-xl border border-violet-100 bg-violet-50/80 px-4 py-4 text-center">
-                <p className="text-[32px] font-medium leading-8 text-violet-700">92%</p>
-                <p className="mt-1 text-sm font-normal text-violet-800/90">
-                  Attendance
-                </p>
-              </div>
-            </div>
+            {live && live.activities.length > 0 ? (
+              <ul className="mt-4 space-y-3">
+                {live.activities.map((a) => (
+                  <ActivityRow
+                    key={a.id}
+                    tone={a.tone}
+                    icon={
+                      a.icon === "calendar" ? (
+                        <IconCalendar className="size-4" />
+                      ) : a.icon === "chat" ? (
+                        <IconChat className="size-4" />
+                      ) : (
+                        <IconStarOutline className="size-4" />
+                      )
+                    }
+                    title={a.title}
+                    time={formatRelativePast(a.at)}
+                  />
+                ))}
+              </ul>
+            ) : (
+              <p className="mt-4 rounded-[10px] border border-dashed border-black/10 bg-neutral-50/80 px-4 py-6 text-center text-sm text-[#6a7282]">
+                No recent activity yet — sessions, messages, and reviews will show up here.
+              </p>
+            )}
           </section>
         </div>
 
@@ -384,12 +397,6 @@ export function MentorDashboard({ user }: Props) {
               >
                 Join Discussion
               </button>
-              <Link
-                href="/mentor/availability"
-                className="flex h-8 w-full items-center justify-center rounded-lg border border-black/10 text-[14px] font-medium text-[#0a0a0a] hover:bg-neutral-50"
-              >
-                Update Availability
-              </Link>
               <button
                 type="button"
                 className="h-8 w-full rounded-lg border border-black/10 bg-white text-[14px] font-medium text-[#0a0a0a] hover:bg-neutral-50"
@@ -406,36 +413,33 @@ export function MentorDashboard({ user }: Props) {
             <p className="mt-0.5 text-base text-[#717182]">
               Your scheduled mentoring sessions
             </p>
-            <ul className="mt-4 space-y-3">
-              <SessionRow
-                name="Ayan Yadav"
-                topic="Portfolio Review"
-                time="3:00 PM"
-                badge="Today"
-                badgeClass="bg-primary/15 text-primary"
-              />
-              <SessionRow
-                name="David Singh"
-                topic="Project Feedback"
-                time="2:00 PM"
-                badge="Tomorrow"
-                badgeClass="bg-orange-50 text-orange-700"
-              />
-              <SessionRow
-                name="Aisha Patel"
-                topic="Career Guidance"
-                time="4:30 PM"
-                badge="Mar 24"
-                badgeClass="bg-primary/10 text-primary"
-              />
-              <SessionRow
-                name="Arnav Alam"
-                topic="Technical Skills"
-                time="3:00 PM"
-                badge="Mar 26"
-                badgeClass="bg-primary/10 text-primary"
-              />
-            </ul>
+            {upcomingList.length > 0 ? (
+              <ul className="mt-4 space-y-3">
+                {upcomingList.map((s) => {
+                  const who = s.student.name?.trim() || "Student";
+                  const badge = formatSessionBadge(new Date(s.startAt));
+                  const timeStr = new Date(s.startAt).toLocaleTimeString("en-IN", {
+                    hour: "numeric",
+                    minute: "2-digit",
+                    timeZone: "Asia/Kolkata",
+                  });
+                  return (
+                    <SessionRow
+                      key={s.id}
+                      name={who}
+                      topic={s.title?.trim() || "Mentoring session"}
+                      time={`${timeStr} IST`}
+                      badge={badge.label}
+                      badgeClass={badge.className}
+                    />
+                  );
+                })}
+              </ul>
+            ) : (
+              <p className="mt-4 text-sm leading-6 text-[#717182]">
+                No upcoming sessions. Bookings will appear here when students schedule with you.
+              </p>
+            )}
           </section>
 
           <section className={card}>
@@ -481,9 +485,13 @@ export function MentorDashboard({ user }: Props) {
                 <IconStar className="size-5 shrink-0 text-sky-600" />
                 <div>
                   <p className="text-sm font-medium text-[#0a0a0a]">
-                    5-Star Rated
+                    {avgRating != null && avgRating >= 4.5 ? "5-Star Rated" : "Reviews"}
                   </p>
-                  <p className="text-xs text-[#6a7282]">15 reviews</p>
+                  <p className="text-xs text-[#6a7282]">
+                    {reviewCount > 0
+                      ? `${reviewCount} review${reviewCount === 1 ? "" : "s"}`
+                      : "No reviews yet"}
+                  </p>
                 </div>
               </div>
             </div>

@@ -21,6 +21,7 @@ const field =
   "w-full rounded-xl border border-neutral-200 bg-white px-3.5 py-2.5 text-sm text-[#0a0a0a] shadow-sm outline-none transition placeholder:text-neutral-400 focus:border-primary focus:ring-2 focus:ring-primary/15";
 
 export type SessionReviewProps = {
+  mentorUserId: string;
   mentorName: string;
   mentorSubtitle: string;
   mentorInitials: string;
@@ -31,6 +32,7 @@ export type SessionReviewProps = {
 };
 
 export function SessionReviewPage({
+  mentorUserId,
   mentorName,
   mentorSubtitle,
   mentorInitials,
@@ -46,6 +48,7 @@ export function SessionReviewPage({
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [ratingError, setRatingError] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const activeStars = hoveredRating || rating;
 
@@ -59,11 +62,13 @@ export function SessionReviewPage({
       return;
     }
     setRatingError(false);
+    setSubmitError(null);
     try {
-      await fetch("/api/session-review", {
+      const res = await fetch("/api/session-review", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          mentorUserId,
           mentorName,
           sessionType,
           durationMinutes,
@@ -73,8 +78,14 @@ export function SessionReviewPage({
           comment: review.trim() || null,
         }),
       });
+      const data = (await res.json().catch(() => ({}))) as { error?: string };
+      if (!res.ok) {
+        setSubmitError(data.error ?? "Could not save your review. Please try again.");
+        return;
+      }
     } catch {
-      /* non-blocking if API unavailable */
+      setSubmitError("Could not save your review. Please try again.");
+      return;
     }
     setSuccess(true);
     window.setTimeout(() => router.push("/student"), 900);
@@ -100,6 +111,11 @@ export function SessionReviewPage({
         {success ? (
           <p className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-center text-sm text-emerald-900">
             Thank you for your feedback! Redirecting…
+          </p>
+        ) : null}
+        {submitError ? (
+          <p className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-center text-sm text-red-900">
+            {submitError}
           </p>
         ) : null}
 

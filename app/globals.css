@@ -121,6 +121,24 @@ body {
   .section-gap-y {
     @apply flex flex-col gap-5 lg:gap-[25px];
   }
+
+  /**
+   * Header bar: same max width + gutters as marketing pages so logo + actions align to the grid.
+   * Referenced by `Navbar` (class was previously inert without this rule).
+   */
+  .site-container {
+    @apply mx-auto w-full max-w-[100rem] px-3 sm:px-5 lg:px-8;
+  }
+
+  /**
+   * Expertise / interests / software chips — one slate style everywhere
+   * (mentor directory cards, public mentor profile, student own profile, mentor view of student).
+   */
+  .mentor-tag-expertise,
+  .mentor-tag-expertise-pill {
+    @apply inline-flex items-center rounded-full px-3 py-1.5 text-[11px] font-medium text-[#334155] ring-1 ring-[#334155]/12 sm:text-xs;
+    background-color: #e8eef4;
+  }
 }
 
 /* Hero accent words — black → brown → orange (Figma) */

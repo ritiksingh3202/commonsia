@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type { MentorEditProfileInitial } from "@/components/mentor/mentor-edit-profile-types";
@@ -141,6 +141,7 @@ function mentorPayloadFromInitial(i: MentorEditProfileInitial): Record<string, u
 
 export function MentorEditProfileForm({ initial }: { initial: MentorEditProfileInitial }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const fileRef = useRef<HTMLInputElement>(null);
 
   const [tab, setTab] = useState<TabId>("personal");
@@ -188,6 +189,18 @@ export function MentorEditProfileForm({ initial }: { initial: MentorEditProfileI
   );
   const [certifications, setCertifications] = useState(initial.mentorCertifications ?? "");
   const portfolioFileRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (searchParams.get("addPhoto") !== "1") return;
+    setTab("personal");
+    const id = window.setTimeout(() => {
+      fileRef.current?.click();
+      const u = new URLSearchParams(searchParams.toString());
+      u.delete("addPhoto");
+      router.replace(`/mentor/profile/edit?${u.toString()}`, { scroll: false });
+    }, 0);
+    return () => window.clearTimeout(id);
+  }, [searchParams, router]);
 
   const displayPhotoSrc = previewObjectUrl || imageDataUrl || initial.image || null;
 

@@ -6,23 +6,28 @@ import Image from "next/image";
 type Props = {
   value: string;
   onChange: (v: string) => void;
+  className?: string;
 };
 
-export function MentorSearchBar({ value, onChange }: Props) {
+export function MentorSearchBar({ value, onChange, className }: Props) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      className="flex flex-col gap-2 sm:flex-row sm:items-stretch"
+      className={className ?? "w-full min-w-0"}
     >
-      <label className="relative flex flex-1 items-center">
+      <label className="relative flex w-full min-w-0 items-center">
+        <span className="sr-only">Search mentors</span>
         <input
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder="Search mentors by skill, software, or topic"
-          className="h-10 w-full rounded-full border border-cream bg-white py-2 pl-4 pr-11 text-xs text-[#1a1a1a] shadow-sm outline-none ring-primary/25 placeholder:text-neutral-400 focus:ring-2 sm:h-11 sm:pl-5 sm:text-sm"
+          enterKeyHint="search"
+          autoComplete="off"
+          type="search"
+          className="min-h-12 w-full min-w-0 rounded-full border border-black/[0.08] bg-white py-3 pl-6 pr-12 text-base text-[#1a1a1a] shadow-sm outline-none ring-primary/25 placeholder:text-neutral-400 focus:ring-2 sm:text-sm"
         />
-        <span className="pointer-events-none absolute right-3 flex size-7 items-center justify-center sm:right-4">
+        <span className="pointer-events-none absolute right-4 flex size-7 items-center justify-center">
           <Image
             src="/mentors_assets/search.svg"
             alt=""
@@ -32,21 +37,6 @@ export function MentorSearchBar({ value, onChange }: Props) {
           />
         </span>
       </label>
-      <motion.button
-        type="button"
-        whileHover={{ scale: 1.02 }}
-        whileTap={{ scale: 0.98 }}
-        className="flex h-10 shrink-0 items-center justify-center gap-1.5 rounded-full bg-primary px-4 text-xs font-semibold text-white sm:h-11 sm:px-5 sm:text-sm"
-      >
-        Filter
-        <Image
-          src="/dropdown.svg"
-          alt=""
-          width={22}
-          height={22}
-          className="size-[22px] object-contain brightness-0 invert"
-        />
-      </motion.button>
     </motion.div>
   );
 }

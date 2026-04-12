@@ -28,14 +28,14 @@ function IconDisc({
 export function ContactPage() {
   return (
     <div className="bg-white pb-8">
-      <section className="px-4 pt-5 sm:px-6 lg:px-8">
+      <section className="mx-auto w-full max-w-[100rem] px-4 pt-5 sm:px-6 lg:px-10">
         <div className="mx-auto max-w-5xl text-center">
           <motion.span
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             className="inline-block rounded-[20px] bg-primary px-5 py-2 text-sm font-semibold text-white"
           >
-            Let&apos;s Connect
+            Get in Touch
           </motion.span>
           <motion.h1
             initial={{ opacity: 0, y: 12 }}
@@ -96,7 +96,7 @@ export function ContactPage() {
                 alt=""
                 width={36}
                 height={36}
-                className="icon-brand-line"
+                className="brightness-0 invert"
               />
             </IconDisc>
             <p className="text-xl text-black">Work Station</p>
@@ -105,12 +105,13 @@ export function ContactPage() {
         </div>
       </section>
 
-      <SectionReveal className="mx-auto mt-8 max-w-6xl px-4 sm:px-6 lg:px-8">
+      <SectionReveal className="mx-auto mt-8 w-full max-w-[100rem] px-4 sm:px-6 lg:px-10">
+        <div className="mx-auto max-w-6xl">
         <div className="overflow-hidden rounded-3xl bg-[#FF511A] shadow-[0_12px_40px_rgba(0,0,0,0.12)] lg:grid lg:min-h-[min(520px,70vh)] lg:grid-cols-[2fr_3fr]">
           {/* ~40% — informational */}
           <div className="flex min-h-[300px] flex-col gap-4 p-5 text-white sm:p-5 lg:min-h-0 lg:justify-between lg:gap-5 lg:p-6">
             <p className="text-heading-display text-left leading-snug">
-              Have Questions? Our Experts Are Ready to Help
+              Questions? We&apos;re here
             </p>
             <div className="relative mx-auto h-[200px] w-full max-w-lg lg:mx-0 lg:mt-auto lg:h-[min(240px,30vh)] lg:max-w-none">
               <Image
@@ -125,7 +126,7 @@ export function ContactPage() {
           {/* ~60% — form */}
           <div className="flex flex-col bg-white p-5 sm:p-5 lg:p-6">
             <h2 className="text-heading-display mb-4 text-left text-[#FF511A]">
-              Let&apos;s Talk
+              Send a Message
             </h2>
             <form
               className="flex flex-col gap-4"
@@ -173,11 +174,12 @@ export function ContactPage() {
             </form>
           </div>
         </div>
+        </div>
       </SectionReveal>
 
       <section
         id="faq"
-        className="mt-8 scroll-mt-24 overflow-x-hidden bg-[#ffffff] px-4 pb-3 pt-3 sm:mt-10 sm:px-6 sm:pb-4 sm:pt-4 lg:px-8 lg:pb-5 lg:pt-5"
+        className="mx-auto mt-8 w-full max-w-[100rem] scroll-mt-24 overflow-x-hidden bg-[#ffffff] px-4 pb-3 pt-3 sm:mt-10 sm:px-6 sm:pb-4 sm:pt-4 lg:px-8 lg:pb-5 lg:pt-5"
       >
         <SectionReveal>
           <h2 className="text-heading-display text-center text-[#1a1a1a]">

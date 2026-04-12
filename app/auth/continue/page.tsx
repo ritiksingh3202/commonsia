@@ -41,7 +41,12 @@ export default async function AuthContinuePage({
       softwareSkills: true,
       bio: true,
       mentorTitle: true,
+      mentorCompany: true,
+      mentorYearsExperience: true,
+      mentorExpertise: true,
       mentorMentorshipFocus: true,
+      linkedinUrl: true,
+      whatsappUrl: true,
       mentorOnboardingComplete: true,
     },
   });
@@ -50,7 +55,14 @@ export default async function AuthContinuePage({
     redirect("/auth/login?callbackUrl=/auth/continue");
   }
 
+  // OAuth users have no role until setup — send them to the app route they asked for so onboarding can run.
   if (!user.role) {
+    if (next?.startsWith("/student")) {
+      redirect(next);
+    }
+    if (next?.startsWith("/mentor")) {
+      redirect(next);
+    }
     redirect("/auth");
   }
 
@@ -58,8 +70,13 @@ export default async function AuthContinuePage({
     const onboarding = getMentorOnboardingRedirectPath({
       mentorOnboardingComplete: user.mentorOnboardingComplete,
       mentorTitle: user.mentorTitle,
+      mentorCompany: user.mentorCompany,
+      mentorYearsExperience: user.mentorYearsExperience,
+      mentorExpertise: user.mentorExpertise,
       mentorMentorshipFocus: user.mentorMentorshipFocus,
       bio: user.bio,
+      linkedinUrl: user.linkedinUrl,
+      whatsappUrl: user.whatsappUrl,
     });
     if (onboarding) redirect(onboarding);
     if (next) redirect(next);

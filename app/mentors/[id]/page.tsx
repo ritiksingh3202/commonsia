@@ -4,7 +4,8 @@ import { notFound } from "next/navigation";
 import { auth } from "@/auth";
 import { MarketingShell } from "@/components/layout/MarketingShell";
 import { PublicMentorProfile } from "@/components/mentors/PublicMentorProfile";
-import { getMentorById } from "@/lib/mentors-data";
+import { getPublicMentorById, getSimilarMentorsForProfile } from "@/lib/mentor-directory";
+import { getPublicReviewsForMentor } from "@/lib/mentor-reviews";
 import { prisma } from "@/lib/prisma";
 
 function initialsFromName(name: string): string {
@@ -18,19 +19,29 @@ function initialsFromName(name: string): string {
 
 type Props = { params: Promise<{ id: string }> };
 
+export const dynamic = "force-dynamic";
+
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
-  const mentor = getMentorById(id);
+  const mentor = await getPublicMentorById(id);
   if (!mentor) return { title: "Mentor" };
   return { title: { absolute: mentor.name } };
 }
 
 export default async function PublicMentorPage({ params }: Props) {
   const { id } = await params;
-  const mentor = getMentorById(id);
+  const mentor = await getPublicMentorById(id);
   if (!mentor) notFound();
 
   const session = await auth();
+
+  const similarMentors = await getSimilarMentorsForProfile(
+    mentor.id,
+    mentor,
+    session?.user?.role === "student" ? session.user.id : undefined,
+    8,
+  );
+  const mentorReviews = await getPublicReviewsForMentor(mentor.id);
   const back = `/mentors/${mentor.id}`;
   const linked = mentor.linkedUserId?.trim();
   const scheduleHref = linked
@@ -83,6 +94,9 @@ export default async function PublicMentorPage({ params }: Props) {
     <MarketingShell>
       <PublicMentorProfile
         mentor={mentor}
+        mentorReviews={mentorReviews}
+        similarMentors={similarMentors}
+        similarMentorsPersonalized={session?.user?.role === "student"}
         messageHref={messageHref}
         scheduleHref={scheduleHref}
         viewerPortfolio={viewerPortfolio}

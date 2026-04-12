@@ -19,6 +19,13 @@ function isActive(pathname: string, href: string) {
   return false;
 }
 
+/** Same-route click on Mentors should jump to the hero, not stay scrolled to the list/search. */
+function scrollMentorsNavToTop(pathname: string, href: string) {
+  if (href === "/mentors" && pathname === "/mentors") {
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+  }
+}
+
 export function Navbar() {
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -75,6 +82,7 @@ export function Navbar() {
               className={`rounded-full px-3 py-1.5 text-center font-normal transition-colors hover:text-primary lg:px-4 ${
                 isActive(pathname, item.href) ? "font-semibold text-primary" : ""
               }`}
+              onClick={() => scrollMentorsNavToTop(pathname, item.href)}
             >
               {item.label}
             </Link>
@@ -82,19 +90,6 @@ export function Navbar() {
         </motion.nav>
 
         <div className="relative z-10 flex min-w-0 shrink-0 items-center justify-end gap-1.5 sm:gap-3">
-          <Link
-            href="/mentors"
-            className="hidden rounded-full border-2 border-primary p-2 text-primary transition-colors hover:bg-primary/5 sm:flex sm:items-center sm:justify-center"
-            aria-label="Search mentors"
-          >
-            <Image
-              src="/mentors_assets/search.svg"
-              alt=""
-              width={22}
-              height={22}
-              className="icon-brand-line size-[22px]"
-            />
-          </Link>
           {loading ? (
             <span
               className="h-9 w-[4.5rem] shrink-0 animate-pulse rounded-full bg-neutral-200/90 sm:h-10 sm:w-32"
@@ -189,25 +184,14 @@ export function Navbar() {
                     className={`rounded-xl px-3 py-3 text-[15px] hover:bg-neutral-50 ${
                       isActive(pathname, item.href) ? "font-semibold text-primary" : "font-normal text-ink"
                     }`}
-                    onClick={() => setMenuOpen(false)}
+                    onClick={() => {
+                      scrollMentorsNavToTop(pathname, item.href);
+                      setMenuOpen(false);
+                    }}
                   >
                     {item.label}
                   </Link>
                 ))}
-                <Link
-                  href="/mentors"
-                  className="flex items-center gap-2 rounded-xl px-3 py-3 text-[15px] font-normal text-ink hover:bg-neutral-50"
-                  onClick={() => setMenuOpen(false)}
-                >
-                  <Image
-                    src="/mentors_assets/search.svg"
-                    alt=""
-                    width={20}
-                    height={20}
-                    className="icon-brand-line size-5 opacity-90"
-                  />
-                  Search mentors
-                </Link>
                 {!loading && (
                   <Link
                     href={authed ? dashboardHref : "/auth"}

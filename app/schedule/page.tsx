@@ -5,8 +5,8 @@ import { ScheduleCallPage } from "@/components/schedule/ScheduleCallPage";
 import { prisma } from "@/lib/prisma";
 
 export const metadata: Metadata = {
-  title: { absolute: "Schedule a call" },
-  description: "Pick a date and time for your mentoring call on Commonsia.",
+  title: { absolute: "Book a session" },
+  description: "Pick a date and time for your mentoring session on Commonsia.",
 };
 
 export default async function SchedulePage({
@@ -18,20 +18,26 @@ export default async function SchedulePage({
   const raw = sp.mentorUserId?.trim();
   let mentorUserId: string | null = null;
   let mentorDisplayName: string | null = null;
+  let mentorAvailabilityJson: unknown = null;
   if (raw) {
     const u = await prisma.user.findUnique({
       where: { id: raw },
-      select: { name: true, role: true },
+      select: { name: true, role: true, mentorAvailabilityJson: true },
     });
     if (u?.role === "mentor") {
       mentorUserId = raw;
       mentorDisplayName = u.name ?? null;
+      mentorAvailabilityJson = u.mentorAvailabilityJson ?? null;
     }
   }
 
   return (
     <MarketingShell>
-      <ScheduleCallPage mentorUserId={mentorUserId} mentorDisplayName={mentorDisplayName} />
+      <ScheduleCallPage
+        mentorUserId={mentorUserId}
+        mentorDisplayName={mentorDisplayName}
+        mentorAvailabilityJson={mentorAvailabilityJson}
+      />
     </MarketingShell>
   );
 }

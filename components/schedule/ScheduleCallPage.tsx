@@ -5,19 +5,13 @@ import { useSession } from "next-auth/react";
 import { useMemo, useState } from "react";
 
 import { monthName, MENTOR_TIME_SLOTS_HALF } from "@/components/mentor/mentor-setup-constants";
+import { formatNextAvailableSlotLine } from "@/lib/mentor-next-slot";
 import { istSlotRangeToISO } from "@/lib/schedule-slot-ist";
 
 const CREAM = "bg-[#FFF8F1]";
 const WEEK_HEADERS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
 
 type Guest = { id: string; initials: string; bg: string };
-
-const DEMO_GUESTS: Guest[] = [
-  { id: "g1", initials: "AK", bg: "bg-violet-200 text-violet-900" },
-  { id: "g2", initials: "MR", bg: "bg-sky-200 text-sky-900" },
-  { id: "g3", initials: "SP", bg: "bg-amber-200 text-amber-900" },
-  { id: "g4", initials: "RJ", bg: "bg-emerald-200 text-emerald-900" },
-];
 
 function daysInMonth(year: number, monthIndex: number): number {
   return new Date(year, monthIndex + 1, 0).getDate();
@@ -60,16 +54,18 @@ const DEFAULT_SLOT_SLICE = EVENING_START_INDEX >= 0 ? EVENING_START_INDEX : Math
 export function ScheduleCallPage({
   mentorUserId = null,
   mentorDisplayName = null,
+  mentorAvailabilityJson = null,
 }: {
   mentorUserId?: string | null;
   mentorDisplayName?: string | null;
+  mentorAvailabilityJson?: unknown;
 }) {
   const { status } = useSession();
   const [viewYear, setViewYear] = useState(2026);
   const [viewMonth, setViewMonth] = useState(2); // March 0-based
   const [selectedDay, setSelectedDay] = useState(18);
 
-  const [guests, setGuests] = useState<Guest[]>(DEMO_GUESTS);
+  const [guests, setGuests] = useState<Guest[]>([]);
   const [inviteInput, setInviteInput] = useState("");
 
   const [durationMin, setDurationMin] = useState<30 | 45 | 60>(30);
@@ -88,6 +84,11 @@ export function ScheduleCallPage({
     const slice = SLOT_RANGES.slice(DEFAULT_SLOT_SLICE, DEFAULT_SLOT_SLICE + 8);
     return slice.length ? slice : SLOT_RANGES.slice(0, 8);
   }, []);
+
+  const availabilitySummary = useMemo(
+    () => (mentorAvailabilityJson != null ? formatNextAvailableSlotLine(mentorAvailabilityJson) : null),
+    [mentorAvailabilityJson],
+  );
 
   const selectedRange = visibleSlots[selectedSlotIndex] ?? visibleSlots[0];
   const [startLabel, endLabel] = selectedRange.split("–").map((s) => s.trim());
@@ -211,9 +212,14 @@ export function ScheduleCallPage({
             {/* Left — invite & summary */}
             <aside className="order-3 flex flex-col gap-5 lg:order-1">
               {mentorDisplayName ? (
-                <p className="rounded-xl border border-primary/25 bg-primary/5 px-3 py-2 text-xs font-medium text-[#0a0a0a] sm:text-sm">
-                  Booking with <span className="text-primary">{mentorDisplayName}</span>
-                </p>
+                <div className="space-y-2">
+                  <p className="rounded-xl border border-primary/25 bg-primary/5 px-3 py-2 text-xs font-medium text-[#0a0a0a] sm:text-sm">
+                    Booking with <span className="text-primary">{mentorDisplayName}</span>
+                  </p>
+                  {availabilitySummary ? (
+                    <p className="text-xs leading-snug text-neutral-600 sm:text-sm">{availabilitySummary}</p>
+                  ) : null}
+                </div>
               ) : null}
               <div>
                 <h2 className="text-base font-bold text-[#0a0a0a]">Who needs to be invited?</h2>
@@ -240,25 +246,27 @@ export function ScheduleCallPage({
                 </button>
               </div>
 
-              <div className="flex flex-wrap gap-3">
-                {guests.map((g) => (
-                  <div key={g.id} className="relative">
-                    <div
-                      className={`flex size-12 items-center justify-center rounded-full text-sm font-semibold ${g.bg}`}
-                    >
-                      {g.initials}
+              {guests.length > 0 ? (
+                <div className="flex flex-wrap gap-3">
+                  {guests.map((g) => (
+                    <div key={g.id} className="relative">
+                      <div
+                        className={`flex size-12 items-center justify-center rounded-full text-sm font-semibold ${g.bg}`}
+                      >
+                        {g.initials}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => removeGuest(g.id)}
+                        className="absolute -right-1 -top-1 flex size-5 items-center justify-center rounded-full bg-red-500 text-white shadow ring-2 ring-white"
+                        aria-label={`Remove ${g.initials}`}
+                      >
+                        <IconX className="size-3" />
+                      </button>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => removeGuest(g.id)}
-                      className="absolute -right-1 -top-1 flex size-5 items-center justify-center rounded-full bg-red-500 text-white shadow ring-2 ring-white"
-                      aria-label={`Remove ${g.initials}`}
-                    >
-                      <IconX className="size-3" />
-                    </button>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              ) : null}
 
               <div className={`mt-auto space-y-3 rounded-2xl ${CREAM} p-4 ring-1 ring-orange-100/60`}>
                 <div className="flex items-start gap-3 text-sm">
@@ -295,13 +303,13 @@ export function ScheduleCallPage({
                 onClick={() => void scheduleCall()}
                 className="w-full rounded-xl bg-primary py-3.5 text-sm font-semibold text-white shadow-md transition hover:bg-primary/90 disabled:opacity-60"
               >
-                {booking ? "Scheduling…" : "Schedule Call"}
+                {booking ? "Booking…" : "Book a session"}
               </button>
             </aside>
 
             {/* Middle — calendar */}
             <section className="order-1 lg:order-2">
-              <h1 className="text-xl font-bold text-[#0a0a0a] sm:text-2xl">Schedule a Call</h1>
+              <h1 className="text-xl font-bold text-[#0a0a0a] sm:text-2xl">Book a session</h1>
 
               <div className="mt-5 rounded-2xl border border-neutral-100 bg-white p-4 shadow-sm sm:p-5">
                 <div className="mb-4 flex items-center justify-between gap-2">

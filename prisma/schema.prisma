@@ -89,6 +89,8 @@ model User {
   chatMessages         ChatMessage[]
   mentoringBookingsAsStudent MentoringBooking[] @relation("BookingStudent")
   mentoringBookingsAsMentor  MentoringBooking[] @relation("BookingMentor")
+  sessionReviewsAuthored     SessionReview[]      @relation("SessionReviewStudent")
+  sessionReviewsReceived     SessionReview[]      @relation("SessionReviewMentor")
 }
 
 /// Student–mentor session booked via Commonsia (persists even when Google Calendar is not connected).
@@ -138,6 +140,27 @@ model ChatMessage {
   sender User       @relation(fields: [senderId], references: [id], onDelete: Cascade)
 
   @@index([threadId])
+}
+
+/// Review submitted after a mentorship session; home page + mentor public profile.
+model SessionReview {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  studentId String
+  student   User     @relation("SessionReviewStudent", fields: [studentId], references: [id], onDelete: Cascade)
+
+  /// Mentor `User.id` this review is about (optional for legacy rows).
+  mentorId String?
+  mentor   User?    @relation("SessionReviewMentor", fields: [mentorId], references: [id], onDelete: Cascade)
+
+  rating  Int
+  tags    Json     @default("[]")
+  comment String?  @db.Text
+
+  @@index([studentId])
+  @@index([mentorId])
+  @@index([createdAt(sort: Desc)])
 }
 
 model VerificationToken {

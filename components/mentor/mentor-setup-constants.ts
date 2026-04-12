@@ -18,6 +18,30 @@ export const MENTOR_YEARS_OPTIONS = [
   "10+ years",
 ] as const;
 
+/** Stored in `mentorMentorshipFocus` as comma-separated titles (order: Academic → Career → Portfolio). */
+export const MENTORSHIP_PREFERENCE_OPTIONS = [
+  {
+    id: "academic_subjects",
+    title: "Academic Subjects",
+    description:
+      "Guide students through studio projects, design concepts, technical subjects, and course-related challenges.",
+  },
+  {
+    id: "career_guidance",
+    title: "Career Guidance",
+    description:
+      "Help students with internships, job search, higher studies abroad, and navigating the architecture industry.",
+  },
+  {
+    id: "portfolio_review",
+    title: "Portfolio Review",
+    description:
+      "Review and give feedback on student academic or professional portfolios, project presentations, and documentation.",
+  },
+] as const;
+
+export const MENTORSHIP_PREFERENCE_ORDER = MENTORSHIP_PREFERENCE_OPTIONS.map((o) => o.title);
+
 export const MENTOR_SESSION_PREFS = [
   "Weekly session",
   "Bi-weekly",
@@ -111,6 +135,40 @@ export type BlockedDateEntry = {
   reason?: string;
 };
 
+/** Smart Automation: how the mentor thinks about repeating availability (drives Schedule tab). */
+export type AvailabilityWindowKind = "weekly" | "fifteen_days" | "monthly" | "custom";
+
+export const AVAILABILITY_WINDOW_OPTIONS: { value: AvailabilityWindowKind; label: string }[] = [
+  { value: "weekly", label: "Weekly" },
+  { value: "fifteen_days", label: "15 days" },
+  { value: "monthly", label: "In a month" },
+  { value: "custom", label: "Custom" },
+];
+
+/** Capacity band (maps to numeric maxStudents when saving). */
+export type MenteeCapacityBand = "0-5" | "5-10" | "10+";
+
+export const MENTEE_CAPACITY_BAND_OPTIONS: { value: MenteeCapacityBand; label: string }[] = [
+  { value: "0-5", label: "0–5 mentees" },
+  { value: "5-10", label: "5–10 mentees" },
+  { value: "10+", label: "10+ mentees" },
+];
+
+export function menteeBandToMaxStudents(b: MenteeCapacityBand | undefined): number {
+  if (b === "0-5") return 5;
+  if (b === "10+") return 25;
+  return 10;
+}
+
+export function maxStudentsToMenteeBand(n: number): MenteeCapacityBand {
+  if (n <= 5) return "0-5";
+  if (n >= 15) return "10+";
+  return "5-10";
+}
+
+/** Default Sat/Sun 10am–12pm slot labels (half-hour steps; matches `buildHalfHourTimeSlots`). */
+const DEFAULT_WEEKEND_MORNING_SLOTS = ["10:00 AM", "10:30 AM", "11:00 AM", "11:30 AM"] as const;
+
 export type MentorAvailabilityJson = {
   sessionDurationMinutes: 15 | 30 | 45 | 60 | 90;
   availabilityType: "weekly" | "specific";
@@ -119,6 +177,10 @@ export type MentorAvailabilityJson = {
   specificDateSlots: Record<string, string[]>;
   weeklySlots: Record<WeekdayKey, string[]>;
   maxStudents: number;
+  /** Planning horizon in days (e.g. 15 when window is “15 days”). */
+  planningHorizonDays?: number;
+  availabilityWindowKind?: AvailabilityWindowKind;
+  menteeCapacityBand?: MenteeCapacityBand;
   autoAcceptSessionRequests?: boolean;
   bufferBetweenSessions?: string;
   advanceBookingWindow?: string;
@@ -136,11 +198,7 @@ export type MentorAvailabilityJson = {
 };
 
 export function defaultSessionTemplates(): SessionTemplateRow[] {
-  return [
-    { id: "st-quick", name: "Quick Doubt Session", durationMinutes: 15, enabled: true },
-    { id: "st-design", name: "Design Discussion", durationMinutes: 30, enabled: true },
-    { id: "st-portfolio", name: "Portfolio Review", durationMinutes: 45, enabled: true },
-  ];
+  return [{ id: "st-default", name: "Session", durationMinutes: 30, enabled: true }];
 }
 
 export function emptyWeeklySlots(): Record<WeekdayKey, string[]> {
@@ -156,19 +214,32 @@ export function emptyWeeklySlots(): Record<WeekdayKey, string[]> {
 }
 
 export function defaultMentorAvailability(): MentorAvailabilityJson {
+  const sat = [...DEFAULT_WEEKEND_MORNING_SLOTS];
+  const sun = [...DEFAULT_WEEKEND_MORNING_SLOTS];
   return {
-    sessionDurationMinutes: 60,
+    sessionDurationMinutes: 30,
     availabilityType: "weekly",
     specificDates: [],
     specificDateSlots: {},
-    weeklySlots: emptyWeeklySlots(),
+    weeklySlots: {
+      mon: [],
+      tue: [],
+      wed: [],
+      thu: [],
+      fri: [],
+      sat,
+      sun,
+    },
     maxStudents: 10,
+    planningHorizonDays: 14,
+    availabilityWindowKind: "weekly",
+    menteeCapacityBand: "5-10",
     autoAcceptSessionRequests: true,
-    bufferBetweenSessions: "15",
+    bufferBetweenSessions: "0",
     advanceBookingWindow: "",
     smartAutomationEnabled: true,
-    maxSessionsPerWeek: 10,
-    bufferMinutes: 15,
+    maxSessionsPerWeek: 2,
+    bufferMinutes: 0,
     sessionTemplates: defaultSessionTemplates(),
     blockedDates: [],
     extraAvailabilitySlots: {},

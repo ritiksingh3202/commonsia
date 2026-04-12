@@ -53,7 +53,8 @@ export default async function StudentHomePage() {
   if (user.role === "mentor") {
     redirect("/mentor");
   }
-  if (user.role !== "student") {
+  // OAuth signups start with `role` null until setup saves — still route to onboarding, not Choose Role.
+  if (user.role && user.role !== "student") {
     redirect("/auth");
   }
 
@@ -76,6 +77,8 @@ export default async function StudentHomePage() {
     redirect("/auth");
   }
 
-  const { profileComplete: _p, role: _r, ...dashboardUser } = user;
+  const { profileComplete, role, ...dashboardUser } = user;
+  void profileComplete;
+  void role;
   return <StudentDashboard user={dashboardUser} initialDashboard={dashboardInitial} />;
 }

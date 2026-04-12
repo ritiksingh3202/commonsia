@@ -66,6 +66,26 @@ export function sortSlotLabels(labels: string[]): string[] {
   return [...labels].sort((a, b) => (slotLabelToMinutes(a) ?? 0) - (slotLabelToMinutes(b) ?? 0));
 }
 
+/**
+ * Default schedule grid: half-hour starts from 10:00 AM through 7:30 PM IST
+ * (last block ends at 8:00 PM). Stored labels match {@link MENTOR_TIME_SLOTS_HALF}.
+ */
+export function scheduleGridSlotLabels(): string[] {
+  const out: string[] = [];
+  for (const lab of MENTOR_TIME_SLOTS_HALF) {
+    const m = slotLabelToMinutes(lab);
+    if (m === null) continue;
+    if (m >= 10 * 60 && m <= 19 * 60 + 30) out.push(lab);
+  }
+  return out;
+}
+
+/** Times outside the default grid (e.g. early morning or late evening) — for “add custom time”. */
+export function scheduleCustomExtraSlotLabels(): string[] {
+  const grid = new Set(scheduleGridSlotLabels());
+  return MENTOR_TIME_SLOTS_HALF.filter((lab) => !grid.has(lab));
+}
+
 export function compactRangesFromLabels(labels: string[]): string[] {
   return collapseSlotLabelsToIntervals(labels).map((i) => `${i.start}-${i.end}`);
 }

@@ -40,6 +40,7 @@ export default async function MentorProfileEditPage() {
       mentorCertifications: true,
       softwareSkills: true,
       mentorOnboardingComplete: true,
+      whatsappUrl: true,
     },
   });
 
@@ -54,8 +55,13 @@ export default async function MentorProfileEditPage() {
   const onboardingPath = getMentorOnboardingRedirectPath({
     mentorOnboardingComplete: user.mentorOnboardingComplete,
     mentorTitle: user.mentorTitle,
+    mentorCompany: user.mentorCompany,
+    mentorYearsExperience: user.mentorYearsExperience,
+    mentorExpertise: user.mentorExpertise,
     mentorMentorshipFocus: user.mentorMentorshipFocus,
     bio: user.bio,
+    linkedinUrl: user.linkedinUrl,
+    whatsappUrl: user.whatsappUrl,
   });
   if (onboardingPath) {
     redirect(onboardingPath);

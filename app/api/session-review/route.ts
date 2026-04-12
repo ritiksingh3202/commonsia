@@ -1,15 +1,27 @@
+import { randomUUID } from "node:crypto";
+
 import { auth } from "@/auth";
+import { prisma } from "@/lib/prisma";
+import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 
-/** Placeholder: accepts session review payload until a Review model exists. */
 export async function POST(req: Request) {
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const reviewer = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { role: true },
+  });
+  if (reviewer?.role !== "student") {
+    return NextResponse.json({ error: "Only students can submit session reviews" }, { status: 403 });
+  }
+
   try {
     const body = (await req.json()) as {
+      mentorUserId?: string;
       mentorName?: string;
       sessionType?: string;
       durationMinutes?: number;
@@ -23,7 +35,35 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Invalid rating" }, { status: 400 });
     }
 
-    // TODO: persist to DB when SessionReview model is added
+    const mentorUserId = typeof body.mentorUserId === "string" ? body.mentorUserId.trim() : "";
+    if (!mentorUserId) {
+      return NextResponse.json({ error: "Missing mentor" }, { status: 400 });
+    }
+
+    const mentor = await prisma.user.findFirst({
+      where: { id: mentorUserId, role: "mentor" },
+      select: { id: true },
+    });
+    if (!mentor) {
+      return NextResponse.json({ error: "Invalid mentor" }, { status: 400 });
+    }
+
+    const tags = Array.isArray(body.tags) ? body.tags.filter((t): t is string => typeof t === "string") : [];
+    const comment = typeof body.comment === "string" ? body.comment.trim() || null : null;
+
+    await prisma.$executeRawUnsafe(
+      `INSERT INTO "SessionReview" (id, "createdAt", "studentId", "mentorId", rating, tags, comment) VALUES ($1, NOW(), $2, $3, $4, $5::jsonb, $6)`,
+      randomUUID(),
+      session.user.id,
+      mentorUserId,
+      body.rating,
+      JSON.stringify(tags),
+      comment,
+    );
+
+    revalidatePath("/");
+    revalidatePath(`/mentors/${mentorUserId}`);
+
     return NextResponse.json({ ok: true });
   } catch {
     return NextResponse.json({ error: "Bad request" }, { status: 400 });

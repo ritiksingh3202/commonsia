@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { ProfileCover } from "@/components/ProfileCover";
 import { getCroppedCoverDataUrl } from "@/lib/crop-cover-client";
+import { resolveUrlForCanvasCrop } from "@/lib/resolve-crop-image-url";
 import {
   PROFILE_COVER_ASPECT_RATIO,
   profileCoverAspectStyle,
@@ -19,6 +20,8 @@ type Props = {
 export function ProfileCoverStrip({ bannerImageUrl, onSave }: Props) {
   const displaySrc = profileCoverDisplaySrc(bannerImageUrl);
   const fileRef = useRef<HTMLInputElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [imageSrc, setImageSrc] = useState<string | null>(null);
@@ -54,6 +57,22 @@ export function ProfileCoverStrip({ bannerImageUrl, onSave }: Props) {
     return () => document.removeEventListener("keydown", onKey);
   }, [modalOpen, busy, closeModal]);
 
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onDoc = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMenuOpen(false);
+    };
+    document.addEventListener("mousedown", onDoc);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDoc);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [menuOpen]);
+
   const onCropComplete = useCallback((_a: Area, pixels: Area) => {
     setCroppedAreaPixels(pixels);
   }, []);
@@ -62,6 +81,7 @@ export function ProfileCoverStrip({ bannerImageUrl, onSave }: Props) {
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file?.type.startsWith("image/")) return;
+    setMenuOpen(false);
     revokeImage();
     const url = URL.createObjectURL(file);
     setImageSrc(url);
@@ -69,6 +89,24 @@ export function ProfileCoverStrip({ bannerImageUrl, onSave }: Props) {
     setZoom(1);
     setCroppedAreaPixels(null);
     setModalOpen(true);
+  };
+
+  const openEditCurrentCrop = async () => {
+    setMenuOpen(false);
+    setBusy(true);
+    try {
+      revokeImage();
+      const url = await resolveUrlForCanvasCrop(displaySrc);
+      setImageSrc(url);
+      setCrop({ x: 0, y: 0 });
+      setZoom(1);
+      setCroppedAreaPixels(null);
+      setModalOpen(true);
+    } catch {
+      window.alert("Could not load the current cover for editing. Try Add new.");
+    } finally {
+      setBusy(false);
+    }
   };
 
   const applyCrop = async () => {
@@ -90,20 +128,48 @@ export function ProfileCoverStrip({ bannerImageUrl, onSave }: Props) {
   return (
     <>
       <ProfileCover imageSrc={displaySrc} alt="" priority stripBottomShade>
-        <button
-          type="button"
-          disabled={busy}
-          onClick={() => fileRef.current?.click()}
-          className="absolute bottom-4 right-4 z-10 flex items-center gap-2 rounded-full border border-white/30 bg-white/95 px-3 py-2 text-[12px] font-medium text-[#0a0a0a] shadow-lg backdrop-blur-sm transition hover:bg-white disabled:opacity-60 sm:bottom-5 sm:right-6 sm:px-3.5"
-          aria-label="Upload cover photo"
-        >
-          {busy ? (
-            <span className="size-4 animate-pulse rounded-full bg-primary/60" />
-          ) : (
-            <PencilIcon className="size-[15px] sm:size-4" />
-          )}
-          <span className="hidden sm:inline">Edit cover</span>
-        </button>
+        <div ref={menuRef} className="absolute bottom-4 right-4 z-[25] sm:bottom-5 sm:right-6">
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => setMenuOpen((o) => !o)}
+            aria-expanded={menuOpen}
+            aria-haspopup="menu"
+            className="flex items-center gap-2 rounded-full border border-white/30 bg-white/95 px-3 py-2 text-[12px] font-medium text-[#0a0a0a] shadow-lg backdrop-blur-sm transition hover:bg-white disabled:opacity-60 sm:px-3.5"
+            aria-label="Cover photo options"
+          >
+            {busy ? (
+              <span className="size-4 animate-pulse rounded-full bg-primary/60" />
+            ) : (
+              <PencilIcon className="size-[15px] sm:size-4" />
+            )}
+            <span className="hidden sm:inline">Cover</span>
+          </button>
+          {menuOpen ? (
+            <div
+              role="menu"
+              className="absolute right-0 bottom-full z-[30] mb-1.5 min-w-[10rem] rounded-xl border border-black/[0.08] bg-white py-1 shadow-xl ring-1 ring-black/5"
+            >
+              <button
+                type="button"
+                role="menuitem"
+                className="w-full px-3 py-2.5 text-left text-[13px] font-medium text-[#0a0a0a] transition hover:bg-black/[0.04]"
+                onClick={() => fileRef.current?.click()}
+              >
+                Add new
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                disabled={busy}
+                className="w-full px-3 py-2.5 text-left text-[13px] font-medium text-[#0a0a0a] transition hover:bg-black/[0.04] disabled:opacity-50"
+                onClick={() => void openEditCurrentCrop()}
+              >
+                Edit
+              </button>
+            </div>
+          ) : null}
+        </div>
         <input
           ref={fileRef}
           type="file"

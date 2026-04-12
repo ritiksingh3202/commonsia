@@ -16,7 +16,7 @@ import {
   architecturePillBase,
 } from "@/components/shared/ArchitectureGroupedPills";
 import { MentorSetupShell } from "@/components/mentor/MentorSetupShell";
-import { setupField, setupLabel } from "@/components/student/student-ui";
+import { setupField, setupLabel, setupRequiredStar } from "@/components/student/student-ui";
 import { useProfileAutosave } from "@/hooks/useProfileAutosave";
 import { expertiseToStringList, type MentorSetupUserSnapshot } from "@/lib/setup-load-user";
 
@@ -54,8 +54,10 @@ export function MentorSetupStep1({
 
   useEffect(() => {
     const d = expertiseFromSnapshot(initial?.mentorExpertise);
+    /* eslint-disable react-hooks/set-state-in-effect -- reset local form when saved mentor expertise snapshot changes */
     setExpertise(new Set(d.sel));
     setOtherExpertise(d.other);
+    /* eslint-enable react-hooks/set-state-in-effect */
   }, [initial?.mentorExpertise]);
 
   const toggleExpertise = (opt: string) => {
@@ -73,8 +75,16 @@ export function MentorSetupStep1({
     <MentorSetupShell step={1} backHref="/auth/register/mentor">
       <section>
         {linkedInConnected ? <SetupLinkedInNotice variant="mentor" /> : null}
-        <h2 className="mb-3 text-base font-semibold text-[#0a0a0a]">Professional Information</h2>
-        <p className="mb-3 text-[12px] text-[#6b7280]">Changes save automatically.</p>
+        <h2 className="mb-1 text-base font-semibold text-[#0a0a0a]">
+          Professional information
+          <span className={setupRequiredStar} title="Required" aria-hidden>
+            *
+          </span>
+        </h2>
+        <p className="mb-3 text-[12px] leading-snug text-[#6b7280]">
+          Role, organization, experience, and areas of expertise are required (expertise counts as one section).
+          Changes save automatically.
+        </p>
         <form
           className="space-y-3"
           onSubmit={async (e) => {
@@ -114,79 +124,86 @@ export function MentorSetupStep1({
             router.push("/mentor/setup/2");
           }}
         >
-          <div className="space-y-1.5">
-            <label htmlFor="mentorTitle" className={setupLabel}>
-              Current Position / Title
-            </label>
-            <input
-              id="mentorTitle"
-              name="mentorTitle"
-              type="text"
-              required
-              value={title}
-              onChange={(e) => {
-                setTitle(e.target.value);
-                scheduleSave({ role: "mentor", mentorTitle: e.target.value.trim() || null });
-              }}
-              placeholder="e.g., Senior Architect, Design Director"
-              className={setupField}
-              autoComplete="organization-title"
-            />
-          </div>
-          <div className="space-y-1.5">
-            <label htmlFor="mentorCompany" className={setupLabel}>
-              Company / Organization
-            </label>
-            <input
-              id="mentorCompany"
-              name="mentorCompany"
-              type="text"
-              required
-              value={company}
-              onChange={(e) => {
-                setCompany(e.target.value);
-                scheduleSave({ role: "mentor", mentorCompany: e.target.value.trim() || null });
-              }}
-              placeholder="e.g., ABC Architects, XYZ Design Studio"
-              className={setupField}
-              autoComplete="organization"
-            />
-          </div>
-          <div className="space-y-1.5">
-            <label htmlFor="mentorYears" className={setupLabel}>
-              Years of Experience
-            </label>
-            <div className="relative">
-              <select
-                id="mentorYears"
-                name="mentorYears"
-                value={years}
-                onChange={(e) => {
-                  const v = e.target.value;
-                  setYears(v);
-                  scheduleSave({ role: "mentor", mentorYearsExperience: v.trim() || null });
-                }}
-                className={`${setupField} appearance-none pr-9`}
+          <div className="grid gap-4 sm:gap-5 lg:grid-cols-3">
+            <div className="space-y-1.5">
+              <label htmlFor="mentorTitle" className={setupLabel}>
+                Current Position / Title
+              </label>
+              <input
+                id="mentorTitle"
+                name="mentorTitle"
+                type="text"
                 required
-              >
-                <option value="" disabled>
-                  Select experience level
-                </option>
-                {MENTOR_YEARS_OPTIONS.map((y) => (
-                  <option key={y} value={y}>
-                    {y}
+                value={title}
+                onChange={(e) => {
+                  setTitle(e.target.value);
+                  scheduleSave({ role: "mentor", mentorTitle: e.target.value.trim() || null });
+                }}
+                placeholder="e.g., Senior Architect, Design Director"
+                className={setupField}
+                autoComplete="organization-title"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label htmlFor="mentorCompany" className={setupLabel}>
+                Company / Organization
+              </label>
+              <input
+                id="mentorCompany"
+                name="mentorCompany"
+                type="text"
+                required
+                value={company}
+                onChange={(e) => {
+                  setCompany(e.target.value);
+                  scheduleSave({ role: "mentor", mentorCompany: e.target.value.trim() || null });
+                }}
+                placeholder="e.g., ABC Architects, XYZ Design Studio"
+                className={setupField}
+                autoComplete="organization"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label htmlFor="mentorYears" className={setupLabel}>
+                Years of Experience
+              </label>
+              <div className="relative">
+                <select
+                  id="mentorYears"
+                  name="mentorYears"
+                  value={years}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setYears(v);
+                    scheduleSave({ role: "mentor", mentorYearsExperience: v.trim() || null });
+                  }}
+                  className={`${setupField} appearance-none pr-9`}
+                  required
+                >
+                  <option value="" disabled>
+                    Select experience level
                   </option>
-                ))}
-              </select>
-              <span className="pointer-events-none absolute right-2.5 top-1/2 size-4 -translate-y-1/2 text-[#717182]">
-                <ChevronDown />
-              </span>
+                  {MENTOR_YEARS_OPTIONS.map((y) => (
+                    <option key={y} value={y}>
+                      {y}
+                    </option>
+                  ))}
+                </select>
+                <span className="pointer-events-none absolute right-2.5 top-1/2 size-4 -translate-y-1/2 text-[#717182]">
+                  <ChevronDown />
+                </span>
+              </div>
             </div>
           </div>
 
           <div className="space-y-2 pt-1">
-            <p className={setupLabel}>Areas of Expertise</p>
-            <p className="text-[12px] text-[#9ca3af]">Select all that apply</p>
+            <p className={setupLabel}>
+              Areas of expertise
+              <span className={setupRequiredStar} title="Required" aria-hidden>
+                *
+              </span>
+            </p>
+            <p className="text-[12px] text-[#9ca3af]">Select all that apply — one or more, including Other if needed</p>
             <ArchitectureGroupedPills
               selected={expertise}
               onToggle={toggleExpertise}
@@ -209,6 +226,9 @@ export function MentorSetupStep1({
                 <div className="mt-4 space-y-1.5">
                   <label htmlFor="mentorExpertiseOther" className={setupLabel}>
                     Describe your other expertise
+                    <span className={setupRequiredStar} title="Required" aria-hidden>
+                      *
+                    </span>
                   </label>
                   <input
                     id="mentorExpertiseOther"

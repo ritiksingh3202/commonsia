@@ -10,6 +10,7 @@ export const metadata: Metadata = {
 };
 
 type Search = {
+  mentorUserId?: string;
   mentor?: string;
   subtitle?: string;
   initials?: string;
@@ -37,6 +38,11 @@ export default async function StudentSessionReviewPage({
   }
 
   const sp = await searchParams;
+  const mentorUserId = sp.mentorUserId?.trim() ?? "";
+  if (!mentorUserId) {
+    redirect("/student");
+  }
+
   const mentorName = sp.mentor?.trim() || "Dr. Sarah Johnson";
   const mentorSubtitle = sp.subtitle?.trim() || "Senior Architect, AIA";
   const mentorInitials = sp.initials?.trim() || initialsFromName(mentorName);
@@ -49,6 +55,7 @@ export default async function StudentSessionReviewPage({
 
   return (
     <SessionReviewPage
+      mentorUserId={mentorUserId}
       mentorName={mentorName}
       mentorSubtitle={mentorSubtitle}
       mentorInitials={mentorInitials}

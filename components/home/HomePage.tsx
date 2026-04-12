@@ -8,43 +8,11 @@ import { SectionReveal } from "@/components/motion/SectionReveal";
 import { FaqAccordion } from "@/components/ui/FaqAccordion";
 import { defaultFaqItems } from "@/lib/faq-content";
 import { HOME_MARKETING_ASSETS } from "@/lib/home-marketing-assets";
+import type { HomeTestimonialCard } from "@/lib/testimonials";
 import { MENTOR_PAGE_HERO_ASSETS } from "@/lib/mentor-page-assets";
 import { marketingImages } from "@/lib/marketing-images";
-
-const studentStories = [
-  {
-    name: "Rohit Kohli",
-    role: "B.Arch 2nd Year, IIT Kharagpur",
-    leadQuote:
-      "This platform made studio critiques feel less lonely — I finally get mentors who speak my language.",
-    text: "This platform has helped me a lot during my architecture studies. Being able to ask design questions and get guidance from experienced mentors makes learning much easier and gives me new perspectives on my studio projects.",
-    face: HOME_MARKETING_ASSETS.student1,
-  },
-  {
-    name: "Raman Kumar",
-    role: "B.Arch 2nd Year, IIT Roorkee",
-    leadQuote:
-      "Honest feedback on portfolios and sheets, without the jargon overload.",
-    text: "I really like the community here. Whenever I face difficulties with my studio work or portfolio ideas, I can discuss them and get helpful feedback from mentors and other architecture students.",
-    face: HOME_MARKETING_ASSETS.student2,
-  },
-  {
-    name: "Amar Kumar",
-    role: "B.Arch 2nd Year, IIT BHU",
-    leadQuote:
-      "Industry perspective early in B.Arch changed how I frame every design decision.",
-    text: "What makes this platform valuable is the opportunity to learn from people who have real industry experience. The mentorship and discussions have helped me improve my design thinking and confidence in presenting ideas.",
-    face: HOME_MARKETING_ASSETS.student3,
-  },
-  {
-    name: "Nayan Singh",
-    role: "B.Arch 2nd Year, IIT BHU",
-    leadQuote:
-      "A calm place to ask “dumb” questions and still leave with clarity.",
-    text: "As an architecture student, it’s great to have a place where I can ask questions, share ideas, and learn from mentors. The community discussions also expose me to different approaches to design.",
-    face: HOME_MARKETING_ASSETS.student4,
-  },
-];
+import { highResProfileImageUrl } from "@/lib/profile-image-url";
+import { MentorCarouselArrows } from "@/components/mentors/MentorCarouselArrows";
 
 const steps = [
   {
@@ -135,7 +103,7 @@ function WhyIcon({ src, className }: { src: string; className?: string }) {
   );
 }
 
-export function HomePage() {
+export function HomePage({ testimonials }: { testimonials: HomeTestimonialCard[] }) {
   const [stepOpen, setStepOpen] = useState<number | null>(null);
   const [mIndex, setMIndex] = useState(0);
   const studentScrollRef = useRef<HTMLDivElement>(null);
@@ -157,7 +125,7 @@ export function HomePage() {
     <div className="section-gap-y min-w-0 max-w-full overflow-x-hidden bg-white pb-1">
       {/* Hero — white bg + flanking figures */}
       <section className="relative overflow-hidden bg-[#ffffff] px-4 pb-4 pt-12 sm:px-6 sm:pb-6 sm:pt-16 lg:px-8 lg:pb-8 lg:pt-24">
-        <div className="mx-auto w-full max-w-[100rem] px-3 sm:px-5 lg:px-10 relative">
+        <div className="relative mx-auto w-full max-w-[100rem] px-3 sm:px-5 lg:px-10">
           
           {/* Left Flanking Image (Absolute on Desktop) */}
           <motion.div
@@ -542,106 +510,84 @@ export function HomePage() {
         </div>
       </section>
 
-      {/* Students — title on white; dark band for student quotes only */}
-      <section id="community" className="scroll-mt-24 overflow-x-hidden">
-        <div className="mx-auto max-w-7xl px-4 pb-2.5 pt-3.5 sm:px-6 sm:pb-3 sm:pt-4 lg:px-8 lg:pb-4 lg:pt-5">
-          <motion.h2
-            initial={{ opacity: 0, y: 10 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="text-heading-display text-center text-ink"
-          >
-            What Our Community Says
-          </motion.h2>
-        </div>
-
-        <div className={`${fullBleed} bg-[#0a0a0a]`}>
-          <div
-            className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_85%_70%_at_100%_-5%,rgba(241,100,34,0.55),rgba(255,87,34,0.18)_42%,transparent_58%)]"
-            aria-hidden
-          />
-          <div
-            className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_60%_50%_at_50%_120%,rgba(255,87,34,0.08),transparent_45%)]"
-            aria-hidden
-          />
-          <div className="relative z-10 mx-auto min-w-0 max-w-7xl px-4 py-3.5 sm:px-6 sm:py-4 lg:px-8 lg:py-5">
-            <motion.p
-              initial={{ opacity: 0, y: 8 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: 0.04 }}
-              className="text-heading-display text-center text-white"
-            >
-              What <span className="text-[#f16422]">Students</span> Say
-            </motion.p>
-
+      {/* Students — dark band; only when enough reviews for the 4-card grid */}
+      {testimonials.length >= 4 ? (
+        <section id="community" className="scroll-mt-24 overflow-x-hidden">
+          <div className={`${fullBleed} bg-[#0a0a0a]`}>
             <div
-              ref={studentScrollRef}
-              className="-mx-1 mt-3 flex min-w-0 snap-x snap-mandatory gap-4 overflow-x-auto overflow-y-visible px-1 pb-2 [-ms-overflow-style:none] [scrollbar-width:none] lg:mx-0 lg:grid lg:snap-none lg:grid-cols-4 lg:gap-[25px] lg:overflow-visible lg:px-0 lg:pb-0 [&::-webkit-scrollbar]:hidden"
-            >
-              {studentStories.map((s) => (
-                <article
-                  key={s.name}
-                  data-student-card
-                  className="flex h-full min-h-[260px] w-[min(280px,85vw)] shrink-0 snap-center flex-col rounded-2xl border border-white/10 bg-white p-4 shadow-lg sm:w-[min(300px,82vw)] sm:p-5 lg:min-h-[280px] lg:w-auto lg:min-w-0"
-                >
-                  <div className="relative mx-auto size-14 shrink-0 overflow-hidden rounded-full ring-2 ring-primary/25">
-                    <Image src={s.face} alt="" fill className="object-cover" sizes="56px" />
-                  </div>
-                  <p className="mt-3 min-h-0 flex-1 text-left text-xs leading-relaxed text-neutral-700 sm:text-[13px]">
-                    {s.text}
-                  </p>
-                  <div className="mt-2 shrink-0 border-t border-neutral-100 pt-1.5 text-left">
-                    <p className="text-sm font-semibold text-[#1a1a1a]">{s.name}</p>
-                    <p className="text-[11px] text-neutral-500 sm:text-xs">{s.role}</p>
-                  </div>
-                </article>
-              ))}
-            </div>
+              className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_85%_70%_at_100%_-5%,rgba(241,100,34,0.55),rgba(255,87,34,0.18)_42%,transparent_58%)]"
+              aria-hidden
+            />
+            <div
+              className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_60%_50%_at_50%_120%,rgba(255,87,34,0.08),transparent_45%)]"
+              aria-hidden
+            />
+            <div className="relative z-10 mx-auto min-w-0 max-w-7xl px-4 py-3.5 sm:px-6 sm:py-4 lg:px-8 lg:py-5">
+              <motion.p
+                initial={{ opacity: 0, y: 8 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: 0.04 }}
+                className="text-heading-display text-center text-white"
+              >
+                What <span className="text-[#f16422]">Students</span> Say
+              </motion.p>
 
-            <div className="relative mt-3 flex justify-center sm:mt-4">
               <div
-                className="pointer-events-none absolute left-4 right-4 top-1/2 border-t border-dashed border-white/25 sm:left-8 sm:right-8"
-                aria-hidden
-              />
-              <div className="relative z-[1] flex items-center gap-[10px] bg-[#0a0a0a] px-4">
-                <motion.button
-                  type="button"
-                  aria-label="Scroll student testimonials left"
-                  whileHover={{ scale: 1.06 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => scrollStudentRow(-1)}
-                  className="flex size-10 items-center justify-center rounded-full border-2 border-primary bg-white shadow-sm"
-                >
-                  <Image
-                    src="/left_arrow.svg"
-                    alt=""
-                    width={16}
-                    height={12}
-                    className="icon-brand-line h-3 w-4"
+                ref={studentScrollRef}
+                className="-mx-1 mt-3 flex min-w-0 snap-x snap-mandatory gap-4 overflow-x-auto overflow-y-visible px-1 pb-2 [-ms-overflow-style:none] [scrollbar-width:none] lg:mx-0 lg:grid lg:snap-none lg:grid-cols-4 lg:gap-[25px] lg:overflow-visible lg:px-0 lg:pb-0 [&::-webkit-scrollbar]:hidden"
+              >
+                {testimonials.map((s) => (
+                  <article
+                    key={s.id}
+                    data-student-card
+                    className="flex h-full min-h-[260px] w-[min(280px,85vw)] shrink-0 snap-center flex-col rounded-2xl border border-white/10 bg-white p-4 shadow-lg sm:w-[min(300px,82vw)] sm:p-5 lg:min-h-[280px] lg:w-auto lg:min-w-0"
+                  >
+                    <div className="relative mx-auto size-14 shrink-0 overflow-hidden rounded-full ring-2 ring-primary/25">
+                      {s.imageUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element -- profile avatars may be data URLs or arbitrary hosts
+                        <img
+                          src={highResProfileImageUrl(s.imageUrl)}
+                          alt=""
+                          className="size-full object-cover object-center"
+                        />
+                      ) : (
+                        <div className="flex size-full items-center justify-center bg-gradient-to-br from-primary/15 to-primary/5 text-sm font-semibold text-primary">
+                          {s.initials}
+                        </div>
+                      )}
+                    </div>
+                    <p className="mt-3 min-h-0 flex-1 text-left text-xs leading-relaxed text-neutral-700 sm:text-[13px]">
+                      {s.text}
+                    </p>
+                    <div className="mt-2 shrink-0 border-t border-neutral-100 pt-1.5 text-left">
+                      <p className="text-sm font-semibold text-[#1a1a1a]">{s.name}</p>
+                      <p className="text-[11px] text-neutral-500 sm:text-xs">{s.role}</p>
+                    </div>
+                  </article>
+                ))}
+              </div>
+
+              <div className="relative mt-3 flex justify-center sm:mt-4">
+                <div
+                  className="pointer-events-none absolute left-4 right-4 top-1/2 border-t border-dashed border-white/25 sm:left-8 sm:right-8"
+                  aria-hidden
+                />
+                <div className="relative z-[1] bg-[#0a0a0a] px-4">
+                  <MentorCarouselArrows
+                    ariaPrev="Scroll student testimonials left"
+                    ariaNext="Scroll student testimonials right"
+                    prevDisabled={false}
+                    nextDisabled={false}
+                    onPrev={() => scrollStudentRow(-1)}
+                    onNext={() => scrollStudentRow(1)}
                   />
-                </motion.button>
-                <motion.button
-                  type="button"
-                  aria-label="Scroll student testimonials right"
-                  whileHover={{ scale: 1.06 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => scrollStudentRow(1)}
-                  className="flex size-10 items-center justify-center rounded-full border-2 border-primary bg-white shadow-sm"
-                >
-                  <Image
-                    src="/right_arrow.svg"
-                    alt=""
-                    width={16}
-                    height={12}
-                    className="icon-brand-line h-3 w-4"
-                  />
-                </motion.button>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
+      ) : null}
 
       {/* Mentors say — Figma 44:351–363, 45:421 */}
       <section className="overflow-x-hidden bg-white px-4 pb-3 pt-4 sm:px-6 sm:pb-4 sm:pt-5 lg:px-8 lg:pb-5 lg:pt-6">

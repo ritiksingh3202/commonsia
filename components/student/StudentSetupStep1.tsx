@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 
 import { PROGRAM_OPTIONS, PROGRAM_OTHER_VALUE, YEAR_OPTIONS } from "./student-setup-constants";
 import { StudentSetupShell } from "./StudentSetupShell";
-import { setupField, setupLabel } from "./student-ui";
+import { setupField, setupLabel, setupRequiredStar } from "./student-ui";
 import { SetupLinkedInNotice } from "@/components/setup/SetupLinkedInNotice";
 import { useProfileAutosave } from "@/hooks/useProfileAutosave";
 import type { StudentSetupUserSnapshot } from "@/lib/setup-load-user";
@@ -49,7 +49,15 @@ export function StudentSetupStep1({
     <StudentSetupShell step={1} backHref="/auth/register/student">
       <section>
         {linkedInConnected ? <SetupLinkedInNotice variant="student" /> : null}
-        <h2 className="mb-3 text-base font-semibold text-[#0a0a0a]">Academic Information</h2>
+        <h2 className="mb-1 text-base font-semibold text-[#0a0a0a]">
+          Academic information
+          <span className={setupRequiredStar} title="Required" aria-hidden>
+            *
+          </span>
+        </h2>
+        <p className="mb-1 text-[12px] leading-snug text-[#6b7280]">
+          University, year, program, and phone are required.
+        </p>
         <p className="mb-3 text-[12px] text-[#6b7280]">Changes save automatically.</p>
         <form
           className="space-y-3"

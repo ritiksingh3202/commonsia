@@ -3,10 +3,12 @@
 import Image from "next/image";
 import { useCallback, useState, type ReactNode } from "react";
 
-import { profileCoverAspectStyle } from "@/lib/profile-cover";
+import { isDefaultProfileCoverPath, profileCoverAspectStyle } from "@/lib/profile-cover";
 
 export type ProfileCoverProps = {
   imageSrc: string;
+  /** When the image is missing or fails, use this flat color instead of the default gradient (e.g. match avatar tint). */
+  noImageTintBg?: string;
   alt?: string;
   priority?: boolean;
   readableGradient?: boolean;
@@ -28,6 +30,7 @@ function isRemoteHttpUrl(src: string) {
 
 export function ProfileCover({
   imageSrc,
+  noImageTintBg,
   alt = "",
   priority = false,
   readableGradient = true,
@@ -46,13 +49,23 @@ export function ProfileCover({
   const useNextImage =
     showImage && !isDataOrBlobUrl(imageSrc) && !isRemoteHttpUrl(imageSrc) && imageSrc.startsWith("/");
 
+  /** Skip optimizer in dev for the default public cover so replacing `public/profile_cover.png` shows after refresh. */
+  const unoptimizedDefaultCover =
+    process.env.NODE_ENV === "development" && isDefaultProfileCoverPath(imageSrc);
+
   const aspect = profileCoverAspectStyle();
 
+  // overflow-y-visible lets cover “Add new / Edit” menu open below the button without clipping.
   const inner = (
-    <div className={`relative w-full overflow-hidden bg-neutral-200 ${className ?? ""}`} style={{ ...aspect }}>
+    <div className={`relative w-full overflow-x-hidden overflow-y-visible bg-neutral-200 ${className ?? ""}`} style={{ ...aspect }}>
       {!showImage ? (
         <div
-          className="absolute inset-0 z-0 bg-gradient-to-br from-neutral-100 via-primary/[0.14] to-neutral-300"
+          className={
+            noImageTintBg
+              ? "absolute inset-0 z-0"
+              : "absolute inset-0 z-0 bg-gradient-to-br from-neutral-100 via-primary/[0.14] to-neutral-300"
+          }
+          style={noImageTintBg ? { backgroundColor: noImageTintBg } : undefined}
           aria-hidden
         />
       ) : null}
@@ -66,6 +79,7 @@ export function ProfileCover({
               fill
               priority={priority}
               sizes="100vw"
+              unoptimized={unoptimizedDefaultCover}
               className="object-cover object-center"
               onError={onImgError}
             />

@@ -11,6 +11,7 @@ import {
 
 import { ProfileCover } from "@/components/ProfileCover";
 import { PortfolioViewerPanel } from "@/components/profile/PortfolioViewerPanel";
+import { profileHero } from "@/components/profile/profile-hero-classes";
 import { profileCoverDisplaySrc } from "@/lib/profile-cover";
 import {
   formatStudentSubtitle,
@@ -19,8 +20,7 @@ import {
   type StudentProfileUser,
 } from "./student-profile-types";
 
-const pill =
-  "inline-flex items-center rounded-full bg-primary/95 px-3 py-1.5 text-[11px] font-medium text-white shadow-sm ring-1 ring-primary/20 sm:text-xs";
+const interestSoftwareTagClass = "mentor-tag-expertise-pill";
 
 export function StudentProfileViewForMentor({
   user,
@@ -48,10 +48,15 @@ export function StudentProfileViewForMentor({
   return (
     <div className="w-full">
       <section className="border-b border-black/[0.06] bg-white">
-        <ProfileCover imageSrc={bannerSrc} alt="" priority />
+        <ProfileCover
+          imageSrc={bannerSrc}
+          alt=""
+          priority
+          readableGradientClassName="bg-gradient-to-t from-black/[0.42] via-black/[0.12] to-transparent"
+        />
 
-        <div className="relative z-10 mx-auto max-w-6xl px-4 pb-8 pt-0 sm:px-6 sm:pb-10 lg:px-10">
-          <div className="mb-4 sm:mb-0">
+        <div className={profileHero.inner}>
+          <div className="mb-4 sm:mb-6">
             <Link
               href={backHref}
               className="inline-flex items-center gap-2 text-sm font-medium text-neutral-600 transition hover:text-[#0a0a0a]"
@@ -61,21 +66,21 @@ export function StudentProfileViewForMentor({
             </Link>
           </div>
 
-          <div className="flex flex-col gap-6 sm:flex-row sm:items-start sm:gap-10 lg:gap-12">
-            <div className="-mt-10 flex shrink-0 justify-center sm:-mt-[4.25rem] lg:-mt-[5rem] sm:justify-start">
-              <div className="relative size-[7.75rem] overflow-hidden rounded-full bg-neutral-100 ring-[5px] ring-white shadow-[0_8px_30px_rgb(0,0,0,0.12)] sm:size-[9rem]">
+          <div className={profileHero.row}>
+            <div className={profileHero.avatarOuter}>
+              <div className={profileHero.avatarRing}>
                 {avatarSrc ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={avatarSrc} alt="" className="size-full object-cover object-center" />
                 ) : (
-                  <div className="flex size-full items-center justify-center bg-gradient-to-br from-primary/12 to-primary/5 text-xl font-semibold text-primary sm:text-2xl">
+                  <div className="flex size-full items-center justify-center bg-gradient-to-br from-primary/12 to-primary/5 text-[clamp(1.125rem,5vw,1.5rem)] font-semibold text-primary sm:text-2xl">
                     {initials}
                   </div>
                 )}
               </div>
             </div>
 
-            <div className="min-w-0 flex-1 pt-1 sm:pt-[4.75rem]">
+            <div className={profileHero.content}>
               <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
                 <div className="min-w-0 text-center sm:text-left">
                   <h1 className="font-heading text-[1.35rem] font-semibold tracking-tight text-[#0a0a0a] sm:text-2xl lg:text-[1.75rem]">
@@ -88,7 +93,7 @@ export function StudentProfileViewForMentor({
                 <div className="flex shrink-0 items-center justify-center sm:justify-end sm:pt-1">
                   <Link
                     href={messageHref}
-                    className="flex size-11 items-center justify-center rounded-full bg-primary text-white shadow-md ring-1 ring-primary/20 transition hover:bg-primary/90 sm:size-12"
+                    className="flex size-11 items-center justify-center rounded-full bg-primary text-white shadow-md ring-1 ring-primary/20 transition hover:bg-primary/90"
                     aria-label="Message student"
                   >
                     <ChatBubbleIcon className="size-[18px]" />
@@ -102,7 +107,7 @@ export function StudentProfileViewForMentor({
                   href={user.linkedinUrl}
                   label="LinkedIn"
                   icon={<LinkedInGlyph profileToolbar brandColor />}
-                  className="flex size-11 shrink-0 items-center justify-center rounded-full border-2 border-primary bg-white shadow-sm transition hover:bg-primary/5 sm:size-12"
+                  className="flex size-11 shrink-0 items-center justify-center rounded-full border-2 border-primary bg-white shadow-sm transition hover:bg-primary/5"
                 />
                 <SocialIconButton href={user.instagramUrl} label="Instagram" icon={<InstagramGlyph />} />
               </div>
@@ -126,7 +131,7 @@ export function StudentProfileViewForMentor({
                   {interests.length > 0 ? (
                     <div className="mt-2.5 flex flex-wrap gap-2">
                       {interests.map((tag) => (
-                        <span key={tag} className={pill}>
+                        <span key={tag} className={interestSoftwareTagClass}>
                           {tag}
                         </span>
                       ))}
@@ -146,7 +151,7 @@ export function StudentProfileViewForMentor({
                   <h2 className="text-sm font-semibold text-[#0a0a0a] sm:text-base">Software Skills</h2>
                   <div className="mt-2.5 flex flex-wrap gap-2">
                     {software.map((tag) => (
-                      <span key={tag} className={pill}>
+                      <span key={tag} className={interestSoftwareTagClass}>
                         {tag}
                       </span>
                     ))}

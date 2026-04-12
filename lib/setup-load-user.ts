@@ -12,9 +12,9 @@ export const mentorSetupUserSelect = {
   bio: true,
   linkedinUrl: true,
   portfolioUrl: true,
+  portfolioFileName: true,
   mentorCertifications: true,
-  bannerImageUrl: true,
-  phone: true,
+  whatsappUrl: true,
 } satisfies Prisma.UserSelect;
 
 export type MentorSetupUserSnapshot = Prisma.UserGetPayload<{

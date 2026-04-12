@@ -5,15 +5,12 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
 import type { MentorDashboardUser } from "@/components/mentor/mentor-dashboard-types";
-import {
-  InstagramGlyph,
-  LinkedInGlyph,
-  SocialIconButton,
-  WhatsAppGlyph,
-} from "@/components/profile/ProfileSocialIcons";
+import { LinkedInGlyph } from "@/components/profile/ProfileSocialIcons";
 import { ProfileAvatarPhotoButton } from "@/components/profile/ProfileAvatarPhotoButton";
+import { ProfileHeroEditMenuButton } from "@/components/profile/ProfileHeroEditMenuButton";
 import { ProfileSettingsMenu } from "@/components/profile/ProfileSettingsMenu";
 import { ProfileCoverStrip } from "@/components/profile/ProfileCoverStrip";
+import { profileHero } from "@/components/profile/profile-hero-classes";
 
 type Props = {
   user: MentorDashboardUser;
@@ -71,11 +68,11 @@ export function MentorProfileHero({ user: initial }: Props) {
         }}
       />
 
-      <div className="relative z-10 mx-auto max-w-6xl px-4 pb-8 pt-0 sm:px-6 sm:pb-10 lg:px-10">
-        <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:gap-8 lg:gap-10">
-          <div className="-mt-[4.25rem] flex shrink-0 justify-center sm:-mt-[5.125rem] lg:-mt-[5.75rem] sm:justify-start">
+      <div className={profileHero.inner}>
+        <div className={profileHero.row}>
+          <div className={profileHero.avatarOuter}>
             <div className="relative">
-              <div className="relative size-[min(42vw,8.75rem)] overflow-hidden rounded-full bg-neutral-100 ring-[6px] ring-white shadow-[0_10px_36px_rgb(0,0,0,0.14)] sm:size-[10.25rem] md:size-[11rem] lg:size-[11.5rem]">
+              <div className={profileHero.avatarRing}>
                 {avatarSrc ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={avatarSrc} alt="" className="size-full object-cover object-center" />
@@ -86,13 +83,14 @@ export function MentorProfileHero({ user: initial }: Props) {
                 )}
               </div>
               <ProfileAvatarPhotoButton
+                currentImageSrc={avatarSrc}
                 onUploaded={(url) => setUser((u) => ({ ...u, image: url }))}
                 className="absolute -bottom-0.5 -right-0.5 z-10 flex size-10 items-center justify-center rounded-full border-2 border-white bg-white text-primary shadow-md ring-1 ring-black/[0.08] transition hover:bg-primary/5 disabled:opacity-60 sm:size-11"
               />
             </div>
           </div>
 
-          <div className="min-w-0 flex-1 pt-0.5 sm:pt-[5.5rem] lg:pt-[6rem]">
+          <div className={profileHero.content}>
             {/*
               Mockup: left — name, italic title, bio; right — edit (neutral), Message pill, socials.
               Grid keeps mobile order: name → title → actions → socials → bio.
@@ -108,42 +106,36 @@ export function MentorProfileHero({ user: initial }: Props) {
               ) : null}
 
               <div className="flex flex-col items-center gap-3 lg:col-start-2 lg:row-start-1 lg:items-end lg:self-start">
-                <div className="flex items-center gap-2.5">
-                  <Link
-                    href="/mentor/profile/edit"
-                    className="flex size-10 items-center justify-center rounded-full border border-black/10 bg-white text-[#6b7280] shadow-sm transition hover:bg-neutral-50"
-                    aria-label="Edit profile"
-                    title="Edit profile"
-                  >
-                    <PencilIcon className="size-[18px]" />
-                  </Link>
+                <div className="flex flex-wrap items-center justify-center gap-2.5 lg:justify-end">
+                  <ProfileHeroEditMenuButton
+                    editProfileHref="/mentor/profile/edit"
+                    triggerClassName="flex size-10 items-center justify-center rounded-full border border-black/10 bg-white text-[#6b7280] shadow-sm transition hover:bg-neutral-50"
+                  />
                   <Link
                     href="/messages"
-                    className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-[13px] font-semibold text-white shadow-md ring-1 ring-primary/25 transition hover:bg-primary/90"
+                    className="flex size-10 shrink-0 items-center justify-center rounded-full border border-black/10 bg-primary text-white shadow-md ring-1 ring-primary/25 transition hover:bg-primary/90"
                     aria-label="Messages"
                   >
                     <ChatBubbleIcon className="size-[18px] shrink-0 text-white" />
-                    <span>Message</span>
+                  </Link>
+                  {user.linkedinUrl?.trim() ? (
+                    <a
+                      href={user.linkedinUrl.trim()}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex size-10 shrink-0 items-center justify-center rounded-full border border-black/10 bg-white text-[#0a66c2] shadow-sm transition hover:bg-neutral-50"
+                      aria-label="LinkedIn profile"
+                    >
+                      <LinkedInGlyph profileToolbar brandColor />
+                    </a>
+                  ) : null}
+                  <Link
+                    href="/mentor/availability"
+                    className="inline-flex h-10 shrink-0 items-center rounded-full border border-black/10 bg-white px-3 text-[12px] font-semibold text-[#0a0a0a] shadow-sm transition hover:bg-neutral-50 sm:px-3.5 sm:text-[13px]"
+                  >
+                    Update availability
                   </Link>
                   <ProfileSettingsMenu editProfileHref="/mentor/profile/edit" compact />
-                </div>
-                <div className="flex justify-center gap-3 lg:justify-end">
-                  <SocialIconButton
-                    href={user.whatsappUrl}
-                    label="WhatsApp"
-                    icon={<WhatsAppGlyph />}
-                  />
-                  <SocialIconButton
-                    href={user.linkedinUrl}
-                    label="LinkedIn"
-                    icon={<LinkedInGlyph profileToolbar brandColor />}
-                    className="flex size-10 shrink-0 items-center justify-center rounded-full border border-black/10 bg-white text-[#6b7280] shadow-sm transition hover:bg-neutral-50"
-                  />
-                  <SocialIconButton
-                    href={user.instagramUrl}
-                    label="Instagram"
-                    icon={<InstagramGlyph />}
-                  />
                 </div>
               </div>
 
@@ -161,20 +153,6 @@ export function MentorProfileHero({ user: initial }: Props) {
         </div>
       </div>
     </section>
-  );
-}
-
-function PencilIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden>
-      <path
-        d="M12 20h9M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4L16.5 3.5z"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
   );
 }
 

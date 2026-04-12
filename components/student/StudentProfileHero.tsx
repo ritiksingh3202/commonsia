@@ -5,9 +5,11 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
 import { ProfileAvatarPhotoButton } from "@/components/profile/ProfileAvatarPhotoButton";
+import { ProfileHeroEditMenuButton } from "@/components/profile/ProfileHeroEditMenuButton";
 import { ProfileCoverStrip } from "@/components/profile/ProfileCoverStrip";
 import { LinkedInGlyph, SocialIconButton } from "@/components/profile/ProfileSocialIcons";
 import { ProfileSettingsMenu } from "@/components/profile/ProfileSettingsMenu";
+import { profileHero } from "@/components/profile/profile-hero-classes";
 
 import {
   formatStudentSubtitle,
@@ -16,8 +18,8 @@ import {
   type StudentProfileUser,
 } from "./student-profile-types";
 
-const pill =
-  "inline-flex items-center rounded-full bg-primary/95 px-3 py-1.5 text-[11px] font-medium text-white shadow-sm ring-1 ring-primary/20 sm:text-xs";
+/** Same slate chips as mentor cards (`globals.css` — `.mentor-tag-expertise-pill`). */
+const interestSoftwareTagClass = "mentor-tag-expertise-pill";
 
 type Props = {
   user: StudentProfileUser;
@@ -67,12 +69,12 @@ export function StudentProfileHero({ user: initial }: Props) {
       />
 
       {/* Identity + bio — readable column width */}
-      <div className="relative z-10 mx-auto max-w-6xl px-4 pb-8 pt-0 sm:px-6 sm:pb-10 lg:px-10">
-        <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:gap-8 lg:gap-10">
+      <div className={profileHero.inner}>
+        <div className={profileHero.row}>
           {/* Avatar + change photo (inline — full profile edit stays in toolbar) */}
-          <div className="-mt-[4.25rem] flex shrink-0 justify-center sm:-mt-[5.125rem] lg:-mt-[5.75rem] sm:justify-start">
+          <div className={profileHero.avatarOuter}>
             <div className="relative">
-              <div className="relative size-[min(42vw,8.75rem)] overflow-hidden rounded-full bg-neutral-100 ring-[6px] ring-white shadow-[0_10px_36px_rgb(0,0,0,0.14)] sm:size-[10.25rem] md:size-[11rem] lg:size-[11.5rem]">
+              <div className={profileHero.avatarRing}>
                 {avatarSrc ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={avatarSrc} alt="" className="size-full object-cover object-center" />
@@ -83,13 +85,14 @@ export function StudentProfileHero({ user: initial }: Props) {
                 )}
               </div>
               <ProfileAvatarPhotoButton
+                currentImageSrc={avatarSrc}
                 onUploaded={(url) => setUser((u) => ({ ...u, image: url }))}
                 className="absolute -bottom-0.5 -right-0.5 z-10 flex size-10 items-center justify-center rounded-full border-2 border-white bg-white text-primary shadow-md ring-1 ring-black/[0.08] transition hover:bg-primary/5 disabled:opacity-60 sm:size-11"
               />
             </div>
           </div>
 
-          <div className="min-w-0 flex-1 pt-0.5 sm:pt-[5.5rem] lg:pt-[6rem]">
+          <div className={profileHero.content}>
             <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
               <div className="min-w-0 text-center sm:text-left">
                 <h1 className="font-heading text-[1.35rem] font-semibold tracking-tight text-[#0a0a0a] sm:text-2xl lg:text-[1.75rem]">
@@ -100,14 +103,10 @@ export function StudentProfileHero({ user: initial }: Props) {
                 </p>
               </div>
               <div className="flex shrink-0 flex-wrap items-center justify-center gap-2.5 sm:justify-end sm:pt-1">
-                <Link
-                  href="/student/profile/edit"
-                  className="flex size-11 items-center justify-center rounded-full border-2 border-primary bg-white text-primary shadow-sm transition hover:bg-primary/5 sm:size-10"
-                  aria-label="Edit profile"
-                  title="Edit profile"
-                >
-                  <PencilIcon className="size-[18px]" />
-                </Link>
+                <ProfileHeroEditMenuButton
+                  editProfileHref="/student/profile/edit"
+                  triggerClassName="flex size-10 items-center justify-center rounded-full border border-black/10 bg-white text-[#6b7280] shadow-sm transition hover:bg-neutral-50"
+                />
                 <Link
                   href="/messages"
                   className="flex size-11 items-center justify-center rounded-full bg-primary text-white shadow-md ring-1 ring-primary/20 transition hover:bg-primary/90 sm:size-10"
@@ -137,7 +136,7 @@ export function StudentProfileHero({ user: initial }: Props) {
                 {interests.length > 0 ? (
                   <div className="mt-2.5 flex flex-wrap gap-2">
                     {interests.map((tag) => (
-                      <span key={tag} className={pill}>
+                      <span key={tag} className={interestSoftwareTagClass}>
                         {tag}
                       </span>
                     ))}
@@ -157,7 +156,7 @@ export function StudentProfileHero({ user: initial }: Props) {
                 <h2 className="text-sm font-semibold text-[#0a0a0a] sm:text-base">Software Skills</h2>
                 <div className="mt-2.5 flex flex-wrap gap-2">
                   {software.map((tag) => (
-                    <span key={tag} className={pill}>
+                    <span key={tag} className={interestSoftwareTagClass}>
                       {tag}
                     </span>
                   ))}
@@ -168,20 +167,6 @@ export function StudentProfileHero({ user: initial }: Props) {
         </div>
       </div>
     </section>
-  );
-}
-
-function PencilIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden>
-      <path
-        d="M12 20h9M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4L16.5 3.5z"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
   );
 }
 

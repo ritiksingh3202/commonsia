@@ -24,8 +24,13 @@ export default async function MentorAvailabilityPage() {
     select: {
       role: true,
       mentorTitle: true,
+      mentorCompany: true,
+      mentorYearsExperience: true,
+      mentorExpertise: true,
       mentorMentorshipFocus: true,
       bio: true,
+      linkedinUrl: true,
+      whatsappUrl: true,
       mentorOnboardingComplete: true,
       mentorAvailabilityJson: true,
     },

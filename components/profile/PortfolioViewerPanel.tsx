@@ -9,11 +9,14 @@ export function PortfolioViewerPanel({
   portfolioUrl,
   portfolioFileName,
   portfolioVisibleToOthers,
+  className,
 }: {
   userId: string;
   portfolioUrl: string | null;
   portfolioFileName: string | null;
   portfolioVisibleToOthers: boolean;
+  /** Merged onto the root; default includes top margin for standalone use. */
+  className?: string;
 }) {
   const hasFile = Boolean(portfolioFileName?.trim());
   const url = portfolioUrl?.trim() ?? "";
@@ -24,7 +27,7 @@ export function PortfolioViewerPanel({
   const docHref = `/api/profile/${encodeURIComponent(userId)}/portfolio`;
 
   return (
-    <div className="mt-6 rounded-2xl border border-black/[0.08] bg-neutral-50/90 p-4 sm:p-5">
+    <div className={`mt-6 rounded-2xl border border-black/[0.08] bg-neutral-50/90 p-4 sm:p-5${className ? ` ${className}` : ""}`}>
       <h2 className="text-sm font-semibold text-[#0a0a0a] sm:text-base">Portfolio</h2>
       <p className="mt-1 text-[12px] leading-relaxed text-[#6b7280] sm:text-[13px]">
         {hasFile && hasUrl
