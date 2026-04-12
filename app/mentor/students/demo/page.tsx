@@ -37,6 +37,7 @@ const DEMO_STUDENT: StudentProfileUser = {
   instagramUrl: null,
   portfolioUrl: null,
   portfolioFileName: null,
+  portfolioFileDataUrl: null,
   portfolioVisibleToOthers: true,
 };
 

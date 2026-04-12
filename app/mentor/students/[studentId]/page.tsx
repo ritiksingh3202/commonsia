@@ -52,6 +52,7 @@ export default async function MentorViewStudentPage({ params }: Props) {
       instagramUrl: true,
       portfolioUrl: true,
       portfolioFileName: true,
+      portfolioFileDataUrl: true,
       portfolioVisibleToOthers: true,
     },
   });
