@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { PROGRAM_OPTIONS, PROGRAM_OTHER_VALUE, YEAR_OPTIONS } from "./student-setup-constants";
 import { StudentSetupShell } from "./StudentSetupShell";
 import { setupField, setupLabel, setupRequiredStar } from "./student-ui";
+import { SetupGoogleCalendarConnect } from "@/components/setup/SetupGoogleCalendarConnect";
 import { SetupLinkedInNotice } from "@/components/setup/SetupLinkedInNotice";
 import { useProfileAutosave } from "@/hooks/useProfileAutosave";
 import type { StudentSetupUserSnapshot } from "@/lib/setup-load-user";
@@ -27,9 +28,11 @@ function programStateFromMajor(major: string | null | undefined): {
 export function StudentSetupStep1({
   initial,
   linkedInConnected,
+  googleCalendarConnected = false,
 }: {
   initial?: StudentSetupUserSnapshot;
   linkedInConnected?: boolean;
+  googleCalendarConnected?: boolean;
 }) {
   const router = useRouter();
   const scheduleSave = useProfileAutosave();
@@ -223,6 +226,14 @@ export function StudentSetupStep1({
               required
             />
           </div>
+
+          <SetupGoogleCalendarConnect
+            connected={googleCalendarConnected}
+            returnPath="/student/setup/1"
+            required
+            description="Required before you can finish profile setup (step 3). Connect now or on the last step. If you signed in with Google, this may already show as connected."
+          />
+
           <button type="submit" className={btnPrimary}>
             Next: Interests &amp; Skills
             <ArrowRight className="size-3.5" />

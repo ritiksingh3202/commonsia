@@ -9,6 +9,7 @@ export type MentoringBookingWithMentor = {
   mentorId: string;
   startAt: Date;
   endAt: Date;
+  googleMeetLink: string | null;
   mentor: {
     id: string;
     name: string | null;
@@ -65,6 +66,7 @@ export async function findUpcomingBookingsWithMentors(
         mentorId: string;
         startAt: Date;
         endAt: Date;
+        googleMeetLink: string | null;
         m_id: string;
         m_name: string | null;
         m_image: string | null;
@@ -77,6 +79,7 @@ export async function findUpcomingBookingsWithMentors(
         b."mentorId",
         b."startAt",
         b."endAt",
+        b."googleMeetLink" AS "googleMeetLink",
         m.id AS "m_id",
         m.name AS "m_name",
         m.image AS "m_image",
@@ -92,6 +95,7 @@ export async function findUpcomingBookingsWithMentors(
       mentorId: r.mentorId,
       startAt: r.startAt,
       endAt: r.endAt,
+      googleMeetLink: r.googleMeetLink,
       mentor: {
         id: r.m_id,
         name: r.m_name,
@@ -137,8 +141,9 @@ export async function createMentoringBookingRow(params: {
   endAt: Date;
   title: string;
   googleEventId: string | null;
+  googleMeetLink?: string | null;
 }): Promise<void> {
-  const { prisma, studentId, mentorId, startAt, endAt, title, googleEventId } = params;
+  const { prisma, studentId, mentorId, startAt, endAt, title, googleEventId, googleMeetLink = null } = params;
   const d = mbDelegate(prisma);
   if (d) {
     await d.create({
@@ -149,6 +154,7 @@ export async function createMentoringBookingRow(params: {
         endAt,
         title,
         googleEventId,
+        googleMeetLink,
       },
     });
     return;
@@ -158,8 +164,8 @@ export async function createMentoringBookingRow(params: {
   try {
     await prisma.$executeRaw(
       Prisma.sql`
-        INSERT INTO "MentoringBooking" ("id", "createdAt", "studentId", "mentorId", "startAt", "endAt", "title", "googleEventId")
-        VALUES (${id}, NOW(), ${studentId}, ${mentorId}, ${startAt}, ${endAt}, ${title}, ${googleEventId})
+        INSERT INTO "MentoringBooking" ("id", "createdAt", "studentId", "mentorId", "startAt", "endAt", "title", "googleEventId", "googleMeetLink")
+        VALUES (${id}, NOW(), ${studentId}, ${mentorId}, ${startAt}, ${endAt}, ${title}, ${googleEventId}, ${googleMeetLink})
       `,
     );
   } catch (e) {

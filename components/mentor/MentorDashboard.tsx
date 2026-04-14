@@ -314,7 +314,7 @@ export function MentorDashboard({ user }: Props) {
                           Profile
                         </Link>
                         <Link
-                          href="/messages"
+                          href={`/messages?peer=${encodeURIComponent(m.studentId)}`}
                           className="flex size-8 items-center justify-center rounded-lg border border-black/10 bg-white text-[#0a0a0a] hover:bg-neutral-50"
                           aria-label={`Message ${m.name}`}
                         >

@@ -4,7 +4,9 @@ import { Suspense } from "react";
 
 import { auth } from "@/auth";
 import { MentorDashboard } from "@/components/mentor/MentorDashboard";
+import { GoogleCalendarRequiredModal } from "@/components/onboarding/GoogleCalendarRequiredModal";
 import { ProfileCompletionWelcome } from "@/components/onboarding/ProfileCompletionWelcome";
+import { getGoogleCalendarRefreshTokenForUser } from "@/lib/google-calendar-oauth-client";
 import { getMentorDashboardLiveData } from "@/lib/mentor-dashboard-stats";
 import { getMentorOnboardingRedirectPath } from "@/lib/mentor-onboarding";
 import { prisma } from "@/lib/prisma";
@@ -56,9 +58,11 @@ export default async function MentorHomePage() {
   }
 
   const dashboardLive = await getMentorDashboardLiveData(session.user.id);
+  const googleCalendarConnected = !!(await getGoogleCalendarRefreshTokenForUser(session.user.id));
 
   return (
     <>
+      <GoogleCalendarRequiredModal googleCalendarConnected={googleCalendarConnected} variant="mentor" />
       <MentorDashboard user={{ ...user, dashboardLive }} />
       <Suspense fallback={null}>
         <ProfileCompletionWelcome variant="mentor" />

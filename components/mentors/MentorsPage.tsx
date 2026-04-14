@@ -154,10 +154,10 @@ export function MentorsPage({ mentors }: { mentors: Mentor[] }) {
     <div className="bg-white pb-6 sm:pb-8">
       {/* Hero — same proportions / rhythm as home (padding, type scale, CTAs, side art) */}
       {/* Hero title wraps with text-balance — no forced nowrap so long lines never clip */}
-      <section className="relative overflow-x-hidden bg-[#ffffff] px-4 pb-4 pt-12 sm:px-6 sm:pb-6 sm:pt-16 lg:px-8 lg:pb-8 lg:pt-24">
+      <section className="relative overflow-x-hidden bg-[#ffffff] px-4 pb-3 pt-8 sm:px-6 sm:pb-4 sm:pt-10 lg:flex lg:min-h-[calc(100svh-4.75rem)] lg:flex-col lg:justify-center lg:px-8 lg:pb-5 lg:pt-10 xl:pb-6 xl:pt-12">
         <div className="relative mx-auto w-full max-w-[100rem] min-w-0 px-3 sm:px-5 lg:px-10">
           <motion.div
-            className="absolute left-0 top-[15%] z-10 hidden w-[120px] md:block lg:top-[20%] lg:w-[160px] xl:top-[25%] xl:w-[200px] 2xl:w-[240px]"
+            className="absolute left-0 top-[18%] z-10 hidden w-[100px] md:block lg:top-[22%] lg:w-[140px] xl:top-[26%] xl:w-[180px] 2xl:w-[200px]"
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.55 }}
@@ -175,12 +175,12 @@ export function MentorsPage({ mentors }: { mentors: Mentor[] }) {
 
           <div className="relative z-20 mx-auto flex w-full min-w-0 max-w-2xl flex-col items-center justify-center px-2 text-center sm:max-w-4xl sm:px-3 lg:max-w-5xl xl:max-w-[65rem] 2xl:max-w-[75rem]">
             <motion.div
-              className="relative mb-4 flex w-full max-w-[min(100%,360px)] justify-center sm:max-w-[420px]"
+              className="relative mb-3 flex w-full max-w-[min(100%,360px)] justify-center sm:mb-3 sm:max-w-[400px]"
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.08 }}
             >
-              <div className="relative h-11 w-full sm:h-14">
+              <div className="relative h-10 w-full sm:h-12">
                 <Image
                   src={MENTOR_PAGE_HERO_ASSETS.topStrip}
                   alt=""
@@ -201,7 +201,7 @@ export function MentorsPage({ mentors }: { mentors: Mentor[] }) {
             </motion.p>
 
             <motion.h1
-              className="mx-auto mt-4 flex w-full min-w-0 max-w-[1117px] flex-col items-center gap-y-2 px-3 text-center text-[clamp(1.3rem,5.2vw+0.4rem,2.2rem)] font-semibold leading-[1.25] tracking-tight sm:gap-y-2.5 sm:px-4 sm:text-[2.5rem] sm:leading-[1.2] md:gap-y-3 md:text-[3.15rem] md:leading-[1.18] lg:text-[3.65rem] xl:text-[4.1rem] 2xl:text-[4.75rem]"
+              className="mx-auto mt-3 flex w-full min-w-0 max-w-[1117px] flex-col items-center gap-y-1.5 px-3 text-center text-[clamp(1.25rem,4.2vw+0.35rem,2rem)] font-semibold leading-[1.22] tracking-tight sm:mt-3 sm:gap-y-2 sm:px-4 sm:text-[2.1rem] sm:leading-[1.18] md:gap-y-2 md:text-[2.65rem] md:leading-[1.16] lg:text-[3rem] lg:leading-[1.14] xl:text-[3.35rem] 2xl:text-[3.6rem]"
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
@@ -218,26 +218,26 @@ export function MentorsPage({ mentors }: { mentors: Mentor[] }) {
               </span>
             </motion.h1>
 
-            <p className="mx-auto mt-4 max-w-4xl text-pretty text-center text-[14px] leading-relaxed text-neutral-600 sm:mt-6 sm:text-[16px] lg:text-lg">
+            <p className="mx-auto mt-3 max-w-4xl text-pretty text-center text-[13px] leading-snug text-neutral-600 sm:mt-4 sm:text-[15px] sm:leading-relaxed lg:text-[16px]">
               Connect with experienced architects, professors, and industry experts who
               guide you through design, portfolios, or real-world projects.
             </p>
 
             <motion.div
-              className="mt-6 flex w-full max-w-sm flex-col items-center justify-center gap-3 sm:max-w-none sm:flex-row sm:gap-5"
+              className="mt-4 flex w-full max-w-sm flex-col items-center justify-center gap-2.5 sm:mt-5 sm:max-w-none sm:flex-row sm:gap-4"
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
             >
               <Link
                 href="/mentors"
-                className="w-full rounded-full bg-primary px-8 py-3 text-center text-[15px] font-semibold tracking-wide text-white shadow-md transition-all hover:scale-[1.03] hover:shadow-lg sm:w-auto sm:px-10 sm:py-3.5 sm:text-base"
+                className="w-full rounded-full bg-primary px-7 py-2.5 text-center text-[14px] font-semibold tracking-wide text-white shadow-md transition-all hover:scale-[1.03] hover:shadow-lg sm:w-auto sm:px-9 sm:py-3 sm:text-[15px]"
               >
                 Find a Mentor
               </Link>
               <Link
                 href="/auth"
-                className="w-full rounded-full border-2 border-primary bg-white px-8 py-3 text-center text-[15px] font-semibold tracking-wide text-primary transition-all hover:scale-[1.03] hover:bg-primary/5 sm:w-auto sm:px-10 sm:py-3.5 sm:text-base"
+                className="w-full rounded-full border-2 border-primary bg-white px-7 py-2.5 text-center text-[14px] font-semibold tracking-wide text-primary transition-all hover:scale-[1.03] hover:bg-primary/5 sm:w-auto sm:px-9 sm:py-3 sm:text-[15px]"
               >
                 Become a Mentor
               </Link>
@@ -245,7 +245,7 @@ export function MentorsPage({ mentors }: { mentors: Mentor[] }) {
           </div>
 
           <motion.div
-            className="absolute right-0 top-[15%] z-10 hidden w-[120px] md:block lg:top-[20%] lg:w-[160px] xl:top-[25%] xl:w-[200px] 2xl:w-[240px]"
+            className="absolute right-0 top-[18%] z-10 hidden w-[100px] md:block lg:top-[22%] lg:w-[140px] xl:top-[26%] xl:w-[180px] 2xl:w-[200px]"
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.55 }}

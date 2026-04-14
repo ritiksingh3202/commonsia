@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 
 import { auth } from "@/auth";
 import { MessagesInbox } from "@/components/chat/MessagesInbox";
+import { prisma } from "@/lib/prisma";
 
 export const metadata: Metadata = {
   title: { absolute: "Messages" },
@@ -17,7 +18,11 @@ export default async function MessagesPage({ searchParams }: { searchParams: Pro
     redirect("/auth/login?callbackUrl=/messages");
   }
 
-  const r = session.user.role;
+  const dbUser = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { role: true },
+  });
+  const r = dbUser?.role ?? session.user.role;
   if (r !== "student" && r !== "mentor") {
     redirect("/");
   }

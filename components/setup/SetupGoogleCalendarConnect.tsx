@@ -9,9 +9,11 @@ type Props = {
   /** Path only (e.g. /student/setup/3). Passed through OAuth state for post-consent redirect. */
   returnPath: string;
   description: string;
+  /** When true, shows a “Required” badge (profile setup). */
+  required?: boolean;
 };
 
-export function SetupGoogleCalendarConnect({ connected, returnPath, description }: Props) {
+export function SetupGoogleCalendarConnect({ connected, returnPath, description, required }: Props) {
   const router = useRouter();
   const alerted = useRef(false);
 
@@ -33,24 +35,56 @@ export function SetupGoogleCalendarConnect({ connected, returnPath, description 
   const href = `/api/calendar/google/authorize?returnTo=${encodeURIComponent(returnPath)}`;
 
   return (
-    <div className="rounded-xl border border-black/[0.08] bg-white p-4 shadow-sm">
+    <div
+      className={`rounded-xl border p-4 shadow-sm ${
+        connected ? "border-emerald-200/80 bg-emerald-50/40" : "border-black/[0.08] bg-white"
+      }`}
+    >
       <div className="mb-3 flex items-start gap-3">
-        <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
-          <IconCalendar className="size-5" />
+        <span
+          className={`flex size-9 shrink-0 items-center justify-center rounded-full ${
+            connected ? "bg-emerald-100 text-emerald-700" : "bg-primary/10 text-primary"
+          }`}
+        >
+          {connected ? <IconCheck className="size-5" /> : <IconCalendar className="size-5" />}
         </span>
-        <div>
-          <h2 className="text-sm font-bold text-[#0a0a0a]">Google Calendar</h2>
-          <p className="text-[12px] leading-snug text-[#6b7280]">{description}</p>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="text-sm font-bold text-[#0a0a0a]">Google Calendar</h2>
+            {required ? (
+              <span className="rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary">
+                Required
+              </span>
+            ) : null}
+          </div>
+          {connected ? (
+            <p className="mt-1 text-[12px] font-medium text-emerald-800">Connected — sessions can sync to your calendar.</p>
+          ) : null}
+          <p className={`text-[12px] leading-snug ${connected ? "mt-1 text-[#6b7280]" : "mt-0.5 text-[#6b7280]"}`}>
+            {description}
+          </p>
         </div>
       </div>
       <Link
         href={href}
-        className="flex w-full items-center justify-center gap-2 rounded-lg border border-black/10 bg-white py-2.5 text-[13px] font-medium text-[#0a0a0a] transition-colors hover:bg-neutral-50 sm:text-sm"
+        className={`flex w-full items-center justify-center gap-2 rounded-lg py-2.5 text-[13px] font-medium transition-colors sm:text-sm ${
+          connected
+            ? "border border-emerald-200 bg-white text-[#0a0a0a] hover:bg-emerald-50/60"
+            : "border border-black/10 bg-white text-[#0a0a0a] hover:bg-neutral-50"
+        }`}
       >
         <GoogleGlyph className="size-5" />
-        {connected ? "Reconnect Google Calendar" : "Connect Google Calendar"}
+        {connected ? "Reconnect or refresh permissions" : "Connect Google Calendar"}
       </Link>
     </div>
+  );
+}
+
+function IconCheck({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden>
+      <path d="M20 6L9 17l-5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
   );
 }
 

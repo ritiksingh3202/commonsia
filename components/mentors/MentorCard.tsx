@@ -3,6 +3,7 @@
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 
 import { MentorAvatar } from "@/components/mentors/MentorAvatar";
 import type { Mentor } from "@/lib/mentor-directory";
@@ -15,7 +16,11 @@ export function MentorCard({
   index: number;
 }) {
   const router = useRouter();
-  const scheduleHref = `/schedule?mentorUserId=${encodeURIComponent(mentor.id)}`;
+  const { data: session } = useSession();
+  const scheduleTarget = `/schedule?mentorUserId=${encodeURIComponent(mentor.id)}`;
+  const scheduleHref = session?.user?.id
+    ? scheduleTarget
+    : `/auth/login?callbackUrl=${encodeURIComponent(scheduleTarget)}`;
 
   return (
     <motion.article

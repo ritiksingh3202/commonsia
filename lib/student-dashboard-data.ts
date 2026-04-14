@@ -20,6 +20,7 @@ export type StudentDashboardPayload = {
     mentorTitle: string | null;
     mentorCompany: string | null;
     nextSessionStart: string;
+    googleMeetLink: string | null;
   }[];
   upcomingSessions: {
     id: string;
@@ -27,6 +28,7 @@ export type StudentDashboardPayload = {
     mentorName: string;
     startAt: string;
     endAt: string;
+    googleMeetLink: string | null;
   }[];
 };
 
@@ -100,6 +102,7 @@ export async function getStudentDashboardPayload(userId: string): Promise<Studen
       mentorTitle: b.mentor.mentorTitle,
       mentorCompany: b.mentor.mentorCompany,
       nextSessionStart: b.startAt.toISOString(),
+      googleMeetLink: b.googleMeetLink ?? null,
     });
   }
 
@@ -109,6 +112,7 @@ export async function getStudentDashboardPayload(userId: string): Promise<Studen
     mentorName: b.mentor.name?.trim() || "Mentor",
     startAt: b.startAt.toISOString(),
     endAt: b.endAt.toISOString(),
+    googleMeetLink: b.googleMeetLink ?? null,
   }));
 
   const nextStart = upcomingBookings[0]?.startAt ?? null;

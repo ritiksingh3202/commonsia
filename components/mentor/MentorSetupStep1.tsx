@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { SetupGoogleCalendarConnect } from "@/components/setup/SetupGoogleCalendarConnect";
 import { SetupLinkedInNotice } from "@/components/setup/SetupLinkedInNotice";
 import { MENTOR_EXPERTISE_OTHER, MENTOR_YEARS_OPTIONS } from "@/components/mentor/mentor-setup-constants";
 import {
@@ -34,9 +35,11 @@ function expertiseFromSnapshot(raw: MentorSetupUserSnapshot["mentorExpertise"] |
 export function MentorSetupStep1({
   initial,
   linkedInConnected,
+  googleCalendarConnected = false,
 }: {
   initial?: MentorSetupUserSnapshot;
   linkedInConnected?: boolean;
+  googleCalendarConnected?: boolean;
 }) {
   const router = useRouter();
   const scheduleSave = useProfileAutosave();
@@ -255,6 +258,13 @@ export function MentorSetupStep1({
               ) : null}
             </div>
           </div>
+
+          <SetupGoogleCalendarConnect
+            connected={googleCalendarConnected}
+            returnPath="/mentor/setup/1"
+            required
+            description="Required before you can continue to availability after step 3. If you signed in with Google, this may already show as connected."
+          />
 
           <button type="submit" className={btnPrimary}>
             Next: Mentorship Details

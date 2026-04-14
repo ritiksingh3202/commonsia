@@ -77,14 +77,23 @@ export function MessagesInbox({
   const [loadingList, setLoadingList] = useState(true);
   const [loadingMsgs, setLoadingMsgs] = useState(false);
   const [sending, setSending] = useState(false);
+  const [openingPeer, setOpeningPeer] = useState(false);
+  const [bootstrapThread, setBootstrapThread] = useState<ThreadListItem | null>(null);
   const [mobileChat, setMobileChat] = useState(false);
   const listScrollRef = useRef<HTMLDivElement>(null);
   const msgsEndRef = useRef<HTMLDivElement>(null);
 
-  const selected = useMemo(
-    () => threads.find((t) => t.id === selectedId) ?? null,
-    [threads, selectedId],
-  );
+  const selected = useMemo(() => {
+    const fromList = threads.find((t) => t.id === selectedId) ?? null;
+    if (fromList) return fromList;
+    if (bootstrapThread && bootstrapThread.id === selectedId) return bootstrapThread;
+    return null;
+  }, [threads, selectedId, bootstrapThread]);
+
+  useEffect(() => {
+    if (!bootstrapThread || !threads.some((t) => t.id === bootstrapThread.id)) return;
+    setBootstrapThread(null);
+  }, [threads, bootstrapThread]);
 
   const isMentor = role === "mentor";
   const mentorCannotSend = selected && selected.status === CHAT_PENDING && isMentor;
@@ -93,7 +102,7 @@ export function MessagesInbox({
 
   const loadThreads = useCallback(async () => {
     setListError(null);
-    const res = await fetch("/api/chat/threads");
+    const res = await fetch("/api/chat/threads", { cache: "no-store" });
     if (!res.ok) {
       const j = (await res.json().catch(() => ({}))) as { error?: string };
       setListError(j.error || "Could not load conversations");
@@ -112,20 +121,27 @@ export function MessagesInbox({
 
   const openOrCreatePeer = useCallback(
     async (peerUserId: string) => {
-      const res = await fetch("/api/chat/threads", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ peerUserId }),
-      });
-      if (!res.ok) {
-        const j = (await res.json().catch(() => ({}))) as { error?: string };
-        setListError(j.error || "Could not open chat");
-        return;
+      setOpeningPeer(true);
+      setListError(null);
+      try {
+        const res = await fetch("/api/chat/threads", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ peerUserId }),
+        });
+        if (!res.ok) {
+          const j = (await res.json().catch(() => ({}))) as { error?: string };
+          setListError(j.error || "Could not open chat");
+          return;
+        }
+        const data = (await res.json()) as { thread: ThreadListItem };
+        setBootstrapThread(data.thread);
+        setSelectedId(data.thread.id);
+        setMobileChat(true);
+        await loadThreads();
+      } finally {
+        setOpeningPeer(false);
       }
-      const data = (await res.json()) as { thread: ThreadListItem };
-      setSelectedId(data.thread.id);
-      setMobileChat(true);
-      await loadThreads();
     },
     [loadThreads],
   );
@@ -138,17 +154,17 @@ export function MessagesInbox({
   }, [loadThreads]);
 
   useEffect(() => {
-    if (!initialPeerId || loadingList) return;
+    if (!initialPeerId) return;
     const t = window.setTimeout(() => {
       void openOrCreatePeer(initialPeerId);
     }, 0);
     return () => window.clearTimeout(t);
-  }, [initialPeerId, loadingList, openOrCreatePeer]);
+  }, [initialPeerId, openOrCreatePeer]);
 
   const loadMessages = useCallback(async (threadId: string) => {
     setLoadingMsgs(true);
     setMsgError(null);
-    const res = await fetch(`/api/chat/threads/${threadId}/messages`);
+    const res = await fetch(`/api/chat/threads/${threadId}/messages`, { cache: "no-store" });
     if (!res.ok) {
       setMsgError("Could not load messages");
       setLoadingMsgs(false);
@@ -171,7 +187,10 @@ export function MessagesInbox({
     const kick = window.setTimeout(() => {
       void loadMessages(selectedId);
     }, 0);
-    const poll = window.setInterval(() => void loadMessages(selectedId), 4500);
+    const poll = window.setInterval(() => {
+      if (typeof document !== "undefined" && document.visibilityState !== "visible") return;
+      void loadMessages(selectedId);
+    }, 4000);
     return () => {
       window.clearTimeout(kick);
       window.clearInterval(poll);
@@ -183,9 +202,22 @@ export function MessagesInbox({
   }, [messages]);
 
   useEffect(() => {
-    const id = window.setInterval(() => void loadThreads(), 12000);
+    const id = window.setInterval(() => {
+      if (typeof document !== "undefined" && document.visibilityState !== "visible") return;
+      void loadThreads();
+    }, 12000);
     return () => window.clearInterval(id);
   }, [loadThreads]);
+
+  useEffect(() => {
+    const onVis = () => {
+      if (document.visibilityState !== "visible") return;
+      void loadThreads();
+      if (selectedId) void loadMessages(selectedId);
+    };
+    document.addEventListener("visibilitychange", onVis);
+    return () => document.removeEventListener("visibilitychange", onVis);
+  }, [loadThreads, loadMessages, selectedId]);
 
   const send = async () => {
     const t = draft.trim();
@@ -459,9 +491,24 @@ export function MessagesInbox({
                 </div>
               </div>
             </>
+          ) : openingPeer ? (
+            <div className="flex flex-1 flex-col items-center justify-center gap-2 p-8 text-center">
+              <p className="text-sm font-medium text-[#0a0a0a]">Opening conversation…</p>
+              <p className="max-w-xs text-xs text-neutral-500">
+                Connecting you to your chat. If this takes long, confirm you’re signed in as a student or mentor.
+              </p>
+            </div>
+          ) : initialPeerId && !selectedId && listError ? (
+            <div className="flex flex-1 flex-col items-center justify-center gap-2 p-8 text-center">
+              <p className="text-sm font-medium text-red-700">Could not open chat</p>
+              <p className="max-w-sm text-xs text-neutral-600">{listError}</p>
+            </div>
           ) : (
-            <div className="flex flex-1 items-center justify-center p-8 text-center text-sm text-neutral-500">
-              Select a conversation
+            <div className="flex flex-1 flex-col items-center justify-center gap-2 p-8 text-center text-sm text-neutral-500">
+              <p>Select a conversation from the list</p>
+              <p className="max-w-xs text-xs text-neutral-400">
+                Or open a mentor profile and tap the message icon to start chatting.
+              </p>
             </div>
           )}
         </section>

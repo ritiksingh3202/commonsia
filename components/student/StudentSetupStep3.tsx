@@ -61,6 +61,10 @@ export function StudentSetupStep3({
               window.alert("Please add your LinkedIn profile URL.");
               return;
             }
+            if (!googleCalendarConnected) {
+              window.alert("Please connect Google Calendar before completing your profile.");
+              return;
+            }
             const res = await fetch("/api/profile", {
               method: "PATCH",
               headers: { "Content-Type": "application/json" },
@@ -162,7 +166,8 @@ export function StudentSetupStep3({
           <SetupGoogleCalendarConnect
             connected={googleCalendarConnected}
             returnPath="/student/setup/3"
-            description="Optional. Connect so mentoring sessions can be added to your Google Calendar and you get fewer clashes with your schedule."
+            required
+            description="Required. Sessions are added to Google Calendar. If you signed in with Google, you may already be connected — otherwise use Connect below."
           />
 
           <div className="flex flex-col gap-2 pt-1 sm:flex-row sm:gap-2">
@@ -170,7 +175,11 @@ export function StudentSetupStep3({
               <ArrowLeft className="size-3.5" />
               Previous
             </button>
-            <button type="submit" className={btnPrimary}>
+            <button
+              type="submit"
+              disabled={!googleCalendarConnected}
+              className={`${btnPrimary} ${!googleCalendarConnected ? "opacity-50" : ""}`}
+            >
               Complete profile
             </button>
           </div>

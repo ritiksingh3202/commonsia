@@ -103,6 +103,8 @@ model MentoringBooking {
   endAt          DateTime
   title          String?
   googleEventId  String?
+  /// Google Meet (or similar) join URL when `conferenceData` was used on insert.
+  googleMeetLink String?  @db.Text
 
   student User @relation("BookingStudent", fields: [studentId], references: [id], onDelete: Cascade)
   mentor  User @relation("BookingMentor", fields: [mentorId], references: [id], onDelete: Cascade)

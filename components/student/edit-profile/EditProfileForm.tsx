@@ -20,6 +20,7 @@ import {
   architectureOthersSectionTitle,
   architecturePillBase,
 } from "@/components/shared/ArchitectureGroupedPills";
+import { SetupGoogleCalendarConnect } from "@/components/setup/SetupGoogleCalendarConnect";
 import { interestStateFromServer, interestsPayloadFromSelection } from "@/components/student/student-interest-sync";
 
 const TABS = [
@@ -130,9 +131,9 @@ function payloadFromInitialUser(u: EditProfileUser): Record<string, unknown> {
   };
 }
 
-type Props = { user: EditProfileUser };
+type Props = { user: EditProfileUser; googleCalendarConnected: boolean };
 
-export function EditProfileForm({ user: initial }: Props) {
+export function EditProfileForm({ user: initial, googleCalendarConnected }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const tabParam = searchParams.get("tab");
@@ -747,6 +748,12 @@ export function EditProfileForm({ user: initial }: Props) {
 
         {activeTab === "portfolio" && (
           <div className="space-y-5">
+            <SetupGoogleCalendarConnect
+              connected={googleCalendarConnected}
+              returnPath="/student/profile/edit?tab=portfolio"
+              required
+              description="Required for booking and calendar sync. If you signed in with Google, this may already show as connected."
+            />
             <div>
               <h2 className="text-base font-semibold text-[#0a0a0a]">Portfolio &amp; Bio</h2>
               <p className="mt-0.5 text-[13px] text-[#6b7280]">Showcase your work and tell your story.</p>

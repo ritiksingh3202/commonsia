@@ -3,9 +3,11 @@
 import Link from "next/link";
 import { Suspense, useCallback, useEffect, useState } from "react";
 
+import { GoogleCalendarRequiredModal } from "@/components/onboarding/GoogleCalendarRequiredModal";
 import { ProfileCompletionWelcome } from "@/components/onboarding/ProfileCompletionWelcome";
 import { StudentProfileHero } from "@/components/student/StudentProfileHero";
 import type { StudentProfileUser } from "@/components/student/student-profile-types";
+import { formatSessionStartDisplay } from "@/lib/booking-datetime-display";
 import type { StudentDashboardPayload } from "@/lib/student-dashboard-data";
 
 const POLL_MS = 18_000;
@@ -49,24 +51,14 @@ function initialsFromName(name: string | null | undefined): string {
     .toUpperCase();
 }
 
-function formatSessionTime(iso: string): string {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleString(undefined, {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
-}
-
 export function StudentDashboard({
   user,
   initialDashboard,
+  googleCalendarConnected,
 }: {
   user: StudentProfileUser;
   initialDashboard: StudentDashboardPayload;
+  googleCalendarConnected: boolean;
 }) {
   const [data, setData] = useState(initialDashboard);
 
@@ -123,6 +115,7 @@ export function StudentDashboard({
 
   return (
     <div className="w-full">
+      <GoogleCalendarRequiredModal googleCalendarConnected={googleCalendarConnected} variant="student" />
       <Suspense fallback={null}>
         <ProfileCompletionWelcome variant="student" />
       </Suspense>
@@ -233,19 +226,29 @@ export function StudentDashboard({
                             {[m.mentorTitle, m.mentorCompany].filter(Boolean).join(" · ") || "Mentor"}
                           </p>
                           <p className="mt-0.5 text-[12px] text-[#9ca3af]">
-                            Next: {formatSessionTime(m.nextSessionStart)}
+                            Next: {formatSessionStartDisplay(m.nextSessionStart)}
                           </p>
                         </div>
                       </div>
                       <div className="flex shrink-0 flex-wrap gap-2 sm:justify-end">
+                        {m.googleMeetLink?.trim() ? (
+                          <a
+                            href={m.googleMeetLink.trim()}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className={`${rowBtn} bg-emerald-600 text-white hover:bg-emerald-600/92`}
+                          >
+                            Join session
+                          </a>
+                        ) : null}
                         <Link
-                          href={`/schedule?mentorUserId=${encodeURIComponent(m.id)}`}
+                          href={`/student/upcoming/${encodeURIComponent(m.id)}`}
                           className={`${rowBtn} border border-black/[0.1] bg-white text-[#0a0a0a] hover:bg-neutral-50`}
                         >
-                          Schedule
+                          Session
                         </Link>
                         <Link
-                          href="/messages"
+                          href={`/messages?peer=${encodeURIComponent(m.id)}`}
                           className={`${rowBtn} bg-primary text-white hover:bg-primary/92`}
                         >
                           Message
@@ -321,7 +324,25 @@ export function StudentDashboard({
                       className="rounded-xl border border-black/[0.08] bg-white px-3.5 py-3"
                     >
                       <p className="text-[13px] font-semibold text-[#0a0a0a]">{s.mentorName}</p>
-                      <p className="mt-1 text-[12px] text-[#6b7280]">{formatSessionTime(s.startAt)}</p>
+                      <p className="mt-1 text-[12px] text-[#6b7280]">{formatSessionStartDisplay(s.startAt)}</p>
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {s.googleMeetLink?.trim() ? (
+                          <a
+                            href={s.googleMeetLink.trim()}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex h-8 items-center justify-center rounded-lg bg-emerald-600 px-3 text-[12px] font-semibold text-white transition hover:bg-emerald-600/92"
+                          >
+                            Join session
+                          </a>
+                        ) : null}
+                        <Link
+                          href={`/student/upcoming/${encodeURIComponent(s.mentorId)}`}
+                          className="inline-flex h-8 items-center justify-center rounded-lg border border-black/[0.12] bg-white px-3 text-[12px] font-medium text-[#0a0a0a] transition hover:bg-neutral-50"
+                        >
+                          Details
+                        </Link>
+                      </div>
                     </li>
                   ))}
                 </ul>

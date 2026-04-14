@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 
 import { auth } from "@/auth";
 import { StudentDashboard } from "@/components/student/StudentDashboard";
+import { getGoogleCalendarRefreshTokenForUser } from "@/lib/google-calendar-oauth-client";
 import { prisma } from "@/lib/prisma";
 import { getStudentDashboardPayload } from "@/lib/student-dashboard-data";
 import { getStudentOnboardingRedirectPath } from "@/lib/student-onboarding";
@@ -80,5 +81,12 @@ export default async function StudentHomePage() {
   const { profileComplete, role, ...dashboardUser } = user;
   void profileComplete;
   void role;
-  return <StudentDashboard user={dashboardUser} initialDashboard={dashboardInitial} />;
+  const googleCalendarConnected = !!(await getGoogleCalendarRefreshTokenForUser(session.user.id));
+  return (
+    <StudentDashboard
+      user={dashboardUser}
+      initialDashboard={dashboardInitial}
+      googleCalendarConnected={googleCalendarConnected}
+    />
+  );
 }

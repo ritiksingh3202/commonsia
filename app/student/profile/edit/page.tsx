@@ -4,6 +4,7 @@ import { Suspense } from "react";
 
 import { auth } from "@/auth";
 import { EditProfileForm } from "@/components/student/edit-profile/EditProfileForm";
+import { getGoogleCalendarRefreshTokenForUser } from "@/lib/google-calendar-oauth-client";
 import { prisma } from "@/lib/prisma";
 
 export const metadata: Metadata = {
@@ -45,9 +46,11 @@ export default async function StudentEditProfilePage() {
     redirect("/auth/login?callbackUrl=/student/profile/edit");
   }
 
+  const googleCalendarConnected = !!(await getGoogleCalendarRefreshTokenForUser(session.user.id));
+
   return (
     <Suspense fallback={<div className="p-10 text-center text-[13px] text-[#6b7280]">Loading…</div>}>
-      <EditProfileForm user={user} />
+      <EditProfileForm user={user} googleCalendarConnected={googleCalendarConnected} />
     </Suspense>
   );
 }

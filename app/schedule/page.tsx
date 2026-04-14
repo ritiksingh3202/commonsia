@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 
+import { auth } from "@/auth";
 import { MarketingShell } from "@/components/layout/MarketingShell";
 import { ScheduleCallPage } from "@/components/schedule/ScheduleCallPage";
 import { prisma } from "@/lib/prisma";
@@ -15,6 +17,15 @@ export default async function SchedulePage({
   searchParams: Promise<{ mentorUserId?: string }>;
 }) {
   const sp = await searchParams;
+  const session = await auth();
+  if (!session?.user?.id) {
+    const q = new URLSearchParams();
+    const raw = sp.mentorUserId?.trim();
+    if (raw) q.set("mentorUserId", raw);
+    const path = q.toString() ? `/schedule?${q.toString()}` : "/schedule";
+    redirect(`/auth/login?callbackUrl=${encodeURIComponent(path)}`);
+  }
+
   const raw = sp.mentorUserId?.trim();
   let mentorUserId: string | null = null;
   let mentorDisplayName: string | null = null;

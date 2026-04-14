@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { MentorSetupShell } from "@/components/mentor/MentorSetupShell";
+import { SetupGoogleCalendarConnect } from "@/components/setup/SetupGoogleCalendarConnect";
 import { SetupLinkedInNotice } from "@/components/setup/SetupLinkedInNotice";
 import { setupField, setupLabel, setupRequiredStar } from "@/components/student/student-ui";
 import { useProfileAutosave } from "@/hooks/useProfileAutosave";
@@ -47,9 +48,11 @@ function normalizeWhatsappUrl(raw: string): string | null {
 export function MentorSetupStep3({
   initial,
   linkedInConnected,
+  googleCalendarConnected = false,
 }: {
   initial?: MentorSetupUserSnapshot;
   linkedInConnected?: boolean;
+  googleCalendarConnected?: boolean;
 }) {
   const router = useRouter();
   const scheduleSave = useProfileAutosave();
@@ -130,6 +133,10 @@ export function MentorSetupStep3({
             const li = normalizeLinkedInUrl(linkedinUrl);
             if (!li) {
               window.alert("Enter a valid LinkedIn profile URL.");
+              return;
+            }
+            if (!googleCalendarConnected) {
+              window.alert("Please connect Google Calendar before continuing to availability.");
               return;
             }
             const res = await fetch("/api/profile", {
@@ -316,12 +323,23 @@ export function MentorSetupStep3({
             </div>
           </div>
 
+          <SetupGoogleCalendarConnect
+            connected={googleCalendarConnected}
+            returnPath="/mentor/setup/3"
+            required
+            description="Required. Students book against your Google Calendar when it’s connected. If you signed in with Google, you may already be connected."
+          />
+
           <div className="flex flex-col gap-2 pt-2 sm:flex-row">
             <button type="button" onClick={() => router.push("/mentor/setup/2")} className={btnGhost}>
               <ArrowLeft className="size-3.5" />
               Previous
             </button>
-            <button type="submit" className={btnPrimary}>
+            <button
+              type="submit"
+              disabled={!googleCalendarConnected}
+              className={`${btnPrimary} ${!googleCalendarConnected ? "opacity-50" : ""}`}
+            >
               Next: Set Availability
               <ArrowRight className="size-3.5" />
             </button>

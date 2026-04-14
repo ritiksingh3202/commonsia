@@ -52,6 +52,17 @@ export function mergeAvailabilityForSlot(raw: unknown): MentorAvailabilityJson {
         !!b && typeof b === "object" && typeof (b as { date?: unknown }).date === "string",
     );
   }
+  if (o.extraAvailabilitySlots && typeof o.extraAvailabilitySlots === "object") {
+    const target = d.extraAvailabilitySlots ?? {};
+    d.extraAvailabilitySlots = target;
+    const ex = o.extraAvailabilitySlots as Record<string, unknown>;
+    for (const key of Object.keys(ex)) {
+      const arr = ex[key];
+      if (Array.isArray(arr)) {
+        target[key] = arr.filter((x): x is string => typeof x === "string");
+      }
+    }
+  }
   return d;
 }
 

@@ -35,24 +35,38 @@ export default async function PublicMentorPage({ params }: Props) {
 
   const session = await auth();
 
+  const viewerDb =
+    session?.user?.id != null
+      ? await prisma.user.findUnique({
+          where: { id: session.user.id },
+          select: { role: true },
+        })
+      : null;
+  const viewerRole = viewerDb?.role ?? session?.user?.role ?? null;
+
   const similarMentors = await getSimilarMentorsForProfile(
     mentor.id,
     mentor,
-    session?.user?.role === "student" ? session.user.id : undefined,
+    viewerRole === "student" ? session!.user!.id : undefined,
     8,
   );
   const mentorReviews = await getPublicReviewsForMentor(mentor.id);
   const back = `/mentors/${mentor.id}`;
   const linked = mentor.linkedUserId?.trim();
-  const scheduleHref = linked
+  const scheduleTarget = linked
     ? `/schedule?mentorUserId=${encodeURIComponent(linked)}`
     : "/schedule";
+  const scheduleHref = session?.user?.id
+    ? scheduleTarget
+    : `/auth/login?callbackUrl=${encodeURIComponent(scheduleTarget)}`;
 
   let messageHref: string;
-  if (session?.user?.role === "student" && linked) {
+  if (viewerRole === "student" && linked) {
     messageHref = `/messages?peer=${encodeURIComponent(linked)}`;
   } else if (!session?.user?.id && linked) {
-    messageHref = `/auth/login?callbackUrl=${encodeURIComponent(`/messages?peer=${linked}`)}`;
+    messageHref = `/auth/login?callbackUrl=${encodeURIComponent(`/messages?peer=${encodeURIComponent(linked)}`)}`;
+  } else if (session?.user?.id && linked && viewerRole === "mentor") {
+    messageHref = `/messages`;
   } else {
     messageHref = `/chat?${new URLSearchParams({
       name: mentor.name,
@@ -96,7 +110,7 @@ export default async function PublicMentorPage({ params }: Props) {
         mentor={mentor}
         mentorReviews={mentorReviews}
         similarMentors={similarMentors}
-        similarMentorsPersonalized={session?.user?.role === "student"}
+        similarMentorsPersonalized={viewerRole === "student"}
         messageHref={messageHref}
         scheduleHref={scheduleHref}
         viewerPortfolio={viewerPortfolio}

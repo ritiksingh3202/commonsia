@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useSession } from "next-auth/react";
 import { useCallback, useState, type ReactNode } from "react";
 
 export type MentorChatPageProps = {
@@ -100,6 +101,14 @@ export function MentorChatPage({
   availabilitySummary = null,
   mentorUserId = null,
 }: MentorChatPageProps) {
+  const { data: session } = useSession();
+  const scheduleTarget = mentorUserId?.trim()
+    ? `/schedule?mentorUserId=${encodeURIComponent(mentorUserId.trim())}`
+    : "/schedule";
+  const scheduleHref = session?.user?.id
+    ? scheduleTarget
+    : `/auth/login?callbackUrl=${encodeURIComponent(scheduleTarget)}`;
+
   const [messages, setMessages] = useState<ChatMessage[]>(SEED_MESSAGES);
   const [message, setMessage] = useState("");
   const [showProfile, setShowProfile] = useState(true);
@@ -336,11 +345,7 @@ export function MentorChatPage({
 
             <div className="shrink-0 border-t border-neutral-200 p-5 sm:p-6">
               <Link
-                href={
-                  mentorUserId
-                    ? `/schedule?mentorUserId=${encodeURIComponent(mentorUserId)}`
-                    : "/schedule"
-                }
+                href={scheduleHref}
                 className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-3.5 text-sm font-semibold text-white shadow-md transition hover:bg-primary/90"
               >
                 <IconCalendar className="size-4" />

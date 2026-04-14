@@ -53,10 +53,26 @@ export default async function StudentSetupPage({
 
   const linkedInConnected = !!linkedInAccount;
   const initial = user ?? undefined;
-
-  if (step === 1) return <StudentSetupStep1 initial={initial} linkedInConnected={linkedInConnected} />;
-  if (step === 2) return <StudentSetupStep2 initial={initial} linkedInConnected={linkedInConnected} />;
   const googleCalendarConnected = !!(await getGoogleCalendarRefreshTokenForUser(session.user.id));
+
+  if (step === 1) {
+    return (
+      <StudentSetupStep1
+        initial={initial}
+        linkedInConnected={linkedInConnected}
+        googleCalendarConnected={googleCalendarConnected}
+      />
+    );
+  }
+  if (step === 2) {
+    return (
+      <StudentSetupStep2
+        initial={initial}
+        linkedInConnected={linkedInConnected}
+        googleCalendarConnected={googleCalendarConnected}
+      />
+    );
+  }
   return (
     <StudentSetupStep3
       initial={initial}
