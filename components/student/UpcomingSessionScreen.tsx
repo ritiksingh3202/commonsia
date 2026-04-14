@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { formatBookingRangeDisplay } from "@/lib/booking-datetime-display";
 import type { SessionWithMentorPayload } from "@/lib/student-session-with-mentor-types";
@@ -28,19 +28,37 @@ export function UpcomingSessionScreen({
   initial: SessionWithMentorPayload;
 }) {
   const [data, setData] = useState<SessionWithMentorPayload>(initial);
+  const [refreshing, setRefreshing] = useState(false);
+  /** Serialize fetches so we never stack concurrent API calls (protects DB pool). */
+  const fetchQueueRef = useRef(Promise.resolve());
 
-  const refresh = useCallback(async () => {
-    try {
-      const u = new URL("/api/student/session-with-mentor", window.location.origin);
-      u.searchParams.set("mentorUserId", mentorId);
-      const r = await fetch(u.toString(), { cache: "no-store" });
-      if (!r.ok) return;
-      const j = (await r.json()) as SessionWithMentorPayload;
-      setData(j);
-    } catch {
-      /* ignore */
-    }
+  const fetchSession = useCallback(async () => {
+    fetchQueueRef.current = fetchQueueRef.current.then(async () => {
+      try {
+        const u = new URL("/api/student/session-with-mentor", window.location.origin);
+        u.searchParams.set("mentorUserId", mentorId);
+        const r = await fetch(u.toString(), { cache: "no-store" });
+        if (!r.ok) return;
+        const j = (await r.json()) as SessionWithMentorPayload;
+        setData(j);
+      } catch {
+        /* ignore */
+      }
+    });
+    return fetchQueueRef.current;
   }, [mentorId]);
+
+  const refresh = useCallback(
+    async (opts?: { showBusy?: boolean }) => {
+      if (opts?.showBusy) setRefreshing(true);
+      try {
+        await fetchSession();
+      } finally {
+        if (opts?.showBusy) setRefreshing(false);
+      }
+    },
+    [fetchSession],
+  );
 
   const booking = data.booking;
   const meet = booking?.googleMeetLink?.trim() ?? "";
@@ -51,10 +69,10 @@ export function UpcomingSessionScreen({
   );
 
   useEffect(() => {
-    const t0 = window.setTimeout(() => void refresh(), 0);
-    const id = window.setInterval(() => void refresh(), pollMs);
+    const t0 = window.setTimeout(() => void fetchSession(), 0);
+    const id = window.setInterval(() => void fetchSession(), pollMs);
     const onVis = () => {
-      if (document.visibilityState === "visible") void refresh();
+      if (document.visibilityState === "visible") void fetchSession();
     };
     document.addEventListener("visibilitychange", onVis);
     return () => {
@@ -62,7 +80,7 @@ export function UpcomingSessionScreen({
       window.clearInterval(id);
       document.removeEventListener("visibilitychange", onVis);
     };
-  }, [refresh, pollMs]);
+  }, [fetchSession, pollMs]);
 
   const mentorName = data.mentor.name?.trim() || "Mentor";
   const studentName = data.student.name?.trim() || "You";
@@ -177,20 +195,14 @@ export function UpcomingSessionScreen({
                     Join the session
                   </a>
                 ) : (
-                  <div className="rounded-xl border border-neutral-200 bg-neutral-50/90 px-4 py-3 text-center">
-                    <p className="text-[13px] font-medium text-[#0a0a0a]">Google Meet link not in Commonsia yet</p>
-                    <p className="mt-1.5 text-[12px] leading-snug text-neutral-600">
-                      Open the calendar invite in your email—it usually includes the Meet link. If you just finished
-                      booking, tap refresh—we check every few seconds until it appears.
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => void refresh()}
-                      className="mt-3 inline-flex h-10 items-center justify-center rounded-lg border border-primary/30 bg-white px-4 text-[13px] font-semibold text-primary transition hover:bg-primary/5"
-                    >
-                      Check for Meet link
-                    </button>
-                  </div>
+                  <button
+                    type="button"
+                    disabled={refreshing}
+                    onClick={() => void refresh({ showBusy: true })}
+                    className={`${joinBtnClass} disabled:cursor-wait disabled:opacity-80`}
+                  >
+                    {refreshing ? "Getting Meet link…" : "Join the session"}
+                  </button>
                 )}
               </div>
 

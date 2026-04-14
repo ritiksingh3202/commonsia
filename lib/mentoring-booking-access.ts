@@ -10,6 +10,7 @@ export type MentoringBookingWithMentor = {
   startAt: Date;
   endAt: Date;
   googleMeetLink: string | null;
+  googleEventId: string | null;
   mentor: {
     id: string;
     name: string | null;
@@ -67,6 +68,7 @@ export async function findUpcomingBookingsWithMentors(
         startAt: Date;
         endAt: Date;
         googleMeetLink: string | null;
+        googleEventId: string | null;
         m_id: string;
         m_name: string | null;
         m_image: string | null;
@@ -80,6 +82,7 @@ export async function findUpcomingBookingsWithMentors(
         b."startAt",
         b."endAt",
         b."googleMeetLink" AS "googleMeetLink",
+        b."googleEventId" AS "googleEventId",
         m.id AS "m_id",
         m.name AS "m_name",
         m.image AS "m_image",
@@ -96,6 +99,7 @@ export async function findUpcomingBookingsWithMentors(
       startAt: r.startAt,
       endAt: r.endAt,
       googleMeetLink: r.googleMeetLink,
+      googleEventId: r.googleEventId,
       mentor: {
         id: r.m_id,
         name: r.m_name,

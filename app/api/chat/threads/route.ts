@@ -14,7 +14,47 @@ const peerSelect = {
   university: true,
   yearOfStudy: true,
   major: true,
+  linkedinUrl: true,
+  instagramUrl: true,
+  whatsappUrl: true,
+  portfolioUrl: true,
 } as const;
+
+type PeerRow = {
+  id: string;
+  name: string | null;
+  email: string | null;
+  image: string | null;
+  role: string | null;
+  mentorTitle: string | null;
+  mentorCompany: string | null;
+  university: string | null;
+  yearOfStudy: string | null;
+  major: string | null;
+  linkedinUrl: string | null;
+  instagramUrl: string | null;
+  whatsappUrl: string | null;
+  portfolioUrl: string | null;
+};
+
+function publicPeerPayload(peer: PeerRow) {
+  const r = peer.role;
+  return {
+    id: peer.id,
+    name: peer.name,
+    email: peer.email,
+    image: peer.image,
+    role: r === "mentor" || r === "student" ? r : null,
+    subtitle:
+      r === "mentor"
+        ? [peer.mentorTitle, peer.mentorCompany].filter(Boolean).join(", ") || "Mentor"
+        : [peer.major, peer.yearOfStudy, peer.university].filter(Boolean).join(", ") || "Student",
+    linkedinUrl: peer.linkedinUrl,
+    instagramUrl: peer.instagramUrl,
+    whatsappUrl: peer.whatsappUrl,
+    portfolioUrl: peer.portfolioUrl,
+  };
+}
 
 export async function GET() {
   const session = await auth();
@@ -61,16 +101,7 @@ export async function GET() {
       id: t.id,
       status: t.status,
       updatedAt: t.updatedAt.toISOString(),
-      peer: {
-        id: peer.id,
-        name: peer.name,
-        email: peer.email,
-        image: peer.image,
-        subtitle:
-          peer.role === "mentor"
-            ? [peer.mentorTitle, peer.mentorCompany].filter(Boolean).join(", ") || "Mentor"
-            : [peer.major, peer.yearOfStudy, peer.university].filter(Boolean).join(", ") || "Student",
-      },
+      peer: publicPeerPayload(peer),
       lastMessagePreview: last?.body?.slice(0, 120) ?? null,
       lastMessageAt: last?.createdAt.toISOString() ?? null,
     };
@@ -174,16 +205,7 @@ export async function POST(req: Request) {
       id: fresh.id,
       status: fresh.status,
       updatedAt: fresh.updatedAt.toISOString(),
-      peer: {
-        id: peerOut.id,
-        name: peerOut.name,
-        email: peerOut.email,
-        image: peerOut.image,
-        subtitle:
-          peerOut.role === "mentor"
-            ? [peerOut.mentorTitle, peerOut.mentorCompany].filter(Boolean).join(", ") || "Mentor"
-            : [peerOut.major, peerOut.yearOfStudy, peerOut.university].filter(Boolean).join(", ") || "Student",
-      },
+      peer: publicPeerPayload(peerOut),
       lastMessagePreview: last?.body?.slice(0, 120) ?? null,
       lastMessageAt: last?.createdAt.toISOString() ?? null,
     },

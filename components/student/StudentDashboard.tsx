@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Suspense, useCallback, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 
 import { GoogleCalendarRequiredModal } from "@/components/onboarding/GoogleCalendarRequiredModal";
 import { ProfileCompletionWelcome } from "@/components/onboarding/ProfileCompletionWelcome";
@@ -10,7 +10,7 @@ import type { StudentProfileUser } from "@/components/student/student-profile-ty
 import { formatSessionStartDisplay } from "@/lib/booking-datetime-display";
 import type { StudentDashboardPayload } from "@/lib/student-dashboard-data";
 
-const POLL_MS = 18_000;
+const POLL_MS = 45_000;
 
 const recommendations: { title: string; meta: string; href: string; cta: string }[] = [
   {
@@ -40,6 +40,45 @@ const sectionDesc = "mt-1 text-[13px] leading-snug text-[#6b7280]";
 const rowBtn =
   "inline-flex h-9 shrink-0 items-center justify-center rounded-md px-4 text-[13px] font-medium transition-colors sm:min-w-[5.5rem]";
 
+function StudentJoinSessionButton({
+  googleMeetLink,
+  reloadDashboard,
+  className,
+}: {
+  googleMeetLink: string | null | undefined;
+  reloadDashboard: () => Promise<void>;
+  className: string;
+}) {
+  const [busy, setBusy] = useState(false);
+  const url = googleMeetLink?.trim() ?? "";
+  if (url) {
+    return (
+      <a href={url} target="_blank" rel="noopener noreferrer" className={className}>
+        Join session
+      </a>
+    );
+  }
+  return (
+    <button
+      type="button"
+      className={className}
+      disabled={busy}
+      onClick={() => {
+        void (async () => {
+          setBusy(true);
+          try {
+            await reloadDashboard();
+          } finally {
+            setBusy(false);
+          }
+        })();
+      }}
+    >
+      {busy ? "Checking…" : "Join session"}
+    </button>
+  );
+}
+
 function initialsFromName(name: string | null | undefined): string {
   const n = name?.trim();
   if (!n) return "?";
@@ -61,16 +100,20 @@ export function StudentDashboard({
   googleCalendarConnected: boolean;
 }) {
   const [data, setData] = useState(initialDashboard);
+  const loadQueueRef = useRef(Promise.resolve());
 
   const load = useCallback(async () => {
-    try {
-      const r = await fetch("/api/student/dashboard", { cache: "no-store" });
-      if (!r.ok) return;
-      const j = (await r.json()) as StudentDashboardPayload;
-      setData(j);
-    } catch {
-      /* ignore */
-    }
+    loadQueueRef.current = loadQueueRef.current.then(async () => {
+      try {
+        const r = await fetch("/api/student/dashboard", { cache: "no-store" });
+        if (!r.ok) return;
+        const j = (await r.json()) as StudentDashboardPayload;
+        setData(j);
+      } catch {
+        /* ignore */
+      }
+    });
+    return loadQueueRef.current;
   }, []);
 
   useEffect(() => {
@@ -231,22 +274,11 @@ export function StudentDashboard({
                         </div>
                       </div>
                       <div className="flex shrink-0 flex-wrap gap-2 sm:justify-end">
-                        {m.googleMeetLink?.trim() ? (
-                          <a
-                            href={m.googleMeetLink.trim()}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className={`${rowBtn} bg-emerald-600 text-white hover:bg-emerald-600/92`}
-                          >
-                            Join session
-                          </a>
-                        ) : null}
-                        <Link
-                          href={`/student/upcoming/${encodeURIComponent(m.id)}`}
-                          className={`${rowBtn} border border-black/[0.1] bg-white text-[#0a0a0a] hover:bg-neutral-50`}
-                        >
-                          Session
-                        </Link>
+                        <StudentJoinSessionButton
+                          googleMeetLink={m.googleMeetLink}
+                          reloadDashboard={load}
+                          className={`${rowBtn} bg-emerald-600 text-white hover:bg-emerald-600/92 disabled:cursor-wait disabled:opacity-85`}
+                        />
                         <Link
                           href={`/messages?peer=${encodeURIComponent(m.id)}`}
                           className={`${rowBtn} bg-primary text-white hover:bg-primary/92`}
@@ -326,16 +358,11 @@ export function StudentDashboard({
                       <p className="text-[13px] font-semibold text-[#0a0a0a]">{s.mentorName}</p>
                       <p className="mt-1 text-[12px] text-[#6b7280]">{formatSessionStartDisplay(s.startAt)}</p>
                       <div className="mt-2 flex flex-wrap gap-2">
-                        {s.googleMeetLink?.trim() ? (
-                          <a
-                            href={s.googleMeetLink.trim()}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex h-8 items-center justify-center rounded-lg bg-emerald-600 px-3 text-[12px] font-semibold text-white transition hover:bg-emerald-600/92"
-                          >
-                            Join session
-                          </a>
-                        ) : null}
+                        <StudentJoinSessionButton
+                          googleMeetLink={s.googleMeetLink}
+                          reloadDashboard={load}
+                          className="inline-flex h-8 items-center justify-center rounded-lg bg-emerald-600 px-3 text-[12px] font-semibold text-white transition hover:bg-emerald-600/92 disabled:cursor-wait disabled:opacity-85"
+                        />
                         <Link
                           href={`/student/upcoming/${encodeURIComponent(s.mentorId)}`}
                           className="inline-flex h-8 items-center justify-center rounded-lg border border-black/[0.12] bg-white px-3 text-[12px] font-medium text-[#0a0a0a] transition hover:bg-neutral-50"

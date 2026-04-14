@@ -6,6 +6,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { validateBookingInAvailability } from "@/lib/booking-availability-slots";
 import { fetchPrimaryCalendarBusy, intervalOverlapsBusy } from "@/lib/google-calendar-busy";
+import { meetLinkFromCalendarEventPayload } from "@/lib/google-calendar-meet-link";
 import { defaultCalendarTimeZone } from "@/lib/schedule-slot-ist";
 import { getGoogleCalendarOAuth2Client } from "@/lib/google-calendar-oauth-client";
 import { sendBookingConfirmationEmails } from "@/lib/booking-emails";
@@ -154,17 +155,6 @@ export async function POST(req: Request) {
   /** Invites and reminders are always sent when Google accepts attendees (product policy). */
   const sendUpdates = "all" as const;
 
-  function meetLinkFromCalendarEvent(ev: {
-    hangoutLink?: string | null;
-    conferenceData?: {
-      entryPoints?: { entryPointType?: string | null; uri?: string | null }[] | null;
-    } | null;
-  }): string | null {
-    if (ev.hangoutLink) return ev.hangoutLink;
-    const video = ev.conferenceData?.entryPoints?.find((e) => e.entryPointType === "video");
-    return video?.uri ?? null;
-  }
-
   async function insertForOrganizer(
     organizerUserId: string,
     attendees: { email: string; displayName?: string }[],
@@ -224,7 +214,7 @@ export async function POST(req: Request) {
     if (calendarEvent) organizer = "student";
   }
 
-  const meetLink = calendarEvent ? meetLinkFromCalendarEvent(calendarEvent) : null;
+  const meetLink = calendarEvent ? meetLinkFromCalendarEventPayload(calendarEvent) : null;
 
   if (mentor) {
     try {

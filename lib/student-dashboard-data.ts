@@ -1,7 +1,21 @@
+import { resolveAndPersistMeetLinkForBooking } from "@/lib/booking-resolve-google-meet";
 import { CHAT_ACTIVE, CHAT_PENDING } from "@/lib/chat-thread-status";
-import { countPastBookings, findUpcomingBookingsWithMentors } from "@/lib/mentoring-booking-access";
+import {
+  countPastBookings,
+  findUpcomingBookingsWithMentors,
+  type MentoringBookingWithMentor,
+} from "@/lib/mentoring-booking-access";
 import { prisma } from "@/lib/prisma";
 import { computeStudentProfileCompletionPercent } from "@/lib/student-profile-completion";
+
+async function hydrateMeetLinksOnBookings(bookings: MentoringBookingWithMentor[]): Promise<void> {
+  /** One-at-a-time keeps Prisma/Google work from exhausting the connection pool. */
+  for (const b of bookings) {
+    if (b.googleMeetLink?.trim() || !b.googleEventId?.trim()) continue;
+    const link = await resolveAndPersistMeetLinkForBooking(b.id);
+    if (link) b.googleMeetLink = link;
+  }
+}
 
 export type StudentDashboardPayload = {
   activeMentorships: number;
@@ -88,6 +102,8 @@ export async function getStudentDashboardPayload(userId: string): Promise<Studen
   const unreadThreads = threadsWithLastMessage.filter(
     (t) => t.messages[0] && t.messages[0].senderId !== userId,
   ).length;
+
+  await hydrateMeetLinksOnBookings(upcomingBookings);
 
   const seenMentor = new Set<string>();
   const mentorsWithUpcomingSessions: StudentDashboardPayload["mentorsWithUpcomingSessions"] = [];

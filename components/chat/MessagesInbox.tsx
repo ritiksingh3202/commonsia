@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { ChatPeerInsightsPanel } from "@/components/chat/ChatPeerInsightsPanel";
 import { CHAT_DECLINED, CHAT_PENDING } from "@/lib/chat-thread-status";
 
 type Peer = {
@@ -11,6 +12,11 @@ type Peer = {
   email: string | null;
   image: string | null;
   subtitle: string;
+  role: "student" | "mentor" | null;
+  linkedinUrl: string | null;
+  instagramUrl: string | null;
+  whatsappUrl: string | null;
+  portfolioUrl: string | null;
 };
 
 export type ThreadListItem = {
@@ -80,8 +86,12 @@ export function MessagesInbox({
   const [openingPeer, setOpeningPeer] = useState(false);
   const [bootstrapThread, setBootstrapThread] = useState<ThreadListItem | null>(null);
   const [mobileChat, setMobileChat] = useState(false);
+  const [contextPanelMobileOpen, setContextPanelMobileOpen] = useState(false);
   const listScrollRef = useRef<HTMLDivElement>(null);
   const msgsEndRef = useRef<HTMLDivElement>(null);
+  /** Ignore stale HTTP responses when multiple list/message fetches overlap. */
+  const threadsFetchGen = useRef(0);
+  const messagesFetchGen = useRef(0);
 
   const selected = useMemo(() => {
     const fromList = threads.find((t) => t.id === selectedId) ?? null;
@@ -99,24 +109,35 @@ export function MessagesInbox({
   const mentorCannotSend = selected && selected.status === CHAT_PENDING && isMentor;
   const studentPendingNote =
     selected && selected.status === CHAT_PENDING && !isMentor && messages.length > 0;
+  const showMentorRequestModal =
+    Boolean(isMentor && threadStatus === CHAT_PENDING && selectedId && selected);
 
   const loadThreads = useCallback(async () => {
+    const gen = ++threadsFetchGen.current;
     setListError(null);
-    const res = await fetch("/api/chat/threads", { cache: "no-store" });
-    if (!res.ok) {
-      const j = (await res.json().catch(() => ({}))) as { error?: string };
-      setListError(j.error || "Could not load conversations");
+    try {
+      const res = await fetch("/api/chat/threads", { cache: "no-store" });
+      if (gen !== threadsFetchGen.current) return;
+      if (!res.ok) {
+        const j = (await res.json().catch(() => ({}))) as { error?: string };
+        setListError(j.error || "Could not load conversations");
+        setLoadingList(false);
+        return;
+      }
+      const data = (await res.json()) as {
+        threads: ThreadListItem[];
+        role: "student" | "mentor";
+      };
+      if (gen !== threadsFetchGen.current) return;
+      setThreads(data.threads);
+      setRole(data.role);
       setLoadingList(false);
-      return;
+      return data;
+    } catch {
+      if (gen !== threadsFetchGen.current) return;
+      setListError("Could not load conversations");
+      setLoadingList(false);
     }
-    const data = (await res.json()) as {
-      threads: ThreadListItem[];
-      role: "student" | "mentor";
-    };
-    setThreads(data.threads);
-    setRole(data.role);
-    setLoadingList(false);
-    return data;
   }, []);
 
   const openOrCreatePeer = useCallback(
@@ -138,6 +159,7 @@ export function MessagesInbox({
         setBootstrapThread(data.thread);
         setSelectedId(data.thread.id);
         setMobileChat(true);
+        setContextPanelMobileOpen(false);
         await loadThreads();
       } finally {
         setOpeningPeer(false);
@@ -162,18 +184,28 @@ export function MessagesInbox({
   }, [initialPeerId, openOrCreatePeer]);
 
   const loadMessages = useCallback(async (threadId: string) => {
+    const gen = ++messagesFetchGen.current;
     setLoadingMsgs(true);
     setMsgError(null);
-    const res = await fetch(`/api/chat/threads/${threadId}/messages`, { cache: "no-store" });
-    if (!res.ok) {
+    try {
+      const res = await fetch(`/api/chat/threads/${threadId}/messages`, { cache: "no-store" });
+      if (gen !== messagesFetchGen.current) return;
+      if (!res.ok) {
+        setMsgError("Could not load messages");
+        return;
+      }
+      const data = (await res.json()) as { status: string; messages: ChatMessageRow[] };
+      if (gen !== messagesFetchGen.current) return;
+      setThreadStatus(data.status);
+      setMessages(data.messages);
+    } catch {
+      if (gen !== messagesFetchGen.current) return;
       setMsgError("Could not load messages");
-      setLoadingMsgs(false);
-      return;
+    } finally {
+      if (gen === messagesFetchGen.current) {
+        setLoadingMsgs(false);
+      }
     }
-    const data = (await res.json()) as { status: string; messages: ChatMessageRow[] };
-    setThreadStatus(data.status);
-    setMessages(data.messages);
-    setLoadingMsgs(false);
   }, []);
 
   useEffect(() => {
@@ -184,6 +216,9 @@ export function MessagesInbox({
       }, 0);
       return () => window.clearTimeout(clearT);
     }
+    setMessages([]);
+    setThreadStatus(null);
+    setMsgError(null);
     const kick = window.setTimeout(() => {
       void loadMessages(selectedId);
     }, 0);
@@ -256,6 +291,7 @@ export function MessagesInbox({
   const selectThread = (id: string) => {
     setSelectedId(id);
     setMobileChat(true);
+    setContextPanelMobileOpen(false);
   };
 
   return (
@@ -273,7 +309,7 @@ export function MessagesInbox({
         </div>
       </header>
 
-      <div className="mx-auto flex min-h-0 w-full max-w-[1600px] flex-1 flex-col md:flex-row md:overflow-hidden">
+      <div className="mx-auto flex min-h-0 w-full max-w-[1800px] flex-1 flex-col md:flex-row md:overflow-hidden">
         {/* Thread list */}
         <aside
           className={`flex min-h-0 w-full shrink-0 flex-col border-neutral-200 bg-white md:w-[min(100%,380px)] md:border-r ${
@@ -284,7 +320,7 @@ export function MessagesInbox({
             <p className="text-xs font-medium text-neutral-500">Conversations</p>
           </div>
           <div ref={listScrollRef} className="min-h-0 flex-1 overflow-y-auto">
-            {loadingList ? (
+            {loadingList && threads.length === 0 ? (
               <p className="p-4 text-sm text-neutral-500">Loading…</p>
             ) : listError ? (
               <p className="p-4 text-sm text-red-600">{listError}</p>
@@ -346,12 +382,13 @@ export function MessagesInbox({
           </div>
         </aside>
 
-        {/* Chat panel */}
-        <section
-          className={`flex min-h-0 min-w-0 flex-1 flex-col bg-white ${
+        <div
+          className={`flex min-h-0 min-w-0 flex-1 flex-col xl:flex-row xl:overflow-hidden ${
             !mobileChat ? "hidden md:flex" : "flex"
           }`}
         >
+          {/* Chat panel */}
+          <section className="flex min-h-0 min-w-0 flex-1 flex-col bg-white">
           {selected ? (
             <>
               <div className="flex shrink-0 items-center gap-2 border-b border-neutral-200 px-3 py-2.5">
@@ -385,31 +422,6 @@ export function MessagesInbox({
                 </div>
               </div>
 
-              {isMentor && threadStatus === CHAT_PENDING ? (
-                <div className="shrink-0 border-b border-amber-200 bg-amber-50 px-4 py-3">
-                  <p className="text-sm font-medium text-amber-950">New message request</p>
-                  <p className="mt-1 text-xs text-amber-900/90">
-                    Accept to reply, or decline to close this request.
-                  </p>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      onClick={() => void onAcceptDecline("accept")}
-                      className="rounded-lg bg-primary px-4 py-2 text-xs font-semibold text-white hover:bg-primary/90"
-                    >
-                      Accept
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => void onAcceptDecline("decline")}
-                      className="rounded-lg border border-neutral-300 bg-white px-4 py-2 text-xs font-semibold text-[#0a0a0a] hover:bg-neutral-50"
-                    >
-                      Decline
-                    </button>
-                  </div>
-                </div>
-              ) : null}
-
               {!isMentor && threadStatus === CHAT_PENDING ? (
                 <div className="shrink-0 border-b border-sky-200 bg-sky-50 px-4 py-2.5">
                   <p className="text-xs text-sky-950">
@@ -427,7 +439,7 @@ export function MessagesInbox({
               ) : null}
 
               <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4">
-                {loadingMsgs ? (
+                {loadingMsgs && messages.length === 0 ? (
                   <p className="text-sm text-neutral-500">Loading messages…</p>
                 ) : (
                   messages.map((m) => (
@@ -451,6 +463,9 @@ export function MessagesInbox({
                   ))
                 )}
                 <div ref={msgsEndRef} />
+                {loadingMsgs && messages.length > 0 ? (
+                  <p className="text-center text-[11px] text-neutral-400">Updating…</p>
+                ) : null}
                 {msgError ? <p className="text-center text-xs text-red-600">{msgError}</p> : null}
               </div>
 
@@ -512,7 +527,94 @@ export function MessagesInbox({
             </div>
           )}
         </section>
+
+          {role && selected ? (
+            <>
+              {contextPanelMobileOpen ? (
+                <button
+                  type="button"
+                  className="fixed inset-0 z-40 bg-black/40 xl:hidden"
+                  aria-label="Close profile panel"
+                  onClick={() => setContextPanelMobileOpen(false)}
+                />
+              ) : null}
+              <div
+                className={`fixed inset-y-0 right-0 z-50 h-[100dvh] max-h-[100dvh] w-full max-w-md shadow-2xl xl:static xl:z-auto xl:flex xl:h-full xl:max-h-none xl:w-[min(380px,100%)] xl:max-w-[380px] xl:shadow-none ${
+                  contextPanelMobileOpen ? "flex" : "hidden xl:flex"
+                }`}
+              >
+                <ChatPeerInsightsPanel
+                  viewerRole={role}
+                  peer={selected.peer}
+                  showClose
+                  onClose={() => setContextPanelMobileOpen(false)}
+                  className="h-full min-h-0 border-l border-neutral-200"
+                />
+              </div>
+              {!contextPanelMobileOpen && !showMentorRequestModal ? (
+                <button
+                  type="button"
+                  className="fixed bottom-24 right-4 z-30 flex size-12 items-center justify-center rounded-full bg-primary text-white shadow-lg transition hover:bg-primary/90 xl:hidden"
+                  aria-label="Show profile and scheduling"
+                  onClick={() => setContextPanelMobileOpen(true)}
+                >
+                  <IconUser className="size-5" />
+                </button>
+              ) : null}
+            </>
+          ) : null}
+        </div>
       </div>
+
+      {showMentorRequestModal ? (
+        <div className="fixed inset-0 z-[100] flex items-end justify-center bg-black/45 sm:items-center sm:p-4">
+          <div
+            className="max-h-[min(85vh,520px)] w-full max-w-md overflow-y-auto rounded-t-2xl bg-white p-6 shadow-xl sm:max-h-none sm:rounded-2xl"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="mentor-request-title"
+          >
+            <h2 id="mentor-request-title" className="text-lg font-semibold text-[#0a0a0a]">
+              New message request
+            </h2>
+            <p className="mt-2 text-sm text-neutral-600">
+              <span className="font-medium text-[#0a0a0a]">
+                {selected?.peer.name?.trim() || selected?.peer.email || "A student"}
+              </span>{" "}
+              wants to chat with you. Accept to reply in this thread, or decline to close the request.
+            </p>
+            <div className="mt-6 flex flex-wrap gap-3">
+              <button
+                type="button"
+                onClick={() => void onAcceptDecline("accept")}
+                className="inline-flex flex-1 items-center justify-center rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-primary/90 sm:flex-none sm:min-w-[7rem]"
+              >
+                Accept
+              </button>
+              <button
+                type="button"
+                onClick={() => void onAcceptDecline("decline")}
+                className="inline-flex flex-1 items-center justify-center rounded-xl border border-neutral-300 bg-white px-4 py-2.5 text-sm font-semibold text-[#0a0a0a] transition hover:bg-neutral-50 sm:flex-none sm:min-w-[7rem]"
+              >
+                Decline
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
+  );
+}
+
+function IconUser({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden>
+      <path
+        d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2M12 11a4 4 0 100-8 4 4 0 000 8z"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+      />
+    </svg>
   );
 }

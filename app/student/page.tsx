@@ -6,6 +6,7 @@ import { StudentDashboard } from "@/components/student/StudentDashboard";
 import { getGoogleCalendarRefreshTokenForUser } from "@/lib/google-calendar-oauth-client";
 import { prisma } from "@/lib/prisma";
 import { getStudentDashboardPayload } from "@/lib/student-dashboard-data";
+import { studentProfileUserSelect } from "@/components/student/student-profile-types";
 import { getStudentOnboardingRedirectPath } from "@/lib/student-onboarding";
 
 export const metadata: Metadata = {
@@ -22,27 +23,8 @@ export default async function StudentHomePage() {
   const user = await prisma.user.findUnique({
     where: { id: session.user.id },
     select: {
-      id: true,
+      ...studentProfileUserSelect,
       role: true,
-      name: true,
-      email: true,
-      phone: true,
-      image: true,
-      university: true,
-      yearOfStudy: true,
-      major: true,
-      interests: true,
-      otherInterests: true,
-      softwareSkills: true,
-      bio: true,
-      bannerImageUrl: true,
-      whatsappUrl: true,
-      linkedinUrl: true,
-      instagramUrl: true,
-      portfolioUrl: true,
-      portfolioFileName: true,
-      portfolioFileDataUrl: true,
-      portfolioVisibleToOthers: true,
       profileComplete: true,
     },
   });

@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 
 import { auth } from "@/auth";
 import { UpcomingSessionScreen } from "@/components/student/UpcomingSessionScreen";
+import { resolveAndPersistMeetLinkForBooking } from "@/lib/booking-resolve-google-meet";
 import { formatBookingRangeDisplay } from "@/lib/booking-datetime-display";
 import { prisma } from "@/lib/prisma";
 import type { SessionWithMentorPayload } from "@/lib/student-session-with-mentor-types";
@@ -40,7 +41,7 @@ export default async function StudentUpcomingSessionPage({
   });
   if (!mentor || mentor.role !== "mentor") notFound();
 
-  const booking = await prisma.mentoringBooking.findFirst({
+  let booking = await prisma.mentoringBooking.findFirst({
     where: {
       studentId: session.user.id,
       mentorId: trimmed,
@@ -52,8 +53,16 @@ export default async function StudentUpcomingSessionPage({
       startAt: true,
       endAt: true,
       googleMeetLink: true,
+      googleEventId: true,
     },
   });
+
+  if (booking && !booking.googleMeetLink?.trim() && booking.googleEventId?.trim()) {
+    const link = await resolveAndPersistMeetLinkForBooking(booking.id);
+    if (link) {
+      booking = { ...booking, googleMeetLink: link };
+    }
+  }
 
   const initial: SessionWithMentorPayload = {
     mentor: { name: mentor.name, image: mentor.image },

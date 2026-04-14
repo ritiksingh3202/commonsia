@@ -25,6 +25,33 @@ export type StudentProfileUser = Pick<
   | "portfolioVisibleToOthers"
 >;
 
+/**
+ * Single Prisma `select` for `StudentProfileUser` so server pages cannot omit fields
+ * (e.g. `portfolioFileDataUrl`) and break the mentor profile view at build time.
+ */
+export const studentProfileUserSelect = {
+  id: true,
+  name: true,
+  email: true,
+  phone: true,
+  image: true,
+  university: true,
+  yearOfStudy: true,
+  major: true,
+  interests: true,
+  otherInterests: true,
+  softwareSkills: true,
+  bio: true,
+  bannerImageUrl: true,
+  whatsappUrl: true,
+  linkedinUrl: true,
+  instagramUrl: true,
+  portfolioUrl: true,
+  portfolioFileName: true,
+  portfolioFileDataUrl: true,
+  portfolioVisibleToOthers: true,
+} as const satisfies Record<keyof StudentProfileUser, true>;
+
 export function parseInterests(interests: unknown): string[] {
   if (Array.isArray(interests) && interests.every((x) => typeof x === "string")) {
     return interests as string[];

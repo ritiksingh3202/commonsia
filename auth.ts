@@ -72,37 +72,38 @@ function cookieConfig(useSecureCookies: boolean) {
 const googleOAuth = getGoogleOAuthClient();
 const linkedinOAuth = getLinkedInOAuthClient();
 
-const oauthProviders = [];
-if (googleOAuth) {
-  oauthProviders.push(
-    GoogleProvider({
-      clientId: googleOAuth.clientId,
-      clientSecret: googleOAuth.clientSecret,
-      /**
-       * Link Google to an existing user with the same verified email (e.g. they registered with password first).
-       * @see https://authjs.dev/concepts#security
-       */
-      allowDangerousEmailAccountLinking: true,
-      authorization: {
-        params: {
-          access_type: "offline",
-          /** Improves chance Google returns a refresh_token (needed for Calendar sync from the Account row). */
-          prompt: "consent",
-          scope: "openid email profile https://www.googleapis.com/auth/calendar",
-        },
-      },
-    }),
-  );
-}
-if (linkedinOAuth) {
-  oauthProviders.push(
-    LinkedInProvider({
-      clientId: linkedinOAuth.clientId,
-      clientSecret: linkedinOAuth.clientSecret,
-      allowDangerousEmailAccountLinking: true,
-    }),
-  );
-}
+const oauthProviders = [
+  ...(googleOAuth
+    ? [
+        GoogleProvider({
+          clientId: googleOAuth.clientId,
+          clientSecret: googleOAuth.clientSecret,
+          /**
+           * Link Google to an existing user with the same verified email (e.g. they registered with password first).
+           * @see https://authjs.dev/concepts#security
+           */
+          allowDangerousEmailAccountLinking: true,
+          authorization: {
+            params: {
+              access_type: "offline",
+              /** Improves chance Google returns a refresh_token (needed for Calendar sync from the Account row). */
+              prompt: "consent",
+              scope: "openid email profile https://www.googleapis.com/auth/calendar",
+            },
+          },
+        }),
+      ]
+    : []),
+  ...(linkedinOAuth
+    ? [
+        LinkedInProvider({
+          clientId: linkedinOAuth.clientId,
+          clientSecret: linkedinOAuth.clientSecret,
+          allowDangerousEmailAccountLinking: true,
+        }),
+      ]
+    : []),
+];
 
 export const { handlers, auth, signIn, signOut } = NextAuth((req) => {
   const host = req?.headers.get("x-forwarded-host") ?? req?.headers.get("host");

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { auth } from "@/auth";
+import { resolveAndPersistMeetLinkForBooking } from "@/lib/booking-resolve-google-meet";
 import { formatBookingRangeDisplay } from "@/lib/booking-datetime-display";
 import { prisma } from "@/lib/prisma";
 import type { SessionWithMentorPayload } from "@/lib/student-session-with-mentor-types";
@@ -35,7 +36,7 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "Mentor not found" }, { status: 404 });
   }
 
-  const booking = await prisma.mentoringBooking.findFirst({
+  let booking = await prisma.mentoringBooking.findFirst({
     where: {
       studentId: session.user.id,
       mentorId: mentorUserId,
@@ -47,8 +48,16 @@ export async function GET(req: Request) {
       startAt: true,
       endAt: true,
       googleMeetLink: true,
+      googleEventId: true,
     },
   });
+
+  if (booking && !booking.googleMeetLink?.trim() && booking.googleEventId?.trim()) {
+    const link = await resolveAndPersistMeetLinkForBooking(booking.id);
+    if (link) {
+      booking = { ...booking, googleMeetLink: link };
+    }
+  }
 
   const payload: SessionWithMentorPayload = {
     mentor: { name: mentor.name, image: mentor.image },

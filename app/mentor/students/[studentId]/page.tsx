@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 
 import { auth } from "@/auth";
 import { StudentProfileViewForMentor } from "@/components/student/StudentProfileViewForMentor";
+import { studentProfileUserSelect } from "@/components/student/student-profile-types";
 import { prisma } from "@/lib/prisma";
 
 type Props = { params: Promise<{ studentId: string }> };
@@ -33,28 +34,7 @@ export default async function MentorViewStudentPage({ params }: Props) {
 
   const user = await prisma.user.findFirst({
     where: { id: studentId, role: "student" },
-    select: {
-      id: true,
-      name: true,
-      email: true,
-      phone: true,
-      image: true,
-      university: true,
-      yearOfStudy: true,
-      major: true,
-      interests: true,
-      otherInterests: true,
-      softwareSkills: true,
-      bio: true,
-      bannerImageUrl: true,
-      whatsappUrl: true,
-      linkedinUrl: true,
-      instagramUrl: true,
-      portfolioUrl: true,
-      portfolioFileName: true,
-      portfolioFileDataUrl: true,
-      portfolioVisibleToOthers: true,
-    },
+    select: studentProfileUserSelect,
   });
 
   if (!user) notFound();
