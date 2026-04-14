@@ -1,75 +1,53 @@
-/** Raster exports from Figma MCP — swap for /public assets when you add local files. */
+/**
+ * Marketing rasters — prefer `public/home_assets/*.png` so the site works without Figma MCP.
+ * (Figma asset URLs only work in authenticated MCP contexts, not in production.)
+ */
 export const marketingImages = {
-  /** Hero left (male figure) — distinct asset from right */
-  homeHeroLeft:
-    "https://www.figma.com/api/mcp/asset/68a64d50-9aba-4326-bc1c-0ffb0695b60e",
-  /** Hero right (female figure) */
-  homeHeroRight:
-    "https://www.figma.com/api/mcp/asset/47d2a62e-fcfc-4b03-ae96-d601f0149f9e",
-  homeHeroFigure:
-    "https://www.figma.com/api/mcp/asset/47d2a62e-fcfc-4b03-ae96-d601f0149f9e",
-  mentorsHeroFigure:
-    "https://www.figma.com/api/mcp/asset/68a64d50-9aba-4326-bc1c-0ffb0695b60e",
-  /** Mentors page hero — left figure (`mentors_assets/img_2`) */
+  /** @deprecated Use `/home_assets/img_2.png` from page constants; kept for any stray imports */
+  homeHeroLeft: "/home_assets/img_2.png",
+  homeHeroRight: "/home_assets/img_3.png",
+  homeHeroFigure: "/home_assets/img_3.png",
+  mentorsHeroFigure: "/home_assets/img_2.png",
   mentorsHeroLeft: "/mentors_assets/img_2.png",
-  /** Mentors page hero — right figure (`mentors_assets/img_3`) */
   mentorsHeroRight: "/mentors_assets/img_3.png",
-  /** Join community strip — `img_11` */
   joinCommunityHero: "/home_assets/img_11.png",
-  trustLogo1:
-    "https://www.figma.com/api/mcp/asset/fa97857a-c53a-4eae-85a4-1d1b6bafe914",
-  trustLogo2:
-    "https://www.figma.com/api/mcp/asset/711ecfa3-f01c-4491-a661-4fec53210dea",
-  trustLogo3:
-    "https://www.figma.com/api/mcp/asset/0f1f384f-d5e2-49f6-9eae-c1ac9a70945e",
-  trustLogo4:
-    "https://www.figma.com/api/mcp/asset/36c816d3-125e-4396-a95e-68bb0335a4fc",
-  trustLogo5:
-    "https://www.figma.com/api/mcp/asset/f681ebc8-db5f-4dce-a1bb-f410aa39e4cf",
-  trustLogo6:
-    "https://www.figma.com/api/mcp/asset/544382f8-a1de-4920-ad2c-03c8c85748b2",
-  trustLogo7:
-    "https://www.figma.com/api/mcp/asset/db43c6df-d480-4368-b9c0-17deae8b3dd3",
-  trustLogo8:
-    "https://www.figma.com/api/mcp/asset/35a8180c-73c2-48bc-b424-84462c474a08",
-  trustLogo9:
-    "https://www.figma.com/api/mcp/asset/c22c67f9-3280-4643-a7c5-b2e6ef780bde",
-  featureBuilding:
-    "https://www.figma.com/api/mcp/asset/32fbe22c-9876-422d-8fa1-3360e776ea83",
-  featureCommunity:
-    "https://www.figma.com/api/mcp/asset/5a80bb9d-8797-4f24-bca4-8f7af4f566df",
-  featureMentorship:
-    "https://www.figma.com/api/mcp/asset/44b3986f-44f5-4c7f-96eb-9241729e6aa1",
-  featureStudio:
-    "https://www.figma.com/api/mcp/asset/889a9da3-52ba-4f86-aa23-7dc3d6d5823d",
-  whyUsCenter:
-    "https://www.figma.com/api/mcp/asset/87d7c94d-6fb7-4045-a438-d51436359ff1",
-  stepsIllustration:
-    "https://www.figma.com/api/mcp/asset/21e2d950-4a0a-414e-902f-97d73491ad4f",
-  ctaIllustration:
-    "https://www.figma.com/api/mcp/asset/586f232f-2afe-455a-bfb9-82cadaa2aa87",
-  mentorPortrait:
-    "https://www.figma.com/api/mcp/asset/36ebd084-8085-42d7-b5a7-d327dd3fcfbc",
-  contactFormArt:
-    "https://www.figma.com/api/mcp/asset/b8c53860-594b-4911-9299-fbaf77e5cbab",
-  avatar1:
-    "https://www.figma.com/api/mcp/asset/e7f6bbb9-31a1-4194-8c2f-7003da8b16c5",
-  avatar2:
-    "https://www.figma.com/api/mcp/asset/193cd8e5-3029-4b8d-aa36-389689bc0a18",
-  avatar3:
-    "https://www.figma.com/api/mcp/asset/ac67b9af-f2fa-43de-967f-5124d9252a93",
-  avatar4:
-    "https://www.figma.com/api/mcp/asset/00b57bfe-9c7a-41b5-b087-13ce149e1e23",
-  avatar5:
-    "https://www.figma.com/api/mcp/asset/4869dd42-835e-4791-add0-6e16fcadeec1",
-  testimonialStar:
-    "https://www.figma.com/api/mcp/asset/bd84d23a-aa51-497e-abb4-f97ade3f6399",
-  mentorSpotlight:
-    "https://www.figma.com/api/mcp/asset/c323c8d0-5e6f-463e-80a9-bc7dfe04bff5",
-  /** Figma Commonsia 44:353 — “90%” stat card photo (students at laptop) */
-  mentorsStatCardPhoto:
-    "https://www.figma.com/api/mcp/asset/95617e5a-0426-451c-86b1-5e7b3c20bc19",
-  /** Figma 44:355 — mentor avatar sample */
-  figmaMentorAvatarEllipse:
-    "https://www.figma.com/api/mcp/asset/0541f5ed-a63e-4e8b-acb6-9c21c5429688",
+
+  trustLogo1: "/home_assets/img_1.png",
+  trustLogo2: "/home_assets/img_1.png",
+  trustLogo3: "/home_assets/img_1.png",
+  trustLogo4: "/home_assets/img_1.png",
+  trustLogo5: "/home_assets/img_1.png",
+  trustLogo6: "/home_assets/img_1.png",
+  trustLogo7: "/home_assets/img_1.png",
+  trustLogo8: "/home_assets/img_1.png",
+  trustLogo9: "/home_assets/img_1.png",
+
+  /** “Building the Future of Architecture” — graduation cap + book (bento top-left) */
+  featureBuilding: "/home_assets/img_4.png",
+  /** “A Community of Designers” — hub + network avatars (bento top-middle) */
+  featureCommunity: "/home_assets/img_5.png",
+  /** “Mentorship that Matters” — three collaborators at laptop, tall right bento card */
+  featureMentorship: "/home_assets/img_7.png",
+  /** “Learning Beyond the Studio” — presenter + students + bar chart illustration (bento bottom span) */
+  featureStudio: "/home_assets/img_6.png",
+  /** Why Us — staircase “lift as you climb” center illustration */
+  whyUsCenter: "/home_assets/img_8.png",
+
+  stepsIllustration: "/home_assets/steps.png",
+  ctaIllustration: "/home_assets/img_9.png",
+  mentorPortrait: "/home_assets/mentor_1.png",
+  /** Contact page side art — architects / professionals vector */
+  contactFormArt: "/home_assets/img_9.png",
+
+  avatar1: "/home_assets/student_1.png",
+  avatar2: "/home_assets/student_2.png",
+  avatar3: "/home_assets/student_3.png",
+  avatar4: "/home_assets/student_4.png",
+  avatar5: "/home_assets/student_1.png",
+
+  testimonialStar: "/home_assets/img_1.png",
+  mentorSpotlight: "/home_assets/mentor_1.png",
+  /** “What Mentors Say” dark stat card — three people at laptop (matches Figma 44:353) */
+  mentorsStatCardPhoto: "/home_assets/img_10.png",
+  figmaMentorAvatarEllipse: "/home_assets/mentor_1.png",
 } as const;

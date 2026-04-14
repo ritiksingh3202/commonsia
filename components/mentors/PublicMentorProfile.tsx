@@ -6,7 +6,7 @@ import { useMemo, useState } from "react";
 import { MentorAvatar } from "@/components/mentors/MentorAvatar";
 import { MentorCard } from "@/components/mentors/MentorCard";
 import { MentorCarouselArrows } from "@/components/mentors/MentorCarouselArrows";
-import { profileHero } from "@/components/profile/profile-hero-classes";
+import { profileHero, profileSkillsSectionTitle } from "@/components/profile/profile-hero-classes";
 import { ProfileCover } from "@/components/ProfileCover";
 import { PortfolioViewerPanel } from "@/components/profile/PortfolioViewerPanel";
 import { LinkedInGlyph, SocialIconButton } from "@/components/profile/ProfileSocialIcons";
@@ -198,7 +198,7 @@ export function PublicMentorProfile({
           <div className="mt-8 grid gap-10 lg:grid-cols-[minmax(0,65%)_minmax(0,35%)] lg:gap-10">
             <div className="space-y-8">
               <div>
-                <h2 className="text-base font-semibold text-[#0a0a0a]">Specialization</h2>
+                <h2 className={profileSkillsSectionTitle}>Specialization</h2>
                 <div className="mt-3 flex flex-wrap gap-2">
                   {mentor.tags.length > 0 ? (
                     mentor.tags.map((t) => (

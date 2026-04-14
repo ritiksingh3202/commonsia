@@ -8,6 +8,8 @@ import { useSession } from "next-auth/react";
 import { MentorAvatar } from "@/components/mentors/MentorAvatar";
 import type { Mentor } from "@/lib/mentor-directory";
 
+const MAX_SKILL_TAGS_ON_CARD = 5;
+
 export function MentorCard({
   mentor,
   index,
@@ -22,6 +24,10 @@ export function MentorCard({
     ? scheduleTarget
     : `/auth/login?callbackUrl=${encodeURIComponent(scheduleTarget)}`;
 
+  const profileHref = `/mentors/${mentor.id}`;
+  const visibleTags = mentor.tags.slice(0, MAX_SKILL_TAGS_ON_CARD);
+  const extraTagCount = mentor.tags.length - visibleTags.length;
+
   return (
     <motion.article
       initial={{ opacity: 0, y: 24 }}
@@ -35,11 +41,11 @@ export function MentorCard({
       }}
       role="link"
       tabIndex={0}
-      onClick={() => router.push(`/mentors/${mentor.id}`)}
+      onClick={() => router.push(profileHref)}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
-          router.push(`/mentors/${mentor.id}`);
+          router.push(profileHref);
         }
       }}
       className="group flex h-full min-h-[280px] w-full min-w-0 flex-col-reverse overflow-hidden rounded-xl border border-neutral-200/90 bg-white shadow-sm ring-1 ring-black/[0.04] md:min-h-[300px] md:flex-row md:items-stretch"
@@ -48,7 +54,7 @@ export function MentorCard({
       <div className="flex min-h-0 min-w-0 flex-1 flex-col justify-between gap-3 p-3.5 sm:p-4 md:py-5 md:pl-5 md:pr-4">
         <div className="min-w-0 space-y-2">
           <div>
-            <h3 className="break-words text-[15px] font-semibold leading-tight text-[#0f0f0f] sm:text-base">
+            <h3 className="break-words text-lg font-bold leading-tight tracking-tight text-[#0a0a0a] sm:text-xl">
               {mentor.name}
             </h3>
             <p className="mt-0.5 break-words text-[11px] font-medium leading-snug text-neutral-600 sm:text-xs">
@@ -57,12 +63,22 @@ export function MentorCard({
           </div>
           <div className="min-h-[2.5rem]">
             {mentor.tags.length > 0 ? (
-              <div className="flex flex-wrap gap-2">
-                {mentor.tags.map((t) => (
+              <div className="mentor-card-tags flex flex-wrap items-center gap-1.5 sm:gap-2">
+                {visibleTags.map((t) => (
                   <span key={t} className="mentor-tag-expertise-pill">
                     {t}
                   </span>
                 ))}
+                {extraTagCount > 0 ? (
+                  <Link
+                    href={profileHref}
+                    onClick={(e) => e.stopPropagation()}
+                    className="mentor-tag-expertise-pill transition hover:brightness-95"
+                    aria-label={`View all ${mentor.tags.length} expertise tags on ${mentor.name}'s profile`}
+                  >
+                    +{extraTagCount} more
+                  </Link>
+                ) : null}
               </div>
             ) : (
               <p className="text-[10px] italic leading-snug text-neutral-400 sm:text-[11px]">Expertise not listed yet</p>
@@ -84,7 +100,7 @@ export function MentorCard({
 
       {/* Photo / initials — fixed width on laptop so column never collapses; full width band on mobile */}
       <div
-        className="relative aspect-[5/3] w-full min-h-[168px] max-h-[220px] shrink-0 overflow-hidden rounded-t-xl bg-neutral-100 sm:aspect-[16/10] sm:min-h-[180px] md:aspect-auto md:h-full md:max-h-none md:min-h-[260px] md:w-[min(240px,36%)] md:max-w-[260px] md:shrink-0 md:rounded-none md:rounded-r-xl md:rounded-t-none"
+        className="relative aspect-[5/3] w-full min-h-[168px] max-h-[220px] shrink-0 overflow-hidden rounded-t-xl bg-neutral-100 sm:aspect-[16/10] sm:min-h-[180px] md:aspect-auto md:h-full md:max-h-none md:min-h-[260px] md:w-[min(300px,42%)] md:max-w-[320px] md:shrink-0 md:rounded-none md:rounded-r-xl md:rounded-t-none"
         aria-hidden
       >
         <MentorAvatar
@@ -92,7 +108,7 @@ export function MentorCard({
           imageUrl={mentor.image}
           hasProfilePhoto={mentor.hasProfilePhoto}
           className="rounded-t-xl md:rounded-none md:rounded-r-xl"
-          sizes="(max-width:767px) 96vw, 260px"
+          sizes="(max-width:767px) 96vw, 320px"
           priority={index < 8}
         />
       </div>

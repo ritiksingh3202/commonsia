@@ -6,6 +6,14 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ChatPeerInsightsPanel } from "@/components/chat/ChatPeerInsightsPanel";
 import { CHAT_DECLINED, CHAT_PENDING } from "@/lib/chat-thread-status";
 
+/**
+ * Near–real-time updates without a dedicated WebSocket service: short polling while the
+ * tab is visible. When you add a WS gateway (e.g. PartyKit, Pusher, or a custom `ws`
+ * server), replace these intervals with subscribe/push and keep POST send + one refetch.
+ */
+const MESSAGE_POLL_MS = 1000;
+const THREAD_LIST_POLL_MS = 3500;
+
 type Peer = {
   id: string;
   name: string | null;
@@ -225,7 +233,7 @@ export function MessagesInbox({
     const poll = window.setInterval(() => {
       if (typeof document !== "undefined" && document.visibilityState !== "visible") return;
       void loadMessages(selectedId);
-    }, 4000);
+    }, MESSAGE_POLL_MS);
     return () => {
       window.clearTimeout(kick);
       window.clearInterval(poll);
@@ -240,9 +248,18 @@ export function MessagesInbox({
     const id = window.setInterval(() => {
       if (typeof document !== "undefined" && document.visibilityState !== "visible") return;
       void loadThreads();
-    }, 12000);
+    }, THREAD_LIST_POLL_MS);
     return () => window.clearInterval(id);
   }, [loadThreads]);
+
+  useEffect(() => {
+    const onFocus = () => {
+      void loadThreads();
+      if (selectedId) void loadMessages(selectedId);
+    };
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, [loadThreads, loadMessages, selectedId]);
 
   useEffect(() => {
     const onVis = () => {
@@ -325,7 +342,31 @@ export function MessagesInbox({
             ) : listError ? (
               <p className="p-4 text-sm text-red-600">{listError}</p>
             ) : threads.length === 0 ? (
-              <p className="p-4 text-sm text-neutral-500">No messages yet. Open a profile and tap Message.</p>
+              <div className="flex flex-col items-center gap-4 p-6 text-center">
+                <div className="flex size-14 items-center justify-center rounded-2xl bg-gradient-to-br from-primary/15 to-primary/5 text-primary shadow-sm ring-1 ring-primary/10">
+                  <EmptyChatIllustration className="size-8" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-[#0a0a0a]">No conversations yet</p>
+                  <p className="mt-1.5 text-xs leading-relaxed text-neutral-500">
+                    Message a mentor from their profile, or wait for students to reach out.
+                  </p>
+                </div>
+                <div className="flex w-full max-w-[240px] flex-col gap-2">
+                  <Link
+                    href="/mentors"
+                    className="rounded-xl bg-primary px-4 py-2.5 text-center text-xs font-semibold text-white shadow-sm transition hover:bg-primary/90"
+                  >
+                    Browse mentors
+                  </Link>
+                  <Link
+                    href={backHref}
+                    className="rounded-xl border border-neutral-200 bg-white px-4 py-2.5 text-center text-xs font-semibold text-[#0a0a0a] transition hover:bg-neutral-50"
+                  >
+                    Back to dashboard
+                  </Link>
+                </div>
+              </div>
             ) : (
               <ul>
                 {threads.map((t) => {
@@ -518,12 +559,61 @@ export function MessagesInbox({
               <p className="text-sm font-medium text-red-700">Could not open chat</p>
               <p className="max-w-sm text-xs text-neutral-600">{listError}</p>
             </div>
+          ) : loadingList && threads.length === 0 ? (
+            <div className="flex flex-1 flex-col items-center justify-center gap-3 p-10 text-center">
+              <div className="size-10 animate-pulse rounded-full bg-primary/20" />
+              <p className="text-sm font-medium text-neutral-600">Loading your conversations…</p>
+            </div>
+          ) : threads.length === 0 ? (
+            <div className="relative flex flex-1 flex-col items-center justify-center overflow-hidden bg-gradient-to-b from-white via-neutral-50/80 to-primary/[0.04] p-8 text-center">
+              <div className="pointer-events-none absolute inset-0 opacity-[0.07] [background-image:radial-gradient(circle_at_1px_1px,#0a0a0a_1px,transparent_0)] [background-size:20px_20px]" />
+              <div className="relative z-[1] flex max-w-md flex-col items-center gap-5">
+                <div className="flex size-20 items-center justify-center rounded-3xl bg-white shadow-md ring-1 ring-black/[0.06]">
+                  <EmptyChatIllustration className="size-10 text-primary" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-semibold tracking-tight text-[#0a0a0a] sm:text-xl">
+                    Start a conversation
+                  </h2>
+                  <p className="mt-2 text-sm leading-relaxed text-neutral-600">
+                    Your inbox is quiet for now. Explore mentors, open a profile, and tap{" "}
+                    <span className="font-medium text-[#0a0a0a]">Message</span> to open a thread here—updates appear in
+                    real time while you keep this tab open.
+                  </p>
+                </div>
+                <div className="flex w-full flex-col gap-2.5 sm:flex-row sm:justify-center">
+                  <Link
+                    href="/mentors"
+                    className="inline-flex items-center justify-center rounded-full bg-primary px-6 py-3 text-sm font-semibold text-white shadow-md transition hover:bg-primary/90"
+                  >
+                    Find a mentor
+                  </Link>
+                  <Link
+                    href={backHref}
+                    className="inline-flex items-center justify-center rounded-full border-2 border-primary/30 bg-white px-6 py-3 text-sm font-semibold text-primary transition hover:bg-primary/5"
+                  >
+                    Back to dashboard
+                  </Link>
+                </div>
+              </div>
+            </div>
           ) : (
-            <div className="flex flex-1 flex-col items-center justify-center gap-2 p-8 text-center text-sm text-neutral-500">
-              <p>Select a conversation from the list</p>
-              <p className="max-w-xs text-xs text-neutral-400">
-                Or open a mentor profile and tap the message icon to start chatting.
-              </p>
+            <div className="relative flex flex-1 flex-col items-center justify-center overflow-hidden bg-gradient-to-b from-white via-neutral-50/50 to-transparent p-6 text-center sm:p-10">
+              <div className="pointer-events-none absolute inset-0 opacity-[0.05] [background-image:radial-gradient(circle_at_1px_1px,#0a0a0a_1px,transparent_0)] [background-size:18px_18px]" />
+              <div className="relative z-[1] flex max-w-lg flex-col items-center gap-4">
+                <div className="flex size-16 items-center justify-center rounded-2xl bg-primary/10 text-primary ring-1 ring-primary/15">
+                  <EmptyChatIllustration className="size-9" />
+                </div>
+                <h2 className="text-base font-semibold text-[#0a0a0a] sm:text-lg">Choose a conversation</h2>
+                <p className="max-w-sm text-sm leading-relaxed text-neutral-600">
+                  Pick someone from the list on the left to read and send messages. On small screens, use the back
+                  arrow above to return to your threads anytime.
+                </p>
+                <p className="max-w-sm text-xs text-neutral-400">
+                  Tip: open a mentor profile and use Message to start a new thread—it will show up here
+                  automatically.
+                </p>
+              </div>
             </div>
           )}
         </section>
@@ -603,6 +693,22 @@ export function MessagesInbox({
         </div>
       ) : null}
     </div>
+  );
+}
+
+function EmptyChatIllustration({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 48 48" fill="none" aria-hidden>
+      <path
+        d="M14 22c0-5 4.5-9 10-9s10 4 10 9-4.5 9-10 9c-1.2 0-2.4-.2-3.5-.5L14 38v-7.5c-2-1.8-3-4-3-8.5z"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinejoin="round"
+      />
+      <circle cx="19" cy="22" r="1.5" fill="currentColor" />
+      <circle cx="24" cy="22" r="1.5" fill="currentColor" />
+      <circle cx="29" cy="22" r="1.5" fill="currentColor" />
+    </svg>
   );
 }
 

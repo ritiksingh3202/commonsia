@@ -9,7 +9,7 @@ import { ProfileHeroEditMenuButton } from "@/components/profile/ProfileHeroEditM
 import { ProfileCoverStrip } from "@/components/profile/ProfileCoverStrip";
 import { LinkedInGlyph, SocialIconButton } from "@/components/profile/ProfileSocialIcons";
 import { ProfileSettingsMenu } from "@/components/profile/ProfileSettingsMenu";
-import { profileHero } from "@/components/profile/profile-hero-classes";
+import { profileHero, profileSkillsSectionTitle } from "@/components/profile/profile-hero-classes";
 
 import {
   formatStudentSubtitle,
@@ -132,7 +132,7 @@ export function StudentProfileHero({ user: initial }: Props) {
 
             {(interests.length > 0 || user.otherInterests?.trim()) && (
               <div className="mt-6 text-left">
-                <h2 className="text-sm font-semibold text-[#0a0a0a] sm:text-base">Interests and Skills</h2>
+                <h2 className={profileSkillsSectionTitle}>Interests and Skills</h2>
                 {interests.length > 0 ? (
                   <div className="mt-2.5 flex flex-wrap gap-2">
                     {interests.map((tag) => (
@@ -143,8 +143,8 @@ export function StudentProfileHero({ user: initial }: Props) {
                   </div>
                 ) : null}
                 {user.otherInterests?.trim() ? (
-                  <p className="mt-3 text-[13px] leading-relaxed text-[#4b5563] sm:text-sm">
-                    <span className="font-medium text-[#0a0a0a]">Other interests: </span>
+                  <p className="mt-3 text-[13px] leading-relaxed text-neutral-600 sm:text-sm">
+                    <span className="font-medium text-neutral-600">Other interests: </span>
                     {user.otherInterests.trim()}
                   </p>
                 ) : null}
@@ -153,7 +153,7 @@ export function StudentProfileHero({ user: initial }: Props) {
 
             {software.length > 0 && (
               <div className="mt-5 text-left">
-                <h2 className="text-sm font-semibold text-[#0a0a0a] sm:text-base">Software Skills</h2>
+                <h2 className={profileSkillsSectionTitle}>Software Skills</h2>
                 <div className="mt-2.5 flex flex-wrap gap-2">
                   {software.map((tag) => (
                     <span key={tag} className={interestSoftwareTagClass}>

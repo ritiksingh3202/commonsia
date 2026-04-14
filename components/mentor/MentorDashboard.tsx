@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 
 import type { MentorDashboardUser } from "@/components/mentor/mentor-dashboard-types";
 import { MentorProfileHero } from "@/components/mentor/MentorProfileHero";
+import { profileSkillsSectionTitle } from "@/components/profile/profile-hero-classes";
 import {
   formatRelativePast,
   formatSessionBadge,
@@ -22,8 +23,6 @@ function formatMinutesLong(total: number): string {
 /** Figma Main Content (130:6879) — cards use 14px radius, hairline border */
 const card =
   "rounded-[14px] border border-black/10 bg-white p-4 shadow-sm sm:p-5";
-const pill =
-  "rounded-full border border-primary/25 bg-primary px-3 py-1 text-[12px] font-medium text-white";
 
 function getMaxMentees(json: unknown): number {
   if (!json || typeof json !== "object") return 10;
@@ -112,13 +111,11 @@ export function MentorDashboard({ user }: Props) {
           <div className="grid gap-8 lg:grid-cols-[minmax(0,65%)_minmax(0,35%)] lg:gap-10">
           <div className="space-y-8">
             <div>
-              <h2 className="text-base font-semibold text-[#0a0a0a]">
-                Specialization
-              </h2>
+              <h2 className={profileSkillsSectionTitle}>Specialization</h2>
               {expertise.length > 0 ? (
                 <div className="mt-3 flex flex-wrap gap-2">
                   {expertise.map((t) => (
-                    <span key={t} className={pill}>
+                    <span key={t} className="mentor-tag-expertise-pill">
                       {t}
                     </span>
                   ))}

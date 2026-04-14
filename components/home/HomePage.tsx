@@ -341,13 +341,13 @@ export function HomePage({ testimonials }: { testimonials: HomeTestimonialCard[]
 
         <div className="mt-3 lg:hidden">
           <SectionReveal>
-            <div className="relative mx-auto aspect-[4/5] w-full max-w-md min-h-[380px] sm:max-w-lg sm:min-h-[420px]">
+            <div className="relative mx-auto aspect-[10/13] w-full max-w-lg min-h-[320px] sm:min-h-[360px]">
               <Image
                 src={marketingImages.whyUsCenter}
                 alt=""
                 fill
-                className="object-contain object-center scale-110 sm:scale-[1.15]"
-                sizes="(max-width:640px) 90vw, 520px"
+                className="object-contain object-center"
+                sizes="(max-width:1024px) 90vw, 512px"
               />
             </div>
           </SectionReveal>
@@ -373,14 +373,14 @@ export function HomePage({ testimonials }: { testimonials: HomeTestimonialCard[]
           </div>
         </div>
 
-        <div className="mx-auto mt-3 hidden max-w-7xl items-start lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(340px,460px)_minmax(0,1fr)] lg:gap-[30px]">
-          <div className="flex flex-col gap-5 pt-0.5 lg:gap-[25px] lg:pt-1">
+        <div className="mx-auto mt-3 hidden max-w-7xl items-start lg:grid lg:grid-cols-[1fr_1.85fr_1fr] lg:gap-x-10 lg:gap-y-0 xl:gap-x-12">
+          <div className="flex min-w-0 flex-col gap-5 pt-0.5 lg:gap-[25px] lg:pt-1">
             {whyItems
               .filter((w) => w.align === "left")
               .map((w, i) => (
                 <SectionReveal key={w.title} delay={i * 0.05}>
                   <motion.div
-                    className="flex max-w-sm flex-col gap-[15px] text-left"
+                    className="flex max-w-sm flex-col gap-[15px] text-left lg:max-w-[min(100%,20rem)]"
                     whileHover={{ scale: 1.02 }}
                     transition={{ type: "spring", stiffness: 400, damping: 22 }}
                   >
@@ -394,25 +394,25 @@ export function HomePage({ testimonials }: { testimonials: HomeTestimonialCard[]
               ))}
           </div>
 
-          <SectionReveal className="sticky top-24 self-center" delay={0.06}>
-            <div className="relative mx-auto aspect-[3/4] w-full max-h-[min(82vh,760px)] lg:max-h-[min(86vh,840px)]">
+          <SectionReveal className="sticky top-24 w-full min-w-0 self-start justify-self-stretch px-1 sm:px-2 lg:-mt-3 xl:-mt-4" delay={0.06}>
+            <div className="relative mx-auto aspect-[10/13] w-full max-w-[520px] xl:max-w-[560px]">
               <Image
                 src={marketingImages.whyUsCenter}
                 alt=""
                 fill
-                className="object-contain object-center lg:scale-[1.18] xl:scale-[1.26]"
-                sizes="(max-width: 1024px) 90vw, 560px"
+                className="object-contain object-center"
+                sizes="(max-width: 1280px) 48vw, 560px"
               />
             </div>
           </SectionReveal>
 
-          <div className="flex flex-col gap-5 pt-0.5 lg:gap-[25px] lg:pt-1">
+          <div className="flex min-w-0 flex-col gap-5 pt-0.5 lg:gap-[25px] lg:pt-1">
             {whyItems
               .filter((w) => w.align === "right")
               .map((w, i) => (
                 <SectionReveal key={w.title} delay={i * 0.05}>
                   <motion.div
-                    className="flex max-w-sm flex-col gap-[15px] text-left"
+                    className="flex max-w-sm flex-col gap-[15px] text-left lg:max-w-[min(100%,20rem)]"
                     whileHover={{ scale: 1.02 }}
                     transition={{ type: "spring", stiffness: 400, damping: 22 }}
                   >
@@ -599,7 +599,7 @@ export function HomePage({ testimonials }: { testimonials: HomeTestimonialCard[]
               <span> Say</span>
             </h2>
           </SectionReveal>
-          <div className="mt-3 grid min-w-0 gap-6 sm:mt-4 lg:grid-cols-[minmax(0,380px)_minmax(0,1fr)] lg:items-stretch lg:gap-[50px]">
+          <div className="mt-3 grid min-w-0 gap-6 sm:mt-4 lg:grid-cols-[minmax(260px,34%)_minmax(0,1fr)] lg:items-stretch lg:gap-8 xl:gap-[50px]">
             <SectionReveal delay={0.05} className="flex min-h-0 min-w-0 justify-center lg:justify-start">
               <div className="flex h-full w-full max-w-[380px] flex-col gap-[54px] overflow-hidden rounded-[20px] bg-black shadow-sm">
                 <div className="relative min-h-[130px] shrink-0 px-5 py-6 sm:px-6 sm:py-8">

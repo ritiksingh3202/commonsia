@@ -13,3 +13,7 @@ export const profileHero = {
     "relative size-[min(42vw,8.75rem)] overflow-hidden rounded-full bg-neutral-100 ring-[6px] ring-white shadow-[0_10px_36px_rgb(0,0,0,0.14)] sm:size-[10.25rem] md:size-[11rem] lg:size-[11.5rem]",
   content: "min-w-0 flex-1 pt-0.5 sm:pt-[5.5rem] lg:pt-[6rem]",
 } as const;
+
+/** Interests / software / specialization headings — same grey tone as mentor card secondary text. */
+export const profileSkillsSectionTitle =
+  "text-[11px] font-semibold tracking-wide text-neutral-600 sm:text-xs";

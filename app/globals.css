@@ -139,6 +139,14 @@ body {
     @apply inline-flex items-center rounded-full px-3 py-1.5 text-[11px] font-medium text-[#334155] ring-1 ring-[#334155]/12 sm:text-xs;
     background-color: #e8eef4;
   }
+
+  /**
+   * Mentor directory cards only — smaller, quieter pills so the mentor name reads as the hero.
+   */
+  .mentor-card-tags .mentor-tag-expertise-pill {
+    @apply px-2 py-0.5 text-[10px] font-medium text-[#475569] ring-[#64748b]/10 sm:px-2.5 sm:text-[11px];
+    background-color: #eef2f6;
+  }
 }
 
 /* Hero accent words — black → brown → orange (Figma) */

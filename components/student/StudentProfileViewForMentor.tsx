@@ -11,7 +11,7 @@ import {
 
 import { ProfileCover } from "@/components/ProfileCover";
 import { PortfolioViewerPanel } from "@/components/profile/PortfolioViewerPanel";
-import { profileHero } from "@/components/profile/profile-hero-classes";
+import { profileHero, profileSkillsSectionTitle } from "@/components/profile/profile-hero-classes";
 import { profileCoverDisplaySrc } from "@/lib/profile-cover";
 import {
   formatStudentSubtitle,
@@ -127,7 +127,7 @@ export function StudentProfileViewForMentor({
 
               {(interests.length > 0 || user.otherInterests?.trim()) && (
                 <div className="mt-6 text-left">
-                  <h2 className="text-sm font-semibold text-[#0a0a0a] sm:text-base">Interests and Skills</h2>
+                  <h2 className={profileSkillsSectionTitle}>Interests and Skills</h2>
                   {interests.length > 0 ? (
                     <div className="mt-2.5 flex flex-wrap gap-2">
                       {interests.map((tag) => (
@@ -148,7 +148,7 @@ export function StudentProfileViewForMentor({
 
               {software.length > 0 && (
                 <div className="mt-5 text-left">
-                  <h2 className="text-sm font-semibold text-[#0a0a0a] sm:text-base">Software Skills</h2>
+                  <h2 className={profileSkillsSectionTitle}>Software Skills</h2>
                   <div className="mt-2.5 flex flex-wrap gap-2">
                     {software.map((tag) => (
                       <span key={tag} className={interestSoftwareTagClass}>
