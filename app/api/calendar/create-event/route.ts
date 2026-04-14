@@ -12,6 +12,7 @@ import { getGoogleCalendarOAuth2Client } from "@/lib/google-calendar-oauth-clien
 import { sendBookingConfirmationEmails } from "@/lib/booking-emails";
 import { createMentoringBookingRow } from "@/lib/mentoring-booking-access";
 import { prisma } from "@/lib/prisma";
+import { delKeys, invalidateAfterBooking, slotCacheKeysAround } from "@/lib/redis-cache";
 
 const TZ = defaultCalendarTimeZone();
 
@@ -242,6 +243,10 @@ export async function POST(req: Request) {
       meetLink,
       calendarSynced: calendarEvent != null,
     });
+
+    invalidateAfterBooking(booker.id, mentor.id);
+    const slotDayKeys = slotCacheKeysAround(mentor.id, start);
+    if (slotDayKeys.length) void delKeys(slotDayKeys);
   }
 
   if (!calendarEvent) {

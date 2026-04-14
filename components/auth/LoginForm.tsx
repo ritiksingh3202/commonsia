@@ -6,6 +6,7 @@ import { signIn } from "next-auth/react";
 import { useState } from "react";
 import { authErrorMessage } from "@/lib/auth-error-messages";
 import { AUTH_ASSETS } from "./auth-assets";
+import { LegalConsentLinks } from "@/components/legal/LegalConsentLinks";
 import { AuthBackLink } from "./AuthBackLink";
 import { AuthSocialRow } from "./AuthSocialRow";
 
@@ -137,6 +138,8 @@ export function LoginForm({ callbackUrl = "/auth/continue", authError }: LoginFo
         <div className="mt-4">
           <AuthSocialRow callbackUrl={callbackUrl} />
         </div>
+
+        <LegalConsentLinks />
 
         <p className="mt-4 text-center text-[13px] text-[#717182]">
           Don&apos;t have an account?{" "}

@@ -7,6 +7,7 @@ import {
 import { fetchPrimaryCalendarBusy, intervalOverlapsBusy } from "@/lib/google-calendar-busy";
 import { getGoogleCalendarOAuth2Client } from "@/lib/google-calendar-oauth-client";
 import { prisma } from "@/lib/prisma";
+import { CacheKeys, CacheTtl, withJsonCache } from "@/lib/redis-cache";
 
 /**
  * Bookable 30-minute segments for a civil calendar day (slots stored in IST in mentor settings).
@@ -35,31 +36,36 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "Mentor not found." }, { status: 404 });
   }
 
-  const now = new Date();
-  let slots = getBookableSlotSegmentsForDate(user.mentorAvailabilityJson, year, month, day, now);
+  const cacheKey = CacheKeys.mentorSlots(mentorUserId, year, month, day);
+  const body = await withJsonCache(cacheKey, CacheTtl.mentorSlots, async () => {
+    const now = new Date();
+    let slots = getBookableSlotSegmentsForDate(user.mentorAvailabilityJson, year, month, day, now);
 
-  const oauth2 = await getGoogleCalendarOAuth2Client(mentorUserId);
-  if (oauth2 && slots.length > 0) {
-    const iso = calendarDateToIso(year, month, day);
-    const timeMin = new Date(`${iso}T00:00:00+05:30`);
-    const timeMax = new Date(`${iso}T23:59:59.999+05:30`);
-    try {
-      const busy = await fetchPrimaryCalendarBusy(oauth2, timeMin, timeMax);
-      slots = slots.filter(
-        (s) => !intervalOverlapsBusy(new Date(s.startISO), new Date(s.endISO), busy),
-      );
-    } catch (e) {
-      console.error("Google Calendar freebusy.query failed:", e);
+    const oauth2 = await getGoogleCalendarOAuth2Client(mentorUserId);
+    if (oauth2 && slots.length > 0) {
+      const iso = calendarDateToIso(year, month, day);
+      const timeMin = new Date(`${iso}T00:00:00+05:30`);
+      const timeMax = new Date(`${iso}T23:59:59.999+05:30`);
+      try {
+        const busy = await fetchPrimaryCalendarBusy(oauth2, timeMin, timeMax);
+        slots = slots.filter(
+          (s) => !intervalOverlapsBusy(new Date(s.startISO), new Date(s.endISO), busy),
+        );
+      } catch (e) {
+        console.error("Google Calendar freebusy.query failed:", e);
+      }
     }
-  }
 
-  return NextResponse.json({
-    ok: true,
-    slots,
-    /** @deprecated use `slots` */
-    slotRanges: slots.map((s) => s.rangeLabelIst),
-    fetchedAt: now.toISOString(),
+    return {
+      ok: true as const,
+      slots,
+      /** @deprecated use `slots` */
+      slotRanges: slots.map((s) => s.rangeLabelIst),
+      fetchedAt: now.toISOString(),
+    };
   });
+
+  return NextResponse.json(body);
 }
 
 export const runtime = "nodejs";

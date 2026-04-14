@@ -11,10 +11,8 @@ const explore = [
 ];
 
 const legal = [
-  { href: "#", label: "Terms & Condition" },
-  { href: "#", label: "Privacy Policy" },
-  { href: "#", label: "404" },
-  { href: "#", label: "Cookies Policy" },
+  { href: "/terms", label: "Terms of Service" },
+  { href: "/privacy", label: "Privacy Policy" },
 ];
 
 export function SiteFooter() {

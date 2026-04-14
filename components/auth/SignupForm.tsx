@@ -5,6 +5,7 @@ import Link from "next/link";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
+import { LegalConsentLinks } from "@/components/legal/LegalConsentLinks";
 import { AUTH_ASSETS, type AuthRole } from "./auth-assets";
 import { AuthBackLink } from "./AuthBackLink";
 import { AuthSocialRow } from "./AuthSocialRow";
@@ -224,6 +225,8 @@ export function SignupForm({ role, oauthCallbackUrl }: SignupFormProps) {
         <div className="mt-4">
           <AuthSocialRow callbackUrl={afterAuth} onBeforeOAuth={saveDraftForOAuth} />
         </div>
+
+        <LegalConsentLinks />
 
         <p className="mt-4 text-center text-[13px] text-[#717182]">
           Already have an account?{" "}

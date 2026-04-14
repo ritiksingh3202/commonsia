@@ -94,6 +94,22 @@ export function ProfileSettingsMenu({ editProfileHref, compact }: Props) {
           >
             Edit profile
           </Link>
+          <Link
+            role="menuitem"
+            href="/privacy"
+            className="block px-3 py-2.5 text-[13px] font-medium text-[#0a0a0a] transition hover:bg-black/[0.04]"
+            onClick={() => setOpen(false)}
+          >
+            Privacy Policy
+          </Link>
+          <Link
+            role="menuitem"
+            href="/terms"
+            className="block px-3 py-2.5 text-[13px] font-medium text-[#0a0a0a] transition hover:bg-black/[0.04]"
+            onClick={() => setOpen(false)}
+          >
+            Terms of Service
+          </Link>
           <button
             type="button"
             role="menuitem"

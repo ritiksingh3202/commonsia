@@ -1,5 +1,6 @@
 import { auth } from "@/auth";
 import { CHAT_ACTIVE, CHAT_DECLINED, CHAT_PENDING } from "@/lib/chat-thread-status";
+import { invalidateChatThreadsForParticipants } from "@/lib/redis-cache";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 
@@ -30,7 +31,7 @@ export async function PATCH(req: Request, ctx: RouteCtx) {
 
   const thread = await prisma.chatThread.findUnique({
     where: { id: threadId },
-    select: { id: true, mentorId: true, status: true },
+    select: { id: true, studentId: true, mentorId: true, status: true },
   });
   if (!thread) {
     return NextResponse.json({ error: "Thread not found" }, { status: 404 });
@@ -47,6 +48,8 @@ export async function PATCH(req: Request, ctx: RouteCtx) {
     where: { id: threadId },
     data: { status: nextStatus, updatedAt: new Date() },
   });
+
+  invalidateChatThreadsForParticipants(thread.studentId, thread.mentorId);
 
   return NextResponse.json({ ok: true, status: nextStatus });
 }

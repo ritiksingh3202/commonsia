@@ -1,5 +1,6 @@
 import { auth } from "@/auth";
 import { CHAT_ACTIVE, CHAT_DECLINED, CHAT_PENDING } from "@/lib/chat-thread-status";
+import { CacheKeys, CacheTtl, invalidateChatThreadsForParticipants, withJsonCache } from "@/lib/redis-cache";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 
@@ -80,34 +81,39 @@ export async function GET() {
     return NextResponse.json({ error: "Invalid role for chat" }, { status: 403 });
   }
 
-  const threads = await prisma.chatThread.findMany({
-    where,
-    orderBy: { updatedAt: "desc" },
-    include: {
-      student: { select: peerSelect },
-      mentor: { select: peerSelect },
-      messages: {
-        orderBy: { createdAt: "desc" },
-        take: 1,
-        select: { body: true, createdAt: true, senderId: true },
+  const cacheKey = CacheKeys.chatThreads(me.id);
+  const body = await withJsonCache(cacheKey, CacheTtl.chatThreads, async () => {
+    const threads = await prisma.chatThread.findMany({
+      where,
+      orderBy: { updatedAt: "desc" },
+      include: {
+        student: { select: peerSelect },
+        mentor: { select: peerSelect },
+        messages: {
+          orderBy: { createdAt: "desc" },
+          take: 1,
+          select: { body: true, createdAt: true, senderId: true },
+        },
       },
-    },
+    });
+
+    const payload = threads.map((t) => {
+      const peer = me.role === "student" ? t.mentor : t.student;
+      const last = t.messages[0];
+      return {
+        id: t.id,
+        status: t.status,
+        updatedAt: t.updatedAt.toISOString(),
+        peer: publicPeerPayload(peer),
+        lastMessagePreview: last?.body?.slice(0, 120) ?? null,
+        lastMessageAt: last?.createdAt.toISOString() ?? null,
+      };
+    });
+
+    return { threads: payload, role: me.role };
   });
 
-  const payload = threads.map((t) => {
-    const peer = me.role === "student" ? t.mentor : t.student;
-    const last = t.messages[0];
-    return {
-      id: t.id,
-      status: t.status,
-      updatedAt: t.updatedAt.toISOString(),
-      peer: publicPeerPayload(peer),
-      lastMessagePreview: last?.body?.slice(0, 120) ?? null,
-      lastMessageAt: last?.createdAt.toISOString() ?? null,
-    };
-  });
-
-  return NextResponse.json({ threads: payload, role: me.role });
+  return NextResponse.json(body);
 }
 
 export async function POST(req: Request) {
@@ -199,6 +205,8 @@ export async function POST(req: Request) {
 
   const peerOut = me.role === "student" ? fresh.mentor : fresh.student;
   const last = fresh.messages[0];
+
+  invalidateChatThreadsForParticipants(studentId, mentorId);
 
   return NextResponse.json({
     thread: {

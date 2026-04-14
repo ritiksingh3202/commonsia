@@ -1,4 +1,5 @@
 import { auth } from "@/auth";
+import { invalidateStudentDashboard } from "@/lib/redis-cache";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 
@@ -83,6 +84,8 @@ export async function PATCH(req: Request) {
     where: { id: session.user.id },
     data,
   });
+
+  invalidateStudentDashboard(session.user.id);
 
   return NextResponse.json({ ok: true });
 }

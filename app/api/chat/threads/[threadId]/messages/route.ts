@@ -1,5 +1,6 @@
 import { auth } from "@/auth";
 import { CHAT_DECLINED, CHAT_PENDING } from "@/lib/chat-thread-status";
+import { invalidateChatThreadsForParticipants } from "@/lib/redis-cache";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 
@@ -111,6 +112,8 @@ export async function POST(req: Request, ctx: RouteCtx) {
     where: { id: threadId },
     data: { updatedAt: new Date() },
   });
+
+  invalidateChatThreadsForParticipants(thread.studentId, thread.mentorId);
 
   return NextResponse.json({
     message: {
