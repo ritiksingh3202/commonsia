@@ -1,21 +1,12 @@
-import { resolveAndPersistMeetLinkForBooking } from "@/lib/booking-resolve-google-meet";
 import { CHAT_ACTIVE, CHAT_PENDING } from "@/lib/chat-thread-status";
 import {
   countPastBookings,
   findUpcomingBookingsWithMentors,
-  type MentoringBookingWithMentor,
 } from "@/lib/mentoring-booking-access";
+import { trimLargeDataUrlField } from "@/lib/mentor-directory";
+import { DatabaseUnavailableError, isPrismaConnectionError } from "@/lib/prisma-errors";
 import { prisma } from "@/lib/prisma";
 import { computeStudentProfileCompletionPercent } from "@/lib/student-profile-completion";
-
-async function hydrateMeetLinksOnBookings(bookings: MentoringBookingWithMentor[]): Promise<void> {
-  /** One-at-a-time keeps Prisma/Google work from exhausting the connection pool. */
-  for (const b of bookings) {
-    if (b.googleMeetLink?.trim() || !b.googleEventId?.trim()) continue;
-    const link = await resolveAndPersistMeetLinkForBooking(b.id);
-    if (link) b.googleMeetLink = link;
-  }
-}
 
 export type StudentDashboardPayload = {
   activeMentorships: number;
@@ -47,6 +38,17 @@ export type StudentDashboardPayload = {
 };
 
 export async function getStudentDashboardPayload(userId: string): Promise<StudentDashboardPayload | null> {
+  try {
+    return await loadStudentDashboardPayload(userId);
+  } catch (e) {
+    if (isPrismaConnectionError(e)) {
+      throw new DatabaseUnavailableError(e);
+    }
+    throw e;
+  }
+}
+
+async function loadStudentDashboardPayload(userId: string): Promise<StudentDashboardPayload | null> {
   const me = await prisma.user.findUnique({
     where: { id: userId },
     select: {
@@ -103,8 +105,6 @@ export async function getStudentDashboardPayload(userId: string): Promise<Studen
     (t) => t.messages[0] && t.messages[0].senderId !== userId,
   ).length;
 
-  await hydrateMeetLinksOnBookings(upcomingBookings);
-
   const seenMentor = new Set<string>();
   const mentorsWithUpcomingSessions: StudentDashboardPayload["mentorsWithUpcomingSessions"] = [];
 
@@ -114,7 +114,7 @@ export async function getStudentDashboardPayload(userId: string): Promise<Studen
     mentorsWithUpcomingSessions.push({
       id: b.mentor.id,
       name: b.mentor.name,
-      image: b.mentor.image,
+      image: trimLargeDataUrlField(b.mentor.image),
       mentorTitle: b.mentor.mentorTitle,
       mentorCompany: b.mentor.mentorCompany,
       nextSessionStart: b.startAt.toISOString(),
@@ -156,3 +156,4 @@ export async function getStudentDashboardPayload(userId: string): Promise<Studen
     upcomingSessions,
   };
 }
+

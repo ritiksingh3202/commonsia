@@ -2,7 +2,9 @@ import { randomUUID } from "node:crypto";
 
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
+
+import { CACHE_TAG_HOME_TESTIMONIALS, mentorReviewsTag } from "@/lib/cache-tags";
 import { NextResponse } from "next/server";
 
 export async function POST(req: Request) {
@@ -63,6 +65,8 @@ export async function POST(req: Request) {
 
     revalidatePath("/");
     revalidatePath(`/mentors/${mentorUserId}`);
+    revalidateTag(CACHE_TAG_HOME_TESTIMONIALS, "max");
+    revalidateTag(mentorReviewsTag(mentorUserId), "max");
 
     return NextResponse.json({ ok: true });
   } catch {

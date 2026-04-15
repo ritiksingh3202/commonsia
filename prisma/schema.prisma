@@ -121,6 +121,8 @@ model ChatThread {
   studentId String
   mentorId  String
   status    String   @default("pending")
+  /// Set when the mentor accepts the request — used for student-facing “request accepted” notifications.
+  mentorAcceptedAt DateTime?
 
   student  User          @relation("ChatStudent", fields: [studentId], references: [id], onDelete: Cascade)
   mentor   User          @relation("ChatMentor", fields: [mentorId], references: [id], onDelete: Cascade)

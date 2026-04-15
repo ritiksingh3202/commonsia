@@ -85,7 +85,6 @@ export function ChatPeerInsightsPanel({
         const d = day.getDate();
         const res = await fetch(
           `/api/schedule/mentor-slots?mentorUserId=${encodeURIComponent(peer.id)}&year=${year}&month=${month}&day=${d}`,
-          { cache: "no-store" },
         );
         if (!res.ok) continue;
         const data = (await res.json()) as { slots?: { rangeLabelIst?: string }[] };

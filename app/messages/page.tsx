@@ -10,7 +10,7 @@ export const metadata: Metadata = {
   description: "Your Commonsia conversations.",
 };
 
-type Search = { peer?: string };
+type Search = { peer?: string; thread?: string };
 
 export default async function MessagesPage({ searchParams }: { searchParams: Promise<Search> }) {
   const session = await auth();
@@ -29,7 +29,15 @@ export default async function MessagesPage({ searchParams }: { searchParams: Pro
 
   const sp = await searchParams;
   const peer = sp.peer?.trim() || null;
+  const thread = sp.thread?.trim() || null;
   const backHref = r === "mentor" ? "/mentor" : "/student";
 
-  return <MessagesInbox key={peer ?? "inbox"} initialPeerId={peer} backHref={backHref} />;
+  return (
+    <MessagesInbox
+      key={`${peer ?? "inbox"}-${thread ?? ""}`}
+      initialPeerId={peer}
+      initialThreadId={thread}
+      backHref={backHref}
+    />
+  );
 }

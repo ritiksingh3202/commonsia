@@ -4,8 +4,10 @@ import { AnimatePresence, motion } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
 import { signOut, useSession } from "next-auth/react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { startTransition, useEffect, useState } from "react";
+
+import { NavNotificationsBell } from "@/components/navbar/NavNotificationsBell";
 
 const nav = [
   { href: "/mentors", label: "Mentors" },
@@ -28,6 +30,7 @@ function scrollMentorsNavToTop(pathname: string, href: string) {
 
 export function Navbar() {
   const pathname = usePathname();
+  const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
   const { data: session, status } = useSession();
   const authed = status === "authenticated";
@@ -52,11 +55,24 @@ export function Navbar() {
     });
   }, [pathname]);
 
+  useEffect(() => {
+    router.prefetch("/mentors");
+    router.prefetch("/contact");
+    router.prefetch("/auth");
+  }, [router]);
+
+  useEffect(() => {
+    if (status !== "authenticated" || !session?.user) return;
+    const href = session.user.role === "mentor" ? "/mentor" : "/student";
+    router.prefetch(href);
+  }, [router, session?.user, status]);
+
   return (
     <header className="sticky top-0 z-50 border-b border-black/[0.06] bg-[#ffffff]">
       <div className="relative z-[100] mx-auto flex min-w-0 max-w-7xl items-center justify-between gap-2 bg-[#ffffff] px-3 py-2.5 sm:gap-4 sm:px-6 sm:py-3 lg:px-8">
         <Link
           href="/"
+          prefetch
           className="relative z-10 block w-[min(46vw,200px)] shrink-0"
         >
           <Image
@@ -79,6 +95,7 @@ export function Navbar() {
             <Link
               key={item.href}
               href={item.href}
+              prefetch
               className={`rounded-full px-3 py-1.5 text-center font-normal transition-colors hover:text-primary lg:px-4 ${
                 isActive(pathname, item.href) ? "font-semibold text-primary" : ""
               }`}
@@ -96,38 +113,45 @@ export function Navbar() {
               aria-hidden
             />
           ) : null}
-          {!loading && authed && studentOnDashboard ? (
-            <div className="group relative hidden sm:inline-block">
-              <Link
-                href="/student"
-                className="inline-flex rounded-full bg-primary px-4 py-2 text-xs font-semibold text-white shadow-sm transition-transform hover:scale-[1.02] active:scale-[0.98] sm:px-8 sm:py-2.5 sm:text-sm"
-              >
-                <span className="max-w-[7rem] truncate sm:max-w-none">My profile</span>
-              </Link>
-              <div className="pointer-events-none invisible absolute right-0 top-full z-[60] pt-1 opacity-0 transition-all duration-150 group-hover:pointer-events-auto group-hover:visible group-hover:opacity-100">
-                <div className="min-w-[9rem] rounded-xl border border-black/[0.08] bg-white py-1 shadow-lg ring-1 ring-black/5">
-                  <button
-                    type="button"
-                    className="w-full px-3 py-2.5 text-left text-[13px] font-medium text-[#b91c1c] transition hover:bg-red-50"
-                    onClick={() => void signOut({ callbackUrl: "/" })}
+          {!loading && authed ? (
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              <NavNotificationsBell />
+              {studentOnDashboard ? (
+                <div className="group relative hidden sm:inline-block">
+                  <Link
+                    href="/student"
+                    prefetch
+                    className="inline-flex rounded-full bg-primary px-4 py-2 text-xs font-semibold text-white shadow-sm transition-transform hover:scale-[1.02] active:scale-[0.98] sm:px-8 sm:py-2.5 sm:text-sm"
                   >
-                    Log out
-                  </button>
+                    <span className="max-w-[7rem] truncate sm:max-w-none">My profile</span>
+                  </Link>
+                  <div className="pointer-events-none invisible absolute right-0 top-full z-[60] pt-1 opacity-0 transition-all duration-150 group-hover:pointer-events-auto group-hover:visible group-hover:opacity-100">
+                    <div className="min-w-[9rem] rounded-xl border border-black/[0.08] bg-white py-1 shadow-lg ring-1 ring-black/5">
+                      <button
+                        type="button"
+                        className="w-full px-3 py-2.5 text-left text-[13px] font-medium text-[#b91c1c] transition hover:bg-red-50"
+                        onClick={() => void signOut({ callbackUrl: "/" })}
+                      >
+                        Log out
+                      </button>
+                    </div>
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <Link
+                  href={dashboardHref}
+                  prefetch
+                  className="hidden rounded-full bg-primary px-4 py-2 text-xs font-semibold text-white shadow-sm transition-transform hover:scale-[1.02] active:scale-[0.98] sm:inline-flex sm:px-8 sm:py-2.5 sm:text-sm"
+                >
+                  <span className="max-w-[7rem] truncate sm:max-w-none">My profile</span>
+                </Link>
+              )}
             </div>
-          ) : null}
-          {!loading && authed && !studentOnDashboard ? (
-            <Link
-              href={dashboardHref}
-              className="hidden rounded-full bg-primary px-4 py-2 text-xs font-semibold text-white shadow-sm transition-transform hover:scale-[1.02] active:scale-[0.98] sm:inline-flex sm:px-8 sm:py-2.5 sm:text-sm"
-            >
-              <span className="max-w-[7rem] truncate sm:max-w-none">My profile</span>
-            </Link>
           ) : null}
           {!loading && !authed ? (
             <Link
               href="/auth"
+              prefetch
               className="hidden rounded-full bg-primary px-3 py-2 text-xs font-semibold text-white shadow-sm transition-transform hover:scale-[1.02] active:scale-[0.98] sm:inline-flex sm:px-8 sm:py-2.5 sm:text-sm"
             >
               <span className="sm:hidden">Login</span>
@@ -172,6 +196,7 @@ export function Navbar() {
               >
                 <Link
                   href="/"
+                  prefetch
                   className="rounded-xl px-3 py-3 text-[15px] font-normal text-ink hover:bg-neutral-50"
                   onClick={() => setMenuOpen(false)}
                 >
@@ -181,6 +206,7 @@ export function Navbar() {
                   <Link
                     key={item.href}
                     href={item.href}
+                    prefetch
                     className={`rounded-xl px-3 py-3 text-[15px] hover:bg-neutral-50 ${
                       isActive(pathname, item.href) ? "font-semibold text-primary" : "font-normal text-ink"
                     }`}
@@ -195,6 +221,7 @@ export function Navbar() {
                 {!loading && (
                   <Link
                     href={authed ? dashboardHref : "/auth"}
+                    prefetch
                     className="mt-2 rounded-xl bg-primary px-3 py-3.5 text-center text-[15px] font-semibold text-white shadow-sm"
                     onClick={() => setMenuOpen(false)}
                   >

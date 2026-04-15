@@ -7,11 +7,13 @@ import {
 import { fetchPrimaryCalendarBusy, intervalOverlapsBusy } from "@/lib/google-calendar-busy";
 import { getGoogleCalendarOAuth2Client } from "@/lib/google-calendar-oauth-client";
 import { prisma } from "@/lib/prisma";
-import { CacheKeys, CacheTtl, withJsonCache } from "@/lib/redis-cache";
+import { CacheKeys, CacheTtl, SCHEDULE_API_CACHE_CONTROL, withJsonCache } from "@/lib/redis-cache";
 
 /**
  * Bookable 30-minute segments for a civil calendar day (slots stored in IST in mentor settings).
  * When the mentor has Google Calendar connected, busy times on their primary calendar are removed.
+ *
+ * Redis: read-through cache **includes** Prisma + Google so a hit skips both.
  */
 export async function GET(req: Request) {
   const url = new URL(req.url);
@@ -27,17 +29,17 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "Invalid date." }, { status: 400 });
   }
 
-  const user = await prisma.user.findUnique({
-    where: { id: mentorUserId },
-    select: { role: true, mentorAvailabilityJson: true },
-  });
-
-  if (!user || user.role !== "mentor") {
-    return NextResponse.json({ error: "Mentor not found." }, { status: 404 });
-  }
-
   const cacheKey = CacheKeys.mentorSlots(mentorUserId, year, month, day);
   const body = await withJsonCache(cacheKey, CacheTtl.mentorSlots, async () => {
+    const user = await prisma.user.findUnique({
+      where: { id: mentorUserId },
+      select: { role: true, mentorAvailabilityJson: true },
+    });
+
+    if (!user || user.role !== "mentor") {
+      return null;
+    }
+
     const now = new Date();
     let slots = getBookableSlotSegmentsForDate(user.mentorAvailabilityJson, year, month, day, now);
 
@@ -65,7 +67,13 @@ export async function GET(req: Request) {
     };
   });
 
-  return NextResponse.json(body);
+  if (!body) {
+    return NextResponse.json({ error: "Mentor not found." }, { status: 404 });
+  }
+
+  return NextResponse.json(body, {
+    headers: { "Cache-Control": SCHEDULE_API_CACHE_CONTROL },
+  });
 }
 
 export const runtime = "nodejs";

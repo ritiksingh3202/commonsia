@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { MarketingShell } from "@/components/layout/MarketingShell";
+
 import { MentorsPage } from "@/components/mentors/MentorsPage";
 import { getPublicMentors } from "@/lib/mentor-directory";
 
@@ -7,14 +7,10 @@ export const metadata: Metadata = {
   title: { absolute: "Mentors" },
 };
 
-/** Always load mentor list from the database (no stale static cache). */
-export const dynamic = "force-dynamic";
+/** ISR fallback; list data is cached in `getPublicMentors` (Redis) + invalidation on mentor updates. */
+export const revalidate = 60;
 
 export default async function MentorsRoute() {
   const mentors = await getPublicMentors();
-  return (
-    <MarketingShell>
-      <MentorsPage mentors={mentors} />
-    </MarketingShell>
-  );
+  return <MentorsPage mentors={mentors} />;
 }

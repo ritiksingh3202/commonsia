@@ -8,7 +8,7 @@ export const DEFAULT_PROFILE_COVER_PATH = "/profile_cover.png";
  */
 function defaultCoverCacheKey(): string {
   const v = process.env.NEXT_PUBLIC_PROFILE_COVER_V?.trim();
-  return v && v.length > 0 ? v : "1";
+  return v && v.length > 0 ? v : "2";
 }
 
 /** Default cover URL with cache-busting query (use for display & fetch). */

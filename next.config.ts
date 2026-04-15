@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  poweredByHeader: false,
   /** In dev, default cover is replaced often — avoid long-lived browser / optimizer caches on this file. */
   ...(process.env.NODE_ENV === "development"
     ? {

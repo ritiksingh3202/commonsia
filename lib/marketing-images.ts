@@ -36,8 +36,8 @@ export const marketingImages = {
   stepsIllustration: "/home_assets/steps.png",
   ctaIllustration: "/home_assets/img_9.png",
   mentorPortrait: "/home_assets/mentor_1.png",
-  /** Contact page side art — architects / professionals vector */
-  contactFormArt: "/home_assets/img_9.png",
+  /** Contact page side art — `public/contact_assets/img_1.png` */
+  contactFormArt: "/contact_assets/img_1.png",
 
   avatar1: "/home_assets/student_1.png",
   avatar2: "/home_assets/student_2.png",

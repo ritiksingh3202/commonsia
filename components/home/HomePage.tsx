@@ -201,12 +201,14 @@ export function HomePage({ testimonials }: { testimonials: HomeTestimonialCard[]
             >
               <Link
                 href="/mentors"
+                prefetch
                 className="w-full text-center rounded-full bg-primary px-8 py-3 text-[15px] font-semibold tracking-wide text-white shadow-md transition-all hover:scale-[1.03] hover:shadow-lg sm:w-auto sm:px-10 sm:py-3.5 sm:text-base"
               >
                 Find a Mentor
               </Link>
               <Link
                 href="/mentors"
+                prefetch
                 className="w-full text-center rounded-full border-2 border-primary bg-white px-8 py-3 text-[15px] font-semibold tracking-wide text-primary transition-all hover:scale-[1.03] hover:bg-primary/5 sm:w-auto sm:px-10 sm:py-3.5 sm:text-base"
               >
                 Become a Mentor

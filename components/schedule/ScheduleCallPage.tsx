@@ -18,8 +18,9 @@ import { todayYmdInScheduleTz, SCHEDULE_BOOKING_TIMEZONE } from "@/lib/schedule-
 
 const CREAM = "bg-[#FFF8F1]";
 const WEEK_HEADERS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
-const SLOT_POLL_MS = 45_000;
-const MONTH_POLL_MS = 90_000;
+/** Align with server Redis TTL (~120s) — avoid hammering `/api/schedule/*` while still refreshing. */
+const SLOT_POLL_MS = 90_000;
+const MONTH_POLL_MS = 120_000;
 
 export type ApiBookableSlot = {
   startLabel: string;
@@ -145,7 +146,7 @@ export function ScheduleCallPage({
       u.searchParams.set("mentorUserId", mentorUserId);
       u.searchParams.set("year", String(viewYear));
       u.searchParams.set("month", String(viewMonth));
-      const res = await fetch(u.toString(), { cache: "no-store" });
+      const res = await fetch(u.toString());
       const data = (await res.json()) as { error?: string } & Partial<ApiMonthAvailability>;
       if (!res.ok) throw new Error(data.error ?? "Could not load availability");
       const days = new Set(Array.isArray(data.availableDays) ? data.availableDays.filter((n) => Number.isInteger(n)) : []);
@@ -168,7 +169,7 @@ export function ScheduleCallPage({
       u.searchParams.set("year", String(viewYear));
       u.searchParams.set("month", String(viewMonth));
       u.searchParams.set("day", String(displayDay));
-      const res = await fetch(u.toString(), { cache: "no-store" });
+      const res = await fetch(u.toString());
       const data = (await res.json()) as { error?: string; slots?: ApiBookableSlot[] };
       if (!res.ok) throw new Error(data.error ?? "Could not load times");
       setSlots(Array.isArray(data.slots) ? data.slots : []);
@@ -191,32 +192,13 @@ export function ScheduleCallPage({
       return;
     }
     let cancelled = false;
-    const run = async () => {
-      setSlotsLoading(true);
-      setSlotsError(null);
-      try {
-        const u = new URL("/api/schedule/mentor-slots", window.location.origin);
-        u.searchParams.set("mentorUserId", mentorUserId);
-        u.searchParams.set("year", String(viewYear));
-        u.searchParams.set("month", String(viewMonth));
-        u.searchParams.set("day", String(displayDay));
-        const res = await fetch(u.toString(), { cache: "no-store" });
-        const data = (await res.json()) as { error?: string; slots?: ApiBookableSlot[] };
-        if (!res.ok) throw new Error(data.error ?? "Could not load times");
-        if (!cancelled) setSlots(Array.isArray(data.slots) ? data.slots : []);
-      } catch (e) {
-        if (!cancelled) {
-          setSlotsError(e instanceof Error ? e.message : "Could not load times");
-          setSlots([]);
-        }
-      } finally {
-        if (!cancelled) setSlotsLoading(false);
-      }
+    const run = () => {
+      if (!cancelled) void loadMentorSlots();
     };
     void run();
-    const t = setInterval(() => void run(), SLOT_POLL_MS);
+    const t = setInterval(run, SLOT_POLL_MS);
     const onVis = () => {
-      if (document.visibilityState === "visible") void run();
+      if (document.visibilityState === "visible") run();
     };
     document.addEventListener("visibilitychange", onVis);
     return () => {
@@ -224,7 +206,7 @@ export function ScheduleCallPage({
       clearInterval(t);
       document.removeEventListener("visibilitychange", onVis);
     };
-  }, [mentorUserId, viewYear, viewMonth, displayDay]);
+  }, [mentorUserId, viewYear, viewMonth, displayDay, loadMentorSlots]);
 
   useEffect(() => {
     if (!mentorUserId) return;

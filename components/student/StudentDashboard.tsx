@@ -10,7 +10,8 @@ import type { StudentProfileUser } from "@/components/student/student-profile-ty
 import { formatSessionStartDisplay } from "@/lib/booking-datetime-display";
 import type { StudentDashboardPayload } from "@/lib/student-dashboard-data";
 
-const POLL_MS = 45_000;
+/** Background refresh only — avoid overlapping slow requests (server + transfer). */
+const POLL_MS = 120_000;
 
 const recommendations: { title: string; meta: string; href: string; cta: string }[] = [
   {
@@ -100,6 +101,7 @@ export function StudentDashboard({
   googleCalendarConnected: boolean;
 }) {
   const [data, setData] = useState(initialDashboard);
+  /** Serialize dashboard fetches so a slow response cannot stack parallel 2MB downloads. */
   const loadQueueRef = useRef(Promise.resolve());
 
   const load = useCallback(async () => {
@@ -117,20 +119,13 @@ export function StudentDashboard({
   }, []);
 
   useEffect(() => {
-    void load();
     const id = window.setInterval(() => void load(), POLL_MS);
-    return () => window.clearInterval(id);
-  }, [load]);
-
-  useEffect(() => {
-    const onFocus = () => void load();
     const onVis = () => {
       if (document.visibilityState === "visible") void load();
     };
-    window.addEventListener("focus", onFocus);
     document.addEventListener("visibilitychange", onVis);
     return () => {
-      window.removeEventListener("focus", onFocus);
+      window.clearInterval(id);
       document.removeEventListener("visibilitychange", onVis);
     };
   }, [load]);
@@ -171,11 +166,11 @@ export function StudentDashboard({
               My Dashboard
             </h2>
             <p className="mt-1.5 text-[13px] text-[#5c5c66] sm:text-sm">
-              Live overview — updates every few seconds and when you return to this tab.
+              Live overview — refreshes periodically and when you return to this tab.
             </p>
           </div>
           <p className="text-[11px] font-medium text-[#9ca3af]" aria-live="polite">
-            Auto-refresh on
+            Background refresh
           </p>
         </div>
 

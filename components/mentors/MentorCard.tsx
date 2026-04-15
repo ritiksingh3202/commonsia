@@ -109,7 +109,7 @@ export function MentorCard({
           hasProfilePhoto={mentor.hasProfilePhoto}
           className="rounded-t-xl md:rounded-none md:rounded-r-xl"
           sizes="(max-width:767px) 96vw, 320px"
-          priority={index < 8}
+          priority={index < 2}
         />
       </div>
     </motion.article>

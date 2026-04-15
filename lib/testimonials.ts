@@ -1,6 +1,8 @@
 import { Prisma } from "@prisma/client";
+import { unstable_cache } from "next/cache";
 
 import { formatStudentSubtitle } from "@/components/student/student-profile-types";
+import { CACHE_TAG_HOME_TESTIMONIALS } from "@/lib/cache-tags";
 import { prisma } from "@/lib/prisma";
 
 export type HomeTestimonialCard = {
@@ -57,7 +59,7 @@ type ReviewRow = {
  * Uses `$queryRaw` so the home page works even if `prisma generate` was skipped locally
  * (Windows dev servers can lock the Prisma engine and block regeneration).
  */
-export async function getHomeTestimonials(limit = 16): Promise<HomeTestimonialCard[]> {
+async function fetchHomeTestimonialsUncached(limit: number): Promise<HomeTestimonialCard[]> {
   try {
     const rows = await prisma.$queryRaw<ReviewRow[]>(Prisma.sql`
       SELECT
@@ -97,4 +99,13 @@ export async function getHomeTestimonials(limit = 16): Promise<HomeTestimonialCa
     console.error("[getHomeTestimonials]", e);
     return [];
   }
+}
+
+/** Cached across requests; invalidated via {@link CACHE_TAG_HOME_TESTIMONIALS} on new session reviews. */
+export async function getHomeTestimonials(limit = 16): Promise<HomeTestimonialCard[]> {
+  return unstable_cache(
+    async () => fetchHomeTestimonialsUncached(limit),
+    ["home-testimonials", String(limit)],
+    { revalidate: 120, tags: [CACHE_TAG_HOME_TESTIMONIALS] },
+  )();
 }

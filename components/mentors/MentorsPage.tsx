@@ -3,7 +3,6 @@
 import { motion } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { MentorCard } from "@/components/mentors/MentorCard";
 import { MentorFilterBar } from "@/components/mentors/MentorFilterBar";
@@ -27,7 +26,6 @@ const PAGE_SIZE = 10;
 type SortOrder = "default" | "name-asc" | "name-desc";
 
 export function MentorsPage({ mentors }: { mentors: Mentor[] }) {
-  const router = useRouter();
   const [q, setQ] = useState("");
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [selectedInterests, setSelectedInterests] = useState<Set<string>>(() => new Set());
@@ -48,8 +46,6 @@ export function MentorsPage({ mentors }: { mentors: Mentor[] }) {
   useEffect(() => {
     pageRef.current = page;
   }, [page]);
-  const lastTabRefreshRef = useRef(0);
-
   const scrollResultsIntoView = () => {
     requestAnimationFrame(() => {
       resultsAnchorRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -135,19 +131,6 @@ export function MentorsPage({ mentors }: { mentors: Mentor[] }) {
 
   const safePage = Math.min(page, totalPages);
 
-  /** Fresh mentor rows when returning to the tab (throttled — server still renders with `force-dynamic`). */
-  useEffect(() => {
-    const onVis = () => {
-      if (document.visibilityState !== "visible") return;
-      const now = Date.now();
-      if (now - lastTabRefreshRef.current < 45_000) return;
-      lastTabRefreshRef.current = now;
-      router.refresh();
-    };
-    document.addEventListener("visibilitychange", onVis);
-    return () => document.removeEventListener("visibilitychange", onVis);
-  }, [router]);
-
   const slice = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
 
   return (
@@ -229,12 +212,14 @@ export function MentorsPage({ mentors }: { mentors: Mentor[] }) {
             >
               <Link
                 href="/mentors#results"
+                prefetch
                 className="w-full rounded-full bg-primary px-8 py-3 text-center text-[15px] font-semibold tracking-wide text-white shadow-md transition-all hover:scale-[1.03] hover:shadow-lg sm:w-auto sm:px-10 sm:py-3.5 sm:text-base"
               >
                 Find a Mentor
               </Link>
               <Link
                 href="/auth"
+                prefetch
                 className="w-full rounded-full border-2 border-primary bg-white px-8 py-3 text-center text-[15px] font-semibold tracking-wide text-primary transition-all hover:scale-[1.03] hover:bg-primary/5 sm:w-auto sm:px-10 sm:py-3.5 sm:text-base"
               >
                 Become a Mentor

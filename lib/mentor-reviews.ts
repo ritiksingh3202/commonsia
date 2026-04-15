@@ -1,6 +1,8 @@
 import { Prisma } from "@prisma/client";
+import { unstable_cache } from "next/cache";
 
 import { formatStudentSubtitle } from "@/components/student/student-profile-types";
+import { mentorReviewsTag } from "@/lib/cache-tags";
 import { prisma } from "@/lib/prisma";
 
 export type PublicMentorReview = {
@@ -53,10 +55,7 @@ type ReviewRow = {
   major: string | null;
 };
 
-/**
- * Session reviews left for a specific mentor (public profile Reviews tab).
- */
-export async function getPublicReviewsForMentor(mentorUserId: string, limit = 32): Promise<PublicMentorReview[]> {
+async function fetchPublicReviewsUncached(mentorUserId: string, limit: number): Promise<PublicMentorReview[]> {
   try {
     const rows = await prisma.$queryRaw<ReviewRow[]>(Prisma.sql`
       SELECT
@@ -96,4 +95,16 @@ export async function getPublicReviewsForMentor(mentorUserId: string, limit = 32
     console.error("[getPublicReviewsForMentor]", e);
     return [];
   }
+}
+
+/**
+ * Session reviews left for a specific mentor (public profile Reviews tab).
+ * Cached across requests; bust via {@link mentorReviewsTag} when a new review is posted.
+ */
+export async function getPublicReviewsForMentor(mentorUserId: string, limit = 32): Promise<PublicMentorReview[]> {
+  return unstable_cache(
+    async () => fetchPublicReviewsUncached(mentorUserId, limit),
+    ["mentor-public-reviews", mentorUserId, String(limit)],
+    { revalidate: 120, tags: [mentorReviewsTag(mentorUserId)] },
+  )();
 }

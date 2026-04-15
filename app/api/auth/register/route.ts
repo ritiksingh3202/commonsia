@@ -1,6 +1,7 @@
 import bcrypt from "bcryptjs";
 import { NextResponse } from "next/server";
 
+import { invalidatePublicMentorsList } from "@/lib/redis-cache";
 import { prisma } from "@/lib/prisma";
 
 const MIN_PASSWORD = 8;
@@ -60,6 +61,10 @@ export async function POST(req: Request) {
       role,
     },
   });
+
+  if (role === "mentor") {
+    invalidatePublicMentorsList();
+  }
 
   return NextResponse.json({ ok: true });
 }

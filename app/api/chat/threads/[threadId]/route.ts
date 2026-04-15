@@ -46,7 +46,11 @@ export async function PATCH(req: Request, ctx: RouteCtx) {
   const nextStatus = action === "accept" ? CHAT_ACTIVE : CHAT_DECLINED;
   await prisma.chatThread.update({
     where: { id: threadId },
-    data: { status: nextStatus, updatedAt: new Date() },
+    data: {
+      status: nextStatus,
+      updatedAt: new Date(),
+      mentorAcceptedAt: action === "accept" ? new Date() : null,
+    },
   });
 
   invalidateChatThreadsForParticipants(thread.studentId, thread.mentorId);

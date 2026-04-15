@@ -1,5 +1,10 @@
 import { auth } from "@/auth";
-import { invalidateStudentDashboard } from "@/lib/redis-cache";
+import {
+  delKeys,
+  invalidatePublicMentorsList,
+  invalidateStudentDashboard,
+  mentorMonthAvailabilityKeysForMentor,
+} from "@/lib/redis-cache";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 
@@ -86,6 +91,17 @@ export async function PATCH(req: Request) {
   });
 
   invalidateStudentDashboard(session.user.id);
+  if (body.mentorAvailabilityJson !== undefined) {
+    void delKeys(mentorMonthAvailabilityKeysForMentor(session.user.id));
+  }
+
+  const roleAfter = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { role: true },
+  });
+  if (roleAfter?.role === "mentor") {
+    invalidatePublicMentorsList();
+  }
 
   return NextResponse.json({ ok: true });
 }

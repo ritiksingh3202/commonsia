@@ -1,5 +1,6 @@
 import { MENTOR_PAGE_HERO_ASSETS } from "@/lib/mentor-page-assets";
 import { formatNextAvailableSlotLine } from "@/lib/mentor-next-slot";
+import { CacheKeys, CacheTtl, withJsonCache } from "@/lib/redis-cache";
 import { prisma } from "@/lib/prisma";
 
 /** Public mentor shape for directory cards + profile pages. */
@@ -31,7 +32,8 @@ export type Mentor = {
   yearsExperience: string | null;
 };
 
-const mentorSelect = {
+/** Full row for a single mentor profile (includes banner — can be large). */
+const mentorSelectFull = {
   id: true,
   name: true,
   email: true,
@@ -49,6 +51,27 @@ const mentorSelect = {
   bannerImageUrl: true,
 } as const;
 
+/**
+ * Directory / “similar” list: omit `bannerImageUrl` (often multi‑MB data URLs).
+ * Keeps Next.js + Redis payloads small; profile page loads banner via {@link getPublicMentorById}.
+ */
+const mentorSelectDirectory = {
+  id: true,
+  name: true,
+  email: true,
+  image: true,
+  bio: true,
+  mentorTitle: true,
+  mentorCompany: true,
+  mentorYearsExperience: true,
+  mentorExpertise: true,
+  mentorMentorshipFocus: true,
+  mentorCertifications: true,
+  mentorAvailabilityJson: true,
+  mentorOnboardingComplete: true,
+  linkedinUrl: true,
+} as const;
+
 type MentorRow = {
   id: string;
   name: string | null;
@@ -64,8 +87,19 @@ type MentorRow = {
   mentorAvailabilityJson: unknown;
   mentorOnboardingComplete: boolean;
   linkedinUrl: string | null;
-  bannerImageUrl: string | null;
+  bannerImageUrl?: string | null;
 };
+
+/** Avoid shipping huge base64 avatars on the `/mentors` grid (cards use a placeholder instead). */
+export const MAX_AVATAR_DATA_URL_CHARS = 16_000;
+
+/** Drop oversized `data:` blobs before JSON APIs or client props (keeps payloads small). */
+export function trimLargeDataUrlField(value: string | null | undefined): string | null {
+  const v = value?.trim();
+  if (!v) return null;
+  if (v.startsWith("data:") && v.length > MAX_AVATAR_DATA_URL_CHARS) return null;
+  return v;
+}
 
 function displayName(name: string | null, email: string | null): string {
   const n = name?.trim();
@@ -128,17 +162,26 @@ function buildSummary(u: MentorRow): string {
   return "";
 }
 
-function mapRowToMentor(u: MentorRow): Mentor {
+function mapRowToMentor(
+  u: MentorRow,
+  opts?: { /** Profile page: keep large data-URL avatars; list/grid strips them to save cache size. */
+    allowLargeDataUrlAvatar?: boolean },
+): Mentor {
+  const rawImg = u.image?.trim() ?? "";
+  const listSafeImg =
+    opts?.allowLargeDataUrlAvatar || !rawImg.startsWith("data:") || rawImg.length <= MAX_AVATAR_DATA_URL_CHARS
+      ? rawImg
+      : "";
   const tags = expertiseTags(u.mentorExpertise);
   const slot = formatNextAvailableSlotLine(u.mentorAvailabilityJson);
-  const photo = hasRealProfilePhoto(u.image);
+  const photo = hasRealProfilePhoto(listSafeImg || null);
   return {
     id: u.id,
     name: displayName(u.name, u.email),
     role: formatRoleLine(u.mentorTitle, u.mentorCompany),
     tags,
     slot,
-    image: heroImage(u.image),
+    image: heroImage(listSafeImg || null),
     hasProfilePhoto: photo,
     linkedUserId: u.id,
     summary: buildSummary(u),
@@ -151,22 +194,33 @@ function mapRowToMentor(u: MentorRow): Mentor {
   };
 }
 
-export async function getPublicMentors(): Promise<Mentor[]> {
+async function fetchPublicMentorsFromDb(): Promise<Mentor[]> {
   const rows = await prisma.user.findMany({
     where: { role: "mentor" },
     orderBy: [{ mentorOnboardingComplete: "desc" }, { name: "asc" }],
-    select: mentorSelect,
+    select: mentorSelectDirectory,
   });
-  return rows.map((u) => mapRowToMentor(u as MentorRow));
+  return rows.map((u) => mapRowToMentor({ ...(u as MentorRow), bannerImageUrl: null }));
+}
+
+/** Cached in Redis (not Next data cache) so large mentor sets stay under Next’s 2MB limit. */
+export async function getPublicMentors(): Promise<Mentor[]> {
+  const key = CacheKeys.publicMentorsList();
+  const t0 = Date.now();
+  const list = await withJsonCache(key, CacheTtl.publicMentorsList, fetchPublicMentorsFromDb);
+  if (process.env.NODE_ENV === "development") {
+    console.info(`[perf] getPublicMentors ${Date.now() - t0}ms (${list.length} mentors)`);
+  }
+  return list;
 }
 
 export async function getPublicMentorById(id: string): Promise<Mentor | null> {
   const u = await prisma.user.findFirst({
     where: { id, role: "mentor" },
-    select: mentorSelect,
+    select: mentorSelectFull,
   });
   if (!u) return null;
-  return mapRowToMentor(u as MentorRow);
+  return mapRowToMentor(u as MentorRow, { allowLargeDataUrlAvatar: true });
 }
 
 /**
@@ -181,9 +235,10 @@ export async function getSimilarMentorsForProfile(
 ): Promise<Mentor[]> {
   const rows = await prisma.user.findMany({
     where: { role: "mentor", NOT: { id: excludeId } },
-    select: mentorSelect,
+    orderBy: [{ mentorOnboardingComplete: "desc" }, { name: "asc" }],
+    select: mentorSelectDirectory,
   });
-  const list = rows.map((u) => mapRowToMentor(u as MentorRow));
+  const list = rows.map((u) => mapRowToMentor({ ...(u as MentorRow), bannerImageUrl: null }));
 
   const studentPhrases: string[] = [];
   if (studentUserId) {
@@ -268,9 +323,9 @@ export async function getSimilarMentorsForPublic(excludeId: string, take = 6): P
       where: { role: "mentor", NOT: { id: excludeId } },
       orderBy: [{ mentorOnboardingComplete: "desc" }, { name: "asc" }],
       take,
-      select: mentorSelect,
+      select: mentorSelectDirectory,
     });
-    return rows.map((u) => mapRowToMentor(u as MentorRow));
+    return rows.map((u) => mapRowToMentor({ ...(u as MentorRow), bannerImageUrl: null }));
   }
   return getSimilarMentorsForProfile(excludeId, anchor, undefined, take);
 }

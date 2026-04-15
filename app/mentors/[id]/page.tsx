@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { auth } from "@/auth";
-import { MarketingShell } from "@/components/layout/MarketingShell";
 import { PublicMentorProfile } from "@/components/mentors/PublicMentorProfile";
 import { getPublicMentorById, getSimilarMentorsForProfile } from "@/lib/mentor-directory";
 import { getPublicReviewsForMentor } from "@/lib/mentor-reviews";
@@ -19,7 +18,7 @@ function initialsFromName(name: string): string {
 
 type Props = { params: Promise<{ id: string }> };
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
@@ -105,16 +104,14 @@ export default async function PublicMentorPage({ params }: Props) {
   }
 
   return (
-    <MarketingShell>
-      <PublicMentorProfile
-        mentor={mentor}
-        mentorReviews={mentorReviews}
-        similarMentors={similarMentors}
-        similarMentorsPersonalized={viewerRole === "student"}
-        messageHref={messageHref}
-        scheduleHref={scheduleHref}
-        viewerPortfolio={viewerPortfolio}
-      />
-    </MarketingShell>
+    <PublicMentorProfile
+      mentor={mentor}
+      mentorReviews={mentorReviews}
+      similarMentors={similarMentors}
+      similarMentorsPersonalized={viewerRole === "student"}
+      messageHref={messageHref}
+      scheduleHref={scheduleHref}
+      viewerPortfolio={viewerPortfolio}
+    />
   );
 }

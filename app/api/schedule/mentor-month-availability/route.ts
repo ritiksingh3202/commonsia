@@ -4,6 +4,7 @@ import { calendarDateToIso, getBookableSlotSegmentsForDate } from "@/lib/booking
 import { fetchPrimaryCalendarBusy, intervalOverlapsBusy } from "@/lib/google-calendar-busy";
 import { getGoogleCalendarOAuth2Client } from "@/lib/google-calendar-oauth-client";
 import { prisma } from "@/lib/prisma";
+import { CacheKeys, CacheTtl, SCHEDULE_API_CACHE_CONTROL, withJsonCache } from "@/lib/redis-cache";
 
 function daysInMonth(year: number, monthIndex: number): number {
   return new Date(year, monthIndex + 1, 0).getDate();
@@ -12,6 +13,8 @@ function daysInMonth(year: number, monthIndex: number): number {
 /**
  * Returns which days in a month have at least one bookable 30-min segment.
  * Used to disable/fade unavailable dates in the booking calendar (Calendly-like UX).
+ *
+ * Redis: read-through cache **includes** Prisma + Google so a hit skips both.
  */
 export async function GET(req: Request) {
   const url = new URL(req.url);
@@ -26,48 +29,58 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "Invalid month." }, { status: 400 });
   }
 
-  const user = await prisma.user.findUnique({
-    where: { id: mentorUserId },
-    select: { role: true, mentorAvailabilityJson: true },
+  const cacheKey = CacheKeys.mentorMonthAvailability(mentorUserId, year, month);
+  const body = await withJsonCache(cacheKey, CacheTtl.mentorMonthAvailability, async () => {
+    const user = await prisma.user.findUnique({
+      where: { id: mentorUserId },
+      select: { role: true, mentorAvailabilityJson: true },
+    });
+
+    if (!user || user.role !== "mentor") {
+      return null;
+    }
+
+    const now = new Date();
+    const dim = daysInMonth(year, month);
+
+    const oauth2 = await getGoogleCalendarOAuth2Client(mentorUserId);
+    let busy: { start: Date; end: Date }[] | null = null;
+    if (oauth2) {
+      const isoStart = calendarDateToIso(year, month, 1);
+      const isoEnd = calendarDateToIso(year, month, dim);
+      const timeMin = new Date(`${isoStart}T00:00:00+05:30`);
+      const timeMax = new Date(`${isoEnd}T23:59:59.999+05:30`);
+      try {
+        busy = await fetchPrimaryCalendarBusy(oauth2, timeMin, timeMax);
+      } catch (e) {
+        console.error("Google Calendar freebusy.query failed (month):", e);
+        busy = null;
+      }
+    }
+
+    const availableDays: number[] = [];
+    for (let d = 1; d <= dim; d++) {
+      let slots = getBookableSlotSegmentsForDate(user.mentorAvailabilityJson, year, month, d, now);
+      if (busy && slots.length > 0) {
+        slots = slots.filter((s) => !intervalOverlapsBusy(new Date(s.startISO), new Date(s.endISO), busy!));
+      }
+      if (slots.length > 0) availableDays.push(d);
+    }
+
+    return {
+      ok: true as const,
+      availableDays,
+      fetchedAt: now.toISOString(),
+    };
   });
 
-  if (!user || user.role !== "mentor") {
+  if (!body) {
     return NextResponse.json({ error: "Mentor not found." }, { status: 404 });
   }
 
-  const now = new Date();
-  const dim = daysInMonth(year, month);
-
-  const oauth2 = await getGoogleCalendarOAuth2Client(mentorUserId);
-  let busy: { start: Date; end: Date }[] | null = null;
-  if (oauth2) {
-    const isoStart = calendarDateToIso(year, month, 1);
-    const isoEnd = calendarDateToIso(year, month, dim);
-    const timeMin = new Date(`${isoStart}T00:00:00+05:30`);
-    const timeMax = new Date(`${isoEnd}T23:59:59.999+05:30`);
-    try {
-      busy = await fetchPrimaryCalendarBusy(oauth2, timeMin, timeMax);
-    } catch (e) {
-      console.error("Google Calendar freebusy.query failed (month):", e);
-      busy = null;
-    }
-  }
-
-  const availableDays: number[] = [];
-  for (let day = 1; day <= dim; day++) {
-    let slots = getBookableSlotSegmentsForDate(user.mentorAvailabilityJson, year, month, day, now);
-    if (busy && slots.length > 0) {
-      slots = slots.filter((s) => !intervalOverlapsBusy(new Date(s.startISO), new Date(s.endISO), busy!));
-    }
-    if (slots.length > 0) availableDays.push(day);
-  }
-
-  return NextResponse.json({
-    ok: true,
-    availableDays,
-    fetchedAt: now.toISOString(),
+  return NextResponse.json(body, {
+    headers: { "Cache-Control": SCHEDULE_API_CACHE_CONTROL },
   });
 }
 
 export const runtime = "nodejs";
-

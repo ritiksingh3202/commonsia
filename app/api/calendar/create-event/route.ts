@@ -12,7 +12,15 @@ import { getGoogleCalendarOAuth2Client } from "@/lib/google-calendar-oauth-clien
 import { sendBookingConfirmationEmails } from "@/lib/booking-emails";
 import { createMentoringBookingRow } from "@/lib/mentoring-booking-access";
 import { prisma } from "@/lib/prisma";
-import { delKeys, invalidateAfterBooking, slotCacheKeysAround } from "@/lib/redis-cache";
+import {
+  CacheKeys,
+  delKeys,
+  invalidateAfterBooking,
+  mentorMonthAvailabilityKeysAround,
+  releaseSlotBookingLock,
+  slotCacheKeysAround,
+  tryAcquireSlotBookingLock,
+} from "@/lib/redis-cache";
 
 const TZ = defaultCalendarTimeZone();
 
@@ -132,6 +140,22 @@ export async function POST(req: Request) {
     }
   }
 
+  /** Serialize mentor bookings for the same slot (before Calendar + DB writes). */
+  let mentorSlotLockKey: string | null = null;
+  if (mentor) {
+    mentorSlotLockKey = CacheKeys.bookingSlotLock(mentor.id, start.toISOString());
+    if (!(await tryAcquireSlotBookingLock(mentorSlotLockKey, 60))) {
+      return NextResponse.json(
+        {
+          error:
+            "This time was just claimed. Refresh available slots and pick another time.",
+        },
+        { status: 409 },
+      );
+    }
+  }
+
+  try {
   const eventTitle =
     title?.trim() ||
     (mentor?.name ? `Commonsia: Session with ${mentor.name}` : "Commonsia mentoring session");
@@ -245,8 +269,8 @@ export async function POST(req: Request) {
     });
 
     invalidateAfterBooking(booker.id, mentor.id);
-    const slotDayKeys = slotCacheKeysAround(mentor.id, start);
-    if (slotDayKeys.length) void delKeys(slotDayKeys);
+    const bustKeys = [...slotCacheKeysAround(mentor.id, start), ...mentorMonthAvailabilityKeysAround(mentor.id, start)];
+    if (bustKeys.length) void delKeys(bustKeys);
   }
 
   if (!calendarEvent) {
@@ -271,6 +295,9 @@ export async function POST(req: Request) {
     htmlLink: (calendarEvent as { htmlLink?: string }).htmlLink,
     meetLink,
   });
+  } finally {
+    if (mentorSlotLockKey) releaseSlotBookingLock(mentorSlotLockKey);
+  }
 }
 
 export const runtime = "nodejs";

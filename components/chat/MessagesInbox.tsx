@@ -75,9 +75,12 @@ function formatMsgTime(iso: string): string {
 
 export function MessagesInbox({
   initialPeerId,
+  initialThreadId,
   backHref,
 }: {
   initialPeerId: string | null;
+  /** Deep-link from notifications: `/messages?thread=…` */
+  initialThreadId?: string | null;
   backHref: string;
 }) {
   const [threads, setThreads] = useState<ThreadListItem[]>([]);
@@ -215,6 +218,16 @@ export function MessagesInbox({
       }
     }
   }, []);
+
+  useEffect(() => {
+    const tid = initialThreadId?.trim();
+    if (!tid) return;
+    if (loadingList) return;
+    const exists = threads.some((t) => t.id === tid);
+    if (!exists) return;
+    setSelectedId(tid);
+    setMobileChat(true);
+  }, [initialThreadId, threads, loadingList]);
 
   useEffect(() => {
     if (!selectedId) {
