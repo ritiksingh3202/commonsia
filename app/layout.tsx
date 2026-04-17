@@ -16,15 +16,35 @@ const abeeZee = ABeeZee({
   weight: ["400"],
 });
 
+/** Canonical origin for metadata (Open Graph, `icons` absolutization). Match production `AUTH_URL` / live host. */
+function metadataBaseUrl(): URL {
+  const raw = process.env.AUTH_URL?.trim() || process.env.NEXT_PUBLIC_SITE_URL?.trim();
+  if (raw) {
+    try {
+      return new URL(raw);
+    } catch {
+      /* fall through */
+    }
+  }
+  if (process.env.VERCEL_URL?.trim()) {
+    const host = process.env.VERCEL_URL.trim().replace(/^https?:\/\//, "");
+    return new URL(`https://${host}`);
+  }
+  return new URL("http://localhost:3000");
+}
+
 export const metadata: Metadata = {
+  metadataBase: metadataBaseUrl(),
   title: "Commonsia",
   description:
     "Connect with mentors, discuss design, and grow with the architecture student community.",
   icons: {
     icon: [
-      { url: "/favicon.png", type: "image/png" },
+      { url: "/favicon.ico", sizes: "48x48" },
+      { url: "/favicon.png", type: "image/png", sizes: "32x32" },
       { url: "/favicon.svg", type: "image/svg+xml" },
     ],
+    shortcut: "/favicon.png",
     apple: "/favicon.png",
   },
 };

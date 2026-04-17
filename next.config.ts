@@ -2,6 +2,13 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  /**
+   * Browsers and Google request `/favicon.ico` by convention. We ship `public/favicon.png` only; without this,
+   * some hosts surface a generic icon. Redirect keeps one source of truth (your PNG).
+   */
+  async redirects() {
+    return [{ source: "/favicon.ico", destination: "/favicon.png", permanent: true }];
+  },
   /** In dev, default cover is replaced often — avoid long-lived browser / optimizer caches on this file. */
   ...(process.env.NODE_ENV === "development"
     ? {
