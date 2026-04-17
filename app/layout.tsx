@@ -21,8 +21,11 @@ export const metadata: Metadata = {
   description:
     "Connect with mentors, discuss design, and grow with the architecture student community.",
   icons: {
-    icon: [{ url: "/favicon.svg", type: "image/svg+xml" }],
-    apple: "/favicon.svg",
+    icon: [
+      { url: "/favicon.png", type: "image/png" },
+      { url: "/favicon.svg", type: "image/svg+xml" },
+    ],
+    apple: "/favicon.png",
   },
 };
 

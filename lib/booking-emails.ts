@@ -1,7 +1,13 @@
 /**
  * Optional transactional emails when a session is booked.
- * Google Calendar already emails **guests** on the event; the organizer usually does not get a separate invite.
- * Set RESEND_API_KEY (+ RESEND_FROM_EMAIL) to also email both parties from Commonsia.
+ *
+ * **How it works:** When `RESEND_API_KEY` is set (and `RESEND_FROM_EMAIL` uses a
+ * [verified domain sender](https://resend.com/docs/dashboard/domains/introduction)), Commonsia
+ * sends one HTML message **per recipient** (student + mentor when emails differ) via
+ * [Resend’s API](https://resend.com/docs/api-reference/emails/send-email). That is independent
+ * of Google Calendar: Calendar may still send its own invites when the event is created on a
+ * connected account. Without `RESEND_API_KEY`, this function returns immediately and only
+ * Calendar notifications apply (if any).
  */
 export async function sendBookingConfirmationEmails(opts: {
   studentEmail: string;
@@ -14,7 +20,12 @@ export async function sendBookingConfirmationEmails(opts: {
   calendarSynced: boolean;
 }): Promise<void> {
   const apiKey = process.env.RESEND_API_KEY?.trim();
-  if (!apiKey) return;
+  if (!apiKey) {
+    console.info(
+      "[booking] RESEND_API_KEY not set — skipping Commonsia confirmation emails to student and mentor. Set RESEND_API_KEY and RESEND_FROM_EMAIL (verified domain) to enable.",
+    );
+    return;
+  }
 
   const from =
     process.env.RESEND_FROM_EMAIL?.trim() ||

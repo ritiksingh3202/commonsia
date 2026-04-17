@@ -53,7 +53,7 @@ export async function PATCH(req: Request, ctx: RouteCtx) {
     },
   });
 
-  invalidateChatThreadsForParticipants(thread.studentId, thread.mentorId);
+  await invalidateChatThreadsForParticipants(thread.studentId, thread.mentorId);
 
   return NextResponse.json({ ok: true, status: nextStatus });
 }

@@ -113,7 +113,7 @@ export async function POST(req: Request, ctx: RouteCtx) {
     data: { updatedAt: new Date() },
   });
 
-  invalidateChatThreadsForParticipants(thread.studentId, thread.mentorId);
+  await invalidateChatThreadsForParticipants(thread.studentId, thread.mentorId);
 
   return NextResponse.json({
     message: {

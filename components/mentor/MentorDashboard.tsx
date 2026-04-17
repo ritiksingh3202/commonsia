@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import type { MentorDashboardUser } from "@/components/mentor/mentor-dashboard-types";
+import { normalizeMentorYearsBand } from "@/components/mentor/mentor-setup-constants";
 import { MentorProfileHero } from "@/components/mentor/MentorProfileHero";
 import { profileSkillsSectionTitle } from "@/components/profile/profile-hero-classes";
 import {
@@ -39,7 +40,8 @@ function buildExperienceBullets(user: MentorDashboardUser): string[] {
   const bullets: string[] = [];
   const title = user.mentorTitle?.trim();
   const company = user.mentorCompany?.trim();
-  const years = user.mentorYearsExperience?.trim();
+  const years =
+    normalizeMentorYearsBand(user.mentorYearsExperience) || user.mentorYearsExperience?.trim() || "";
   const line = [title, company].filter(Boolean).join(", ");
   if (line && years) bullets.push(`${line} (${years})`);
   else if (line) bullets.push(line);

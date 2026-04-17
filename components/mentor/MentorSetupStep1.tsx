@@ -5,7 +5,11 @@ import { useRouter } from "next/navigation";
 
 import { SetupGoogleCalendarConnect } from "@/components/setup/SetupGoogleCalendarConnect";
 import { SetupLinkedInNotice } from "@/components/setup/SetupLinkedInNotice";
-import { MENTOR_EXPERTISE_OTHER, MENTOR_YEARS_OPTIONS } from "@/components/mentor/mentor-setup-constants";
+import {
+  MENTOR_EXPERTISE_OTHER,
+  MENTOR_YEARS_OPTIONS,
+  normalizeMentorYearsBand,
+} from "@/components/mentor/mentor-setup-constants";
 import {
   mentorExpertiseListFromSelection,
   mentorExpertiseStateFromServer,
@@ -51,17 +55,18 @@ export function MentorSetupStep1({
 
   const [title, setTitle] = useState(initial?.mentorTitle ?? "");
   const [company, setCompany] = useState(initial?.mentorCompany ?? "");
-  const [years, setYears] = useState(initial?.mentorYearsExperience ?? "");
+  const [years, setYears] = useState(() => normalizeMentorYearsBand(initial?.mentorYearsExperience ?? ""));
   const [expertise, setExpertise] = useState<Set<string>>(() => new Set(expertiseDerived.sel));
   const [otherExpertise, setOtherExpertise] = useState(expertiseDerived.other);
 
   useEffect(() => {
     const d = expertiseFromSnapshot(initial?.mentorExpertise);
-    /* eslint-disable react-hooks/set-state-in-effect -- reset local form when saved mentor expertise snapshot changes */
+    /* eslint-disable react-hooks/set-state-in-effect -- reset local form when saved mentor snapshot changes */
     setExpertise(new Set(d.sel));
     setOtherExpertise(d.other);
+    setYears(normalizeMentorYearsBand(initial?.mentorYearsExperience ?? ""));
     /* eslint-enable react-hooks/set-state-in-effect */
-  }, [initial?.mentorExpertise]);
+  }, [initial?.mentorExpertise, initial?.mentorYearsExperience]);
 
   const toggleExpertise = (opt: string) => {
     const next = new Set(expertise);

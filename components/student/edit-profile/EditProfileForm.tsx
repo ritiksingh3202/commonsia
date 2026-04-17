@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
@@ -20,6 +19,7 @@ import {
   architectureOthersSectionTitle,
   architecturePillBase,
 } from "@/components/shared/ArchitectureGroupedPills";
+import { MandatorySetupReminderModal } from "@/components/setup/MandatorySetupReminderModal";
 import { SetupGoogleCalendarConnect } from "@/components/setup/SetupGoogleCalendarConnect";
 import { interestStateFromServer, interestsPayloadFromSelection } from "@/components/student/student-interest-sync";
 
@@ -176,6 +176,7 @@ export function EditProfileForm({ user: initial, googleCalendarConnected }: Prop
     initial.portfolioVisibleToOthers ?? true,
   );
   const [saving, setSaving] = useState(false);
+  const [mandatoryExitOpen, setMandatoryExitOpen] = useState(false);
   const photoInputRef = useRef<HTMLInputElement>(null);
   const portfolioFileRef = useRef<HTMLInputElement>(null);
   const pickPhotoPendingRef = useRef(false);
@@ -476,6 +477,11 @@ export function EditProfileForm({ user: initial, googleCalendarConnected }: Prop
 
   return (
     <div className="mx-auto max-w-3xl px-4 pb-12 pt-6 sm:px-6 lg:px-8">
+      <MandatorySetupReminderModal
+        open={mandatoryExitOpen}
+        variant="student"
+        onDismiss={() => setMandatoryExitOpen(false)}
+      />
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="font-heading text-2xl font-semibold tracking-tight text-[#0a0a0a] sm:text-[1.65rem]">
@@ -496,12 +502,13 @@ export function EditProfileForm({ user: initial, googleCalendarConnected }: Prop
             )}
           </p>
         </div>
-        <Link
-          href="/student"
-          className="shrink-0 text-[13px] font-medium text-[#4b5563] transition hover:text-primary"
+        <button
+          type="button"
+          onClick={() => setMandatoryExitOpen(true)}
+          className="shrink-0 text-left text-[13px] font-medium text-[#4b5563] transition hover:text-primary"
         >
           ← Back to Dashboard
-        </Link>
+        </button>
       </div>
 
       <div className="mb-8 rounded-xl bg-[#ececef] p-1.5 ring-1 ring-black/[0.04] sm:p-2">
@@ -850,7 +857,7 @@ export function EditProfileForm({ user: initial, googleCalendarConnected }: Prop
       <div className="mt-6 flex flex-col-reverse justify-end gap-3 sm:flex-row">
         <button
           type="button"
-          onClick={() => router.push("/student")}
+          onClick={() => setMandatoryExitOpen(true)}
           className="rounded-lg border border-black/[0.12] bg-white px-5 py-2.5 text-[13px] font-medium text-[#0a0a0a] hover:bg-neutral-50"
         >
           Cancel

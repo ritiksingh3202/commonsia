@@ -116,6 +116,22 @@ export function weeklyRowsFromSlotMap(
   });
 }
 
+/** Build `YYYY-MM-DD` for a calendar cell (month is 0-based, matching `Date`). */
+export function isoFromCalendarYmd(year: number, monthIndex0: number, day: number): string {
+  const m = String(monthIndex0 + 1).padStart(2, "0");
+  const d = String(day).padStart(2, "0");
+  return `${year}-${m}-${d}`;
+}
+
+/** Local weekday index 0=Sun … 6=Sat for an ISO date string. */
+export function jsWeekdayFromIsoLocal(iso: string): number {
+  const parts = iso.split("-").map(Number);
+  const y = parts[0]!;
+  const mo = parts[1]!;
+  const d = parts[2]!;
+  return new Date(y, mo - 1, d).getDay();
+}
+
 export function weeklySlotsFromRows(rows: DayIntervalRow[]): Record<WeekdayKey, string[]> {
   const out: Record<WeekdayKey, string[]> = {
     mon: [],

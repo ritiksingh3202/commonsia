@@ -6,7 +6,7 @@
 export function SetupLinkedInNotice({ variant }: { variant: "student" | "mentor" }) {
   return (
     <div
-      className="mb-4 rounded-lg border border-amber-200/90 bg-amber-50/90 px-3 py-2.5 text-[12px] leading-snug text-amber-950 sm:text-[13px]"
+      className="mb-4 rounded-lg border border-amber-200/90 bg-amber-50/90 px-3 py-2.5 text-[12px] leading-relaxed text-amber-950 sm:px-3.5 sm:py-3 sm:text-[13px] sm:leading-snug"
       role="note"
     >
       <p className="font-semibold text-amber-900">Signed in with LinkedIn</p>

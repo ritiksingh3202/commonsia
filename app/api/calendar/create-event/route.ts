@@ -257,7 +257,7 @@ export async function POST(req: Request) {
       console.error("createMentoringBookingRow", e);
     }
 
-    void sendBookingConfirmationEmails({
+    await sendBookingConfirmationEmails({
       studentEmail: booker.email,
       studentName: booker.name,
       mentorEmail: mentor.email,

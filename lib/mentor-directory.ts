@@ -1,3 +1,4 @@
+import { normalizeMentorYearsBand } from "@/components/mentor/mentor-setup-constants";
 import { MENTOR_PAGE_HERO_ASSETS } from "@/lib/mentor-page-assets";
 import { formatNextAvailableSlotLine } from "@/lib/mentor-next-slot";
 import { CacheKeys, CacheTtl, withJsonCache } from "@/lib/redis-cache";
@@ -28,7 +29,7 @@ export type Mentor = {
   bannerImageUrl: string | null;
   /** Whether mentor finished onboarding (useful for directory filters). */
   onboardingComplete: boolean;
-  /** Saved years band from mentor profile (e.g. `0–2 years`). */
+  /** Saved years band from mentor profile (e.g. `0–2 years`, `2–5 years`). */
   yearsExperience: string | null;
 };
 
@@ -134,7 +135,8 @@ function buildExperienceLines(u: MentorRow): string[] {
   const bullets: string[] = [];
   const title = u.mentorTitle?.trim();
   const company = u.mentorCompany?.trim();
-  const years = u.mentorYearsExperience?.trim();
+  const years =
+    normalizeMentorYearsBand(u.mentorYearsExperience) || u.mentorYearsExperience?.trim() || "";
   const line = [title, company].filter(Boolean).join(", ");
   if (line && years) bullets.push(`${line} (${years})`);
   else if (line) bullets.push(line);
@@ -190,7 +192,8 @@ function mapRowToMentor(
     certifications: u.mentorCertifications?.trim() || null,
     bannerImageUrl: u.bannerImageUrl?.trim() || null,
     onboardingComplete: u.mentorOnboardingComplete,
-    yearsExperience: u.mentorYearsExperience?.trim() || null,
+    yearsExperience:
+      normalizeMentorYearsBand(u.mentorYearsExperience) || u.mentorYearsExperience?.trim() || null,
   };
 }
 

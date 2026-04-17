@@ -20,8 +20,11 @@ import {
   WEEKDAY_KEYS,
 } from "@/components/mentor/mentor-setup-constants";
 import { MentorSchedulePanel } from "@/components/mentor/MentorSchedulePanel";
+import { MandatorySetupReminderModal } from "@/components/setup/MandatorySetupReminderModal";
 import {
   compactRangesFromLabels,
+  isoFromCalendarYmd,
+  jsWeekdayFromIsoLocal,
   labelsFromCompactRanges,
   type DayIntervalRow,
   scheduleGridSlotLabels,
@@ -30,7 +33,7 @@ import {
   weeklySlotsFromRows,
 } from "@/lib/mentor-availability-slots";
 
-type TabId = "automation" | "weekly" | "sessions" | "specific";
+type TabId = "weekly" | "specific";
 
 type OverrideRow = {
   id: string;
@@ -146,6 +149,12 @@ function primarySessionDuration(templates: SessionTemplateRow[]): 15 | 30 | 45 |
   return allowed.has(d) ? (d as 15 | 30 | 45 | 60 | 90) : 60;
 }
 
+/** Session templates are not edited on this screen; fall back to defaults if data is empty. */
+function sessionTemplatesForPayload(templates: SessionTemplateRow[]): SessionTemplateRow[] {
+  if (templates.some((t) => t.enabled && t.name.trim().length > 0)) return templates;
+  return defaultSessionTemplates();
+}
+
 function overridesFromAv(av: MentorAvailabilityJson): OverrideRow[] {
   const rows: OverrideRow[] = [];
   let i = 0;
@@ -209,7 +218,7 @@ export function MentorAvailabilityForm({
   const searchParams = useSearchParams();
   const base = useMemo(() => mergeAvailability(initialJson), [initialJson]);
 
-  const [tab, setTab] = useState<TabId>("automation");
+  const [tab, setTab] = useState<TabId>("weekly");
   const [weeklyRows, setWeeklyRows] = useState<DayIntervalRow[]>(() => weeklyRowsFromSlotMap(base.weeklySlots));
   const [sessionTemplates, setSessionTemplates] = useState<SessionTemplateRow[]>(
     () => (base.sessionTemplates?.length ? base.sessionTemplates : defaultSessionTemplates()),
@@ -219,9 +228,6 @@ export function MentorAvailabilityForm({
     return r.length ? r : [];
   });
 
-  const [smartAutomationEnabled, setSmartAutomationEnabled] = useState(
-    () => base.smartAutomationEnabled ?? true,
-  );
   const [maxSessionsPerWeek, setMaxSessionsPerWeek] = useState(
     () => String(base.maxSessionsPerWeek ?? 2),
   );
@@ -247,6 +253,7 @@ export function MentorAvailabilityForm({
   const [error, setError] = useState<string | null>(null);
   const [savedBanner, setSavedBanner] = useState(false);
   const [autoSaveState, setAutoSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [mandatoryExitOpen, setMandatoryExitOpen] = useState(false);
   const skipFirstAutoSave = useRef(true);
 
   useEffect(() => {
@@ -255,7 +262,6 @@ export function MentorAvailabilityForm({
     setSessionTemplates(merged.sessionTemplates?.length ? merged.sessionTemplates : defaultSessionTemplates());
     const ov = overridesFromAv(merged);
     setOverrideRows(ov.length ? ov : []);
-    setSmartAutomationEnabled(merged.smartAutomationEnabled ?? true);
     setMaxSessionsPerWeek(String(merged.maxSessionsPerWeek ?? 2));
     setAcceptingNewMentees(merged.acceptingNewMentees ?? true);
     setAvailabilityWindowKind(merged.availabilityWindowKind ?? (merged.availabilityType === "specific" ? "custom" : "weekly"));
@@ -367,13 +373,85 @@ export function MentorAvailabilityForm({
     [availabilityWindowKind, calendarView.year, calendarView.month],
   );
 
+  const monthWeekdayCandidates = useCallback(
+    (js: number) => {
+      const y = calendarView.year;
+      const mo = calendarView.month;
+      const dim = new Date(y, mo + 1, 0).getDate();
+      const out: string[] = [];
+      for (let d = 1; d <= dim; d++) {
+        const dt = new Date(y, mo, d);
+        if (dt.getDay() !== js) continue;
+        const iso = isoFromCalendarYmd(y, mo, d);
+        if (calendarSelectable(iso)) out.push(iso);
+      }
+      return out;
+    },
+    [calendarView.year, calendarView.month, calendarSelectable],
+  );
+
+  const bulkWeekdayFill = useCallback(
+    (js: number): "none" | "partial" | "full" => {
+      const c = monthWeekdayCandidates(js);
+      if (c.length === 0) return "none";
+      const n = c.filter((iso) => iso in specificDatesSlots).length;
+      if (n === 0) return "none";
+      if (n === c.length) return "full";
+      return "partial";
+    },
+    [monthWeekdayCandidates, specificDatesSlots],
+  );
+
+  const onBulkWeekdayInMonth = useCallback(
+    (js: number) => {
+      setSpecificDatesSlots((prev) => {
+        const candidates = monthWeekdayCandidates(js);
+        if (candidates.length === 0) return prev;
+        const allSelected = candidates.every((iso) => iso in prev);
+        const next = { ...prev };
+        if (allSelected) {
+          for (const iso of candidates) delete next[iso];
+        } else {
+          for (const iso of candidates) {
+            if (!(iso in next)) next[iso] = [];
+          }
+        }
+        return next;
+      });
+      setError(null);
+    },
+    [monthWeekdayCandidates],
+  );
+
+  const toggleSharedCalendarSlot = useCallback((label: string) => {
+    setSpecificDatesSlots((prev) => {
+      const dates = Object.keys(prev).sort();
+      if (dates.length < 2) return prev;
+      const w0 = jsWeekdayFromIsoLocal(dates[0]!);
+      if (!dates.every((d) => jsWeekdayFromIsoLocal(d) === w0)) return prev;
+      const allHave = dates.every((d) => (prev[d] ?? []).includes(label));
+      const next = { ...prev };
+      for (const iso of dates) {
+        const cur = [...(next[iso] ?? [])];
+        const idx = cur.indexOf(label);
+        if (allHave) {
+          if (idx >= 0) cur.splice(idx, 1);
+        } else if (idx < 0) {
+          cur.push(label);
+        }
+        next[iso] = sortSlotLabels(cur);
+      }
+      return next;
+    });
+    setError(null);
+  }, []);
+
   const autosavePayloadKey = useMemo(
     () =>
       JSON.stringify({
         weeklyRows,
         sessionTemplates,
         overrideRows,
-        smartAutomationEnabled,
         maxSessionsPerWeek,
         availabilityWindowKind,
         menteeCapacityBand,
@@ -385,7 +463,6 @@ export function MentorAvailabilityForm({
       weeklyRows,
       sessionTemplates,
       overrideRows,
-      smartAutomationEnabled,
       maxSessionsPerWeek,
       availabilityWindowKind,
       menteeCapacityBand,
@@ -396,18 +473,10 @@ export function MentorAvailabilityForm({
   );
 
   const validate = (): boolean => {
-    if (smartAutomationEnabled) {
-      const maxS = Number(maxSessionsPerWeek);
-      if (!Number.isFinite(maxS) || maxS < 1 || maxS > 50) {
-        setError("Enter max sessions per week between 1 and 50.");
-        setTab("automation");
-        return false;
-      }
-    }
-    const hasNamedSession = sessionTemplates.some((t) => t.enabled && t.name.trim().length > 0);
-    if (!hasNamedSession) {
-      setError("Add at least one enabled session type with a name.");
-      setTab("sessions");
+    const maxS = Number(maxSessionsPerWeek);
+    if (!Number.isFinite(maxS) || maxS < 1 || maxS > 50) {
+      setError("Enter max sessions per week between 1 and 50.");
+      setTab("weekly");
       return false;
     }
     if (isCalendarScheduleMode(availabilityWindowKind)) {
@@ -431,6 +500,7 @@ export function MentorAvailabilityForm({
   };
 
   const buildPayload = (): MentorAvailabilityJson => {
+    const templatesOut = sessionTemplatesForPayload(sessionTemplates);
     const blockedDates: BlockedDateEntry[] = [];
     const extraAvailabilitySlots: Record<string, string[]> = {};
     for (const row of overrideRows) {
@@ -473,14 +543,14 @@ export function MentorAvailabilityForm({
         weeklySlots: emptyWeeklySlots(),
         specificDates: sortedDates,
         specificDateSlots: cleanSlots,
-        sessionDurationMinutes: primarySessionDuration(sessionTemplates),
-        sessionTemplates,
+        sessionDurationMinutes: primarySessionDuration(templatesOut),
+        sessionTemplates: templatesOut,
         maxStudents: bandMax,
-        smartAutomationEnabled,
+        smartAutomationEnabled: true,
         maxSessionsPerWeek: maxSess,
         bufferMinutes: buf,
         bufferBetweenSessions: String(buf),
-        autoAcceptSessionRequests: smartAutomationEnabled,
+        autoAcceptSessionRequests: true,
         blockedDates,
         extraAvailabilitySlots,
         acceptingNewMentees,
@@ -497,14 +567,14 @@ export function MentorAvailabilityForm({
       weeklySlots,
       specificDates: [],
       specificDateSlots: {},
-      sessionDurationMinutes: primarySessionDuration(sessionTemplates),
-      sessionTemplates,
+      sessionDurationMinutes: primarySessionDuration(templatesOut),
+      sessionTemplates: templatesOut,
       maxStudents: bandMax,
-      smartAutomationEnabled,
+      smartAutomationEnabled: true,
       maxSessionsPerWeek: maxSess,
       bufferMinutes: buf,
       bufferBetweenSessions: String(buf),
-      autoAcceptSessionRequests: smartAutomationEnabled,
+      autoAcceptSessionRequests: true,
       blockedDates,
       extraAvailabilitySlots,
       acceptingNewMentees,
@@ -590,11 +660,15 @@ export function MentorAvailabilityForm({
     }
   };
 
-  const cancelHref = mentorOnboardingComplete ? "/mentor" : "/mentor/setup/3";
   const saveLabel = mentorOnboardingComplete ? "Save Availability Settings" : "Complete Setup & View Profile";
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-white via-orange-50/25 to-white pb-20">
+      <MandatorySetupReminderModal
+        open={mandatoryExitOpen}
+        variant="mentor"
+        onDismiss={() => setMandatoryExitOpen(false)}
+      />
       <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
         <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
@@ -603,7 +677,7 @@ export function MentorAvailabilityForm({
             </h1>
             <p className="mt-1.5 text-sm text-neutral-600 sm:text-base">
               {mentorOnboardingComplete
-                ? "Set your schedule once and let automation handle the rest"
+                ? "Set when you’re available, how many mentees you can take, and optional date overrides."
                 : "Last step: when students can book you. You can refine this anytime after setup."}
             </p>
             <p className="mt-2 text-xs text-neutral-500" aria-live="polite">
@@ -645,12 +719,10 @@ export function MentorAvailabilityForm({
         <div
           role="tablist"
           aria-label="Availability sections"
-          className="mb-6 grid grid-cols-2 gap-1 rounded-xl bg-neutral-100/90 p-1 sm:grid-cols-4"
+          className="mb-6 grid grid-cols-2 gap-1 rounded-xl bg-neutral-100/90 p-1"
         >
           {(
             [
-              ["automation", "Smart Automation *", IconZap],
-              ["sessions", "Session types *", IconClock],
               ["weekly", "Schedule *", IconCalendar],
               ["specific", "Date overrides", IconCalendarDays],
             ] as const
@@ -673,100 +745,6 @@ export function MentorAvailabilityForm({
           ))}
         </div>
 
-        {tab === "automation" ? (
-          <div className="space-y-6">
-            <div className="rounded-2xl border border-primary/20 bg-gradient-to-r from-primary/[0.06] to-primary/10 p-5 shadow-sm sm:p-7">
-              <div className="mb-5 flex items-start gap-3">
-                <IconZap className="mt-0.5 size-7 shrink-0 text-primary" />
-                <div>
-                  <h2 className="text-lg font-bold text-[#0a0a0a]">Smart Scheduling {REQ}</h2>
-                  <p className="mt-1 text-sm text-neutral-600">
-                    Automatically surface open slots from your weekly schedule and preferences
-                  </p>
-                </div>
-              </div>
-              <div className="space-y-4">
-                <div className="flex flex-col gap-4 rounded-xl border border-neutral-200 bg-white p-4 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <p className="font-semibold text-[#0a0a0a]">
-                      Enable Auto-Scheduling {REQ}
-                    </p>
-                    <p className="mt-1 text-sm text-neutral-600">
-                      Use your weekly windows and capacity settings when students browse slots
-                    </p>
-                  </div>
-                  <Toggle checked={smartAutomationEnabled} onChange={setSmartAutomationEnabled} />
-                </div>
-                {smartAutomationEnabled ? (
-                  <div className="space-y-4 rounded-xl border border-neutral-200 bg-white p-4 sm:p-5">
-                    <h3 className="text-sm font-semibold text-[#0a0a0a]">
-                      Automation settings {REQ}
-                    </h3>
-                    <p className="rounded-lg border border-neutral-100 bg-neutral-50/90 px-3 py-2 text-xs text-neutral-600">
-                      Choose <strong className="font-semibold text-neutral-800">weekly, 15 days, in a month, or custom</strong>{" "}
-                      under the Schedule tab. That controls how your open slots are generated.
-                    </p>
-                    <div className="grid gap-4 sm:grid-cols-2">
-                      <div className="space-y-2">
-                        <label htmlFor="menteeBand" className="text-sm font-semibold text-[#0a0a0a]">
-                          Maximum mentees {REQ}
-                        </label>
-                        <select
-                          id="menteeBand"
-                          value={menteeCapacityBand}
-                          onChange={(e) => setMenteeCapacityBand(e.target.value as MenteeCapacityBand)}
-                          className={`${field} appearance-none bg-white pr-10`}
-                        >
-                          {MENTEE_CAPACITY_BAND_OPTIONS.map((o) => (
-                            <option key={o.value} value={o.value}>
-                              {o.label}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                      <div className="space-y-2">
-                        <label htmlFor="maxSessWeek" className="text-sm font-semibold text-[#0a0a0a]">
-                          Max sessions per week {REQ}
-                        </label>
-                        <input
-                          id="maxSessWeek"
-                          type="number"
-                          min={1}
-                          max={50}
-                          value={maxSessionsPerWeek}
-                          onChange={(e) => setMaxSessionsPerWeek(e.target.value)}
-                          className={field}
-                        />
-                      </div>
-                    </div>
-                    <div className="flex flex-col gap-3 rounded-xl border border-neutral-200 bg-neutral-50/80 p-4 sm:flex-row sm:items-center sm:justify-between">
-                      <div>
-                        <p className="text-sm font-semibold text-[#0a0a0a]">
-                          Accepting new mentees {REQ}
-                        </p>
-                        <p className="mt-0.5 text-xs text-neutral-600">Turn off to pause new requests.</p>
-                      </div>
-                      <Toggle checked={acceptingNewMentees} onChange={setAcceptingNewMentees} />
-                    </div>
-                    <div className="flex gap-3 rounded-xl border border-sky-200 bg-sky-50/90 p-4">
-                      <IconInfo className="mt-0.5 size-5 shrink-0 text-sky-600" />
-                      <div>
-                        <h4 className="text-sm font-semibold text-sky-950">How Auto-Scheduling Works</h4>
-                        <ul className="mt-2 space-y-1 text-sm text-sky-900/90">
-                          <li>• Open slots follow what you set on the Schedule tab (weekly or specific dates)</li>
-                          <li>• Booked sessions should be blocked when Calendar sync is on</li>
-                          <li>• Capacity limits are stored with your profile</li>
-                          <li>• This page auto-saves your draft; use the button below to finish and exit</li>
-                        </ul>
-                      </div>
-                    </div>
-                  </div>
-                ) : null}
-              </div>
-            </div>
-          </div>
-        ) : null}
-
         {tab === "weekly" ? (
           <div className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-6 lg:p-8">
             <div className="mb-6 border-b border-neutral-100 pb-5">
@@ -774,8 +752,52 @@ export function MentorAvailabilityForm({
                 Schedule {REQ}
               </h2>
               <p className="mt-1 text-sm text-neutral-600">
-                Pick how often you want to offer sessions, then set times. Date overrides are optional.
+                Set how many students you can mentor, your weekly session limit, then your available times. Use Date
+                overrides for one-off changes.
               </p>
+            </div>
+            <div className="mb-6 space-y-4 rounded-xl border border-neutral-100 bg-neutral-50/70 p-4 sm:p-5">
+              <h3 className="text-sm font-semibold text-[#0a0a0a]">Capacity &amp; limits</h3>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <label htmlFor="menteeBand" className="text-sm font-semibold text-[#0a0a0a]">
+                    Maximum mentees {REQ}
+                  </label>
+                  <select
+                    id="menteeBand"
+                    value={menteeCapacityBand}
+                    onChange={(e) => setMenteeCapacityBand(e.target.value as MenteeCapacityBand)}
+                    className={`${field} appearance-none bg-white pr-10`}
+                  >
+                    {MENTEE_CAPACITY_BAND_OPTIONS.map((o) => (
+                      <option key={o.value} value={o.value}>
+                        {o.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <label htmlFor="maxSessWeek" className="text-sm font-semibold text-[#0a0a0a]">
+                    Max sessions per week {REQ}
+                  </label>
+                  <input
+                    id="maxSessWeek"
+                    type="number"
+                    min={1}
+                    max={50}
+                    value={maxSessionsPerWeek}
+                    onChange={(e) => setMaxSessionsPerWeek(e.target.value)}
+                    className={field}
+                  />
+                </div>
+              </div>
+              <div className="flex flex-col gap-3 rounded-xl border border-neutral-200 bg-white p-4 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-sm font-semibold text-[#0a0a0a]">Accepting new mentees {REQ}</p>
+                  <p className="mt-0.5 text-xs text-neutral-600">Turn off to pause new requests.</p>
+                </div>
+                <Toggle checked={acceptingNewMentees} onChange={setAcceptingNewMentees} />
+              </div>
             </div>
             <MentorSchedulePanel
               kind={availabilityWindowKind}
@@ -797,6 +819,11 @@ export function MentorAvailabilityForm({
               onToggleSpecificSlot={toggleSpecificSlot}
               onClearCalendarSelection={clearCalendarSelection}
               calendarSelectable={calendarSelectable}
+              onBulkWeekdayInMonth={isCalendarScheduleMode(availabilityWindowKind) ? onBulkWeekdayInMonth : undefined}
+              bulkWeekdayFill={isCalendarScheduleMode(availabilityWindowKind) ? bulkWeekdayFill : undefined}
+              onToggleSharedCalendarSlot={
+                isCalendarScheduleMode(availabilityWindowKind) ? toggleSharedCalendarSlot : undefined
+              }
             />
             {availabilityWindowKind === "weekly" ? (
               <div className="mt-6 flex gap-3 rounded-xl border border-emerald-200 bg-emerald-50/80 p-4">
@@ -812,100 +839,6 @@ export function MentorAvailabilityForm({
                 </div>
               </div>
             ) : null}
-          </div>
-        ) : null}
-
-        {tab === "sessions" ? (
-          <div className="rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm sm:p-8">
-            <div className="mb-6 border-b border-neutral-100 pb-5">
-              <h2 className="text-lg font-bold text-[#0a0a0a]">
-                Session types &amp; duration {REQ}
-              </h2>
-              <p className="mt-1 text-sm text-neutral-600">
-                At least one enabled session with a name is required. The first enabled row sets the slot length for
-                calendar sync.
-              </p>
-            </div>
-            <div className="space-y-4">
-              {sessionTemplates.map((session, index) => (
-                <div key={session.id} className="rounded-xl border border-neutral-200 p-4">
-                  <div className="flex flex-col gap-4 lg:flex-row lg:items-center">
-                    <Toggle
-                      checked={session.enabled}
-                      onChange={() => {
-                        setSessionTemplates((prev) => {
-                          const next = [...prev];
-                          next[index] = { ...next[index], enabled: !next[index].enabled };
-                          return next;
-                        });
-                      }}
-                    />
-                    <div className="grid flex-1 gap-4 sm:grid-cols-2">
-                      <div>
-                        <label className="text-xs font-medium text-neutral-500">Session Name</label>
-                        <input
-                          value={session.name}
-                          disabled={!session.enabled}
-                          onChange={(e) => {
-                            setSessionTemplates((prev) => {
-                              const next = [...prev];
-                              next[index] = { ...next[index], name: e.target.value };
-                              return next;
-                            });
-                          }}
-                          className={`${field} mt-1 ${!session.enabled ? "opacity-50" : ""}`}
-                        />
-                      </div>
-                      <div>
-                        <label className="text-xs font-medium text-neutral-500">Duration (minutes)</label>
-                        <input
-                          type="number"
-                          min={15}
-                          max={180}
-                          step={5}
-                          value={session.durationMinutes}
-                          disabled={!session.enabled}
-                          onChange={(e) => {
-                            setSessionTemplates((prev) => {
-                              const next = [...prev];
-                              next[index] = { ...next[index], durationMinutes: Number(e.target.value) || 30 };
-                              return next;
-                            });
-                          }}
-                          className={`${field} mt-1 ${!session.enabled ? "opacity-50" : ""}`}
-                        />
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setSessionTemplates((prev) => prev.filter((_, i) => i !== index))}
-                      className="self-start rounded-lg p-2 text-red-500 hover:bg-red-50 lg:self-center"
-                      aria-label="Remove session type"
-                    >
-                      <IconTrash className="size-4" />
-                    </button>
-                  </div>
-                </div>
-              ))}
-              <button
-                type="button"
-                onClick={() =>
-                  setSessionTemplates((prev) => [
-                    ...prev,
-                    {
-                      id: `st-${Date.now()}`,
-                      name: "New Session Type",
-                      durationMinutes: 30,
-                      enabled: true,
-                    },
-                  ])
-                }
-                className="flex w-full items-center justify-center gap-2 rounded-xl border border-neutral-200 bg-white py-3 text-sm font-semibold text-[#0a0a0a] hover:bg-neutral-50"
-              >
-                <IconPlus className="size-4" />
-                Add Session Type
-              </button>
-            </div>
           </div>
         ) : null}
 
@@ -1061,31 +994,46 @@ export function MentorAvailabilityForm({
               <p className="text-xs text-neutral-600">Sync saved slots and reduce double bookings</p>
             </div>
           </div>
-          <div className="flex flex-col gap-2 sm:flex-row">
-            <Link
-              href={`/api/calendar/google/authorize?returnTo=${encodeURIComponent("/mentor/availability")}`}
-              className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-neutral-200 bg-white py-2.5 text-sm font-medium hover:bg-neutral-50"
-            >
-              <GoogleGlyph className="size-5" />
-              {googleCalendarConnected ? "Reconnect Google Calendar" : "Connect Google Calendar"}
-            </Link>
+          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-stretch">
             {googleCalendarConnected ? (
-              <button
-                type="button"
-                disabled={syncing}
-                onClick={() => void syncGoogle()}
-                className="rounded-xl bg-neutral-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-neutral-800 disabled:opacity-60"
+              <>
+                <p className="flex min-h-[2.75rem] flex-1 items-center justify-center rounded-xl border border-emerald-200 bg-emerald-50/70 px-4 py-2.5 text-center text-sm font-semibold text-emerald-900 sm:min-w-[11rem]">
+                  Calendar connected
+                </p>
+                <button
+                  type="button"
+                  disabled={syncing}
+                  onClick={() => void syncGoogle()}
+                  className="rounded-xl bg-neutral-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-neutral-800 disabled:opacity-60"
+                >
+                  {syncing ? "Syncing…" : "Sync slots to Calendar"}
+                </button>
+                <Link
+                  href={`/api/calendar/google/authorize?returnTo=${encodeURIComponent("/mentor/availability")}`}
+                  className="inline-flex min-h-[2.75rem] flex-1 items-center justify-center gap-2 rounded-xl border border-neutral-200 bg-white py-2.5 text-center text-xs font-medium text-neutral-600 hover:bg-neutral-50 sm:max-w-[14rem]"
+                >
+                  <GoogleGlyph className="size-4 shrink-0" />
+                  Update Google connection
+                </Link>
+              </>
+            ) : (
+              <Link
+                href={`/api/calendar/google/authorize?returnTo=${encodeURIComponent("/mentor/availability")}`}
+                className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-neutral-200 bg-white py-2.5 text-sm font-medium hover:bg-neutral-50"
               >
-                {syncing ? "Syncing…" : "Sync slots to Calendar"}
-              </button>
-            ) : null}
+                <GoogleGlyph className="size-5" />
+                Connect Google Calendar
+              </Link>
+            )}
           </div>
         </section>
 
         <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end sm:gap-4">
           <button
             type="button"
-            onClick={() => router.push(cancelHref)}
+            onClick={() =>
+              mentorOnboardingComplete ? router.push("/mentor") : setMandatoryExitOpen(true)
+            }
             className="inline-flex items-center justify-center rounded-xl border border-neutral-200 bg-white px-6 py-2.5 text-sm font-semibold text-[#0a0a0a] shadow-sm hover:bg-neutral-50"
           >
             Cancel
@@ -1136,19 +1084,6 @@ function IconArrowLeft({ className }: { className?: string }) {
   );
 }
 
-function IconZap({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden>
-      <path
-        d="M13 2L3 14h8l-1 8 10-12h-8l1-8z"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
 function IconCalendar({ className }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden>
@@ -1172,24 +1107,6 @@ function IconCalendarDays({ className }: { className?: string }) {
         strokeLinecap="round"
       />
       <path d="M8 14h2v2H8v-2zm4 0h2v2h-2v-2zm4 0h2v2h-2v-2z" fill="currentColor" />
-    </svg>
-  );
-}
-
-function IconClock({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden>
-      <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.5" />
-      <path d="M12 7v6l4 2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-function IconInfo({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden>
-      <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.5" />
-      <path d="M12 10v6M12 8h.01" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
     </svg>
   );
 }

@@ -100,9 +100,10 @@ export function MessagesInbox({
   const [contextPanelMobileOpen, setContextPanelMobileOpen] = useState(false);
   const listScrollRef = useRef<HTMLDivElement>(null);
   const msgsEndRef = useRef<HTMLDivElement>(null);
-  /** Ignore stale HTTP responses when multiple list/message fetches overlap. */
+  /** Ignore stale HTTP responses when multiple thread-list fetches overlap. */
   const threadsFetchGen = useRef(0);
-  const messagesFetchGen = useRef(0);
+  /** Abort in-flight message GETs so polling / thread switches never drop a valid body. */
+  const messagesAbortRef = useRef<AbortController | null>(null);
 
   const selected = useMemo(() => {
     const fromList = threads.find((t) => t.id === selectedId) ?? null;
@@ -195,25 +196,31 @@ export function MessagesInbox({
   }, [initialPeerId, openOrCreatePeer]);
 
   const loadMessages = useCallback(async (threadId: string) => {
-    const gen = ++messagesFetchGen.current;
+    messagesAbortRef.current?.abort();
+    const ac = new AbortController();
+    messagesAbortRef.current = ac;
     setLoadingMsgs(true);
     setMsgError(null);
     try {
-      const res = await fetch(`/api/chat/threads/${threadId}/messages`, { cache: "no-store" });
-      if (gen !== messagesFetchGen.current) return;
+      const res = await fetch(`/api/chat/threads/${threadId}/messages`, {
+        cache: "no-store",
+        signal: ac.signal,
+      });
+      if (messagesAbortRef.current !== ac) return;
       if (!res.ok) {
         setMsgError("Could not load messages");
         return;
       }
       const data = (await res.json()) as { status: string; messages: ChatMessageRow[] };
-      if (gen !== messagesFetchGen.current) return;
+      if (messagesAbortRef.current !== ac) return;
       setThreadStatus(data.status);
       setMessages(data.messages);
-    } catch {
-      if (gen !== messagesFetchGen.current) return;
+    } catch (e) {
+      if (e instanceof DOMException && e.name === "AbortError") return;
+      if (messagesAbortRef.current !== ac) return;
       setMsgError("Could not load messages");
     } finally {
-      if (gen === messagesFetchGen.current) {
+      if (messagesAbortRef.current === ac) {
         setLoadingMsgs(false);
       }
     }
@@ -232,8 +239,11 @@ export function MessagesInbox({
   useEffect(() => {
     if (!selectedId) {
       const clearT = window.setTimeout(() => {
+        messagesAbortRef.current?.abort();
+        messagesAbortRef.current = null;
         setMessages([]);
         setThreadStatus(null);
+        setLoadingMsgs(false);
       }, 0);
       return () => window.clearTimeout(clearT);
     }
@@ -250,6 +260,7 @@ export function MessagesInbox({
     return () => {
       window.clearTimeout(kick);
       window.clearInterval(poll);
+      messagesAbortRef.current?.abort();
     };
   }, [selectedId, loadMessages]);
 

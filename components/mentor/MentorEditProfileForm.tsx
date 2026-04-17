@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
@@ -10,6 +9,7 @@ import {
   MENTOR_MENTEE_CAPACITY_OPTIONS,
   MENTOR_SESSION_PREFS,
   MENTOR_YEARS_OPTIONS,
+  normalizeMentorYearsBand,
 } from "@/components/mentor/mentor-setup-constants";
 import {
   SOFTWARE_OPTIONS,
@@ -25,6 +25,7 @@ import {
   architectureOthersSectionTitle,
   architecturePillBase,
 } from "@/components/shared/ArchitectureGroupedPills";
+import { MandatorySetupReminderModal } from "@/components/setup/MandatorySetupReminderModal";
 import { SetupGoogleCalendarConnect } from "@/components/setup/SetupGoogleCalendarConnect";
 
 type TabId = "personal" | "professional" | "mentorship" | "profile";
@@ -90,9 +91,7 @@ function serializeSoftware(set: Set<string>, otherDetail: string): string | null
 }
 
 function normalizeYear(y: string | null | undefined): string {
-  const v = y?.trim() ?? "";
-  if (!v) return "";
-  return (MENTOR_YEARS_OPTIONS as readonly string[]).includes(v) ? v : "";
+  return normalizeMentorYearsBand(y);
 }
 
 function initials(name: string | null): string {
@@ -154,6 +153,7 @@ export function MentorEditProfileForm({
   const [tab, setTab] = useState<TabId>("personal");
   const [saving, setSaving] = useState(false);
   const [banner, setBanner] = useState<"ok" | "err" | null>(null);
+  const [mandatoryExitOpen, setMandatoryExitOpen] = useState(false);
 
   const [fullName, setFullName] = useState(initial.name ?? "");
   const [phone, setPhone] = useState(initial.phone ?? "");
@@ -444,6 +444,11 @@ export function MentorEditProfileForm({
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-white via-orange-50/25 to-white pb-16">
+      <MandatorySetupReminderModal
+        open={mandatoryExitOpen}
+        variant="mentor"
+        onDismiss={() => setMandatoryExitOpen(false)}
+      />
       <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
         <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
@@ -465,13 +470,14 @@ export function MentorEditProfileForm({
               )}
             </p>
           </div>
-          <Link
-            href="/mentor"
+          <button
+            type="button"
+            onClick={() => setMandatoryExitOpen(true)}
             className="inline-flex shrink-0 items-center gap-1.5 self-start text-sm font-medium text-neutral-700 transition hover:text-primary"
           >
             <IconArrowLeft className="size-4" />
             Back to Dashboard
-          </Link>
+          </button>
         </div>
 
         {banner === "ok" ? (
@@ -933,7 +939,7 @@ export function MentorEditProfileForm({
         <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end sm:gap-4">
           <button
             type="button"
-            onClick={() => router.push("/mentor")}
+            onClick={() => setMandatoryExitOpen(true)}
             className="inline-flex items-center justify-center rounded-xl border border-neutral-200 bg-white px-6 py-2.5 text-sm font-semibold text-[#0a0a0a] shadow-sm transition hover:bg-neutral-50"
           >
             Cancel

@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { BookingSuccessModal, type BookingSuccessPayload } from "@/components/schedule/BookingSuccessModal";
 import { monthName, MENTOR_TIME_SLOTS_HALF } from "@/components/mentor/mentor-setup-constants";
@@ -98,7 +99,9 @@ export function ScheduleCallPage({
   mentorDisplayName?: string | null;
   mentorAvailabilityJson?: unknown;
 }) {
-  const { status } = useSession();
+  const router = useRouter();
+  const { status, data: sessionData } = useSession();
+  const postBookingRedirectRef = useRef<number | null>(null);
   const initialIst = useMemo(() => todayYmdInScheduleTz(), []);
   const [viewYear, setViewYear] = useState(initialIst.year);
   const [viewMonth, setViewMonth] = useState(initialIst.monthIndex);
@@ -115,7 +118,21 @@ export function ScheduleCallPage({
   const [feedback, setFeedback] = useState<string | null>(null);
   const [bookingSuccess, setBookingSuccess] = useState<BookingSuccessPayload | null>(null);
 
-  const dismissBookingSuccess = useCallback(() => setBookingSuccess(null), []);
+  const dismissBookingSuccess = useCallback(() => {
+    if (postBookingRedirectRef.current != null) {
+      window.clearTimeout(postBookingRedirectRef.current);
+      postBookingRedirectRef.current = null;
+    }
+    setBookingSuccess(null);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (postBookingRedirectRef.current != null) {
+        window.clearTimeout(postBookingRedirectRef.current);
+      }
+    };
+  }, []);
 
   const [slots, setSlots] = useState<UiSlot[]>(() =>
     mentorUserId ? [] : fallbackSlotsForDay(initialIst.year, initialIst.monthIndex, initialIst.day),
@@ -307,6 +324,10 @@ export function ScheduleCallPage({
   const removeGuest = (id: string) => setGuests((g) => g.filter((x) => x.id !== id));
 
   const scheduleCall = async () => {
+    if (postBookingRedirectRef.current != null) {
+      window.clearTimeout(postBookingRedirectRef.current);
+      postBookingRedirectRef.current = null;
+    }
     setFeedback(null);
     if (status !== "authenticated") {
       const q = `${window.location.pathname}${window.location.search}`;
@@ -371,6 +392,15 @@ export function ScheduleCallPage({
         softMessage: data.message ?? null,
       });
       if (mentorUserId) void loadMentorSlots();
+      {
+        const role = sessionData?.user?.role;
+        const dashboardHref = role === "mentor" ? "/mentor" : "/student";
+        if (postBookingRedirectRef.current != null) window.clearTimeout(postBookingRedirectRef.current);
+        postBookingRedirectRef.current = window.setTimeout(() => {
+          postBookingRedirectRef.current = null;
+          router.push(dashboardHref);
+        }, 2400);
+      }
     } catch {
       setFeedback("Something went wrong. Try again.");
     } finally {

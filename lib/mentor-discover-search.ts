@@ -108,7 +108,9 @@ export function mentorMatchesAbroadFilter(m: Mentor): boolean {
 export type ExperienceLevelFilter = "" | "0-3" | "3-7" | "7+";
 
 const Y0_2 = "0–2 years";
-const Y3_5 = "3–5 years";
+const Y2_5 = "2–5 years";
+/** @deprecated Stored label; still match for filters until data is migrated. */
+const Y3_5_LEGACY = "3–5 years";
 const Y6_10 = "6–10 years";
 const Y10 = "10+ years";
 
@@ -117,10 +119,10 @@ export function mentorMatchesExperienceLevel(m: Mentor, filter: ExperienceLevelF
   const y = m.yearsExperience?.trim() ?? "";
 
   if (filter === "0-3") {
-    return y === Y0_2 || y === Y3_5;
+    return y === Y0_2 || y === Y2_5 || y === Y3_5_LEGACY;
   }
   if (filter === "3-7") {
-    return y === Y3_5 || y === Y6_10;
+    return y === Y2_5 || y === Y3_5_LEGACY || y === Y6_10;
   }
   if (filter === "7+") {
     return y === Y6_10 || y === Y10;

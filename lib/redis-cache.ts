@@ -140,8 +140,11 @@ export function invalidatePublicMentorsList(): void {
   void delKeys([CacheKeys.publicMentorsList()]);
 }
 
-export function invalidateChatThreadsForParticipants(studentId: string, mentorId: string): void {
-  void delKeys([CacheKeys.chatThreads(studentId), CacheKeys.chatThreads(mentorId)]);
+export async function invalidateChatThreadsForParticipants(
+  studentId: string,
+  mentorId: string,
+): Promise<void> {
+  await delKeys([CacheKeys.chatThreads(studentId), CacheKeys.chatThreads(mentorId)]);
 }
 
 export function invalidateSessionWithMentor(studentId: string, mentorUserId: string): void {

@@ -206,7 +206,7 @@ export async function POST(req: Request) {
   const peerOut = me.role === "student" ? fresh.mentor : fresh.student;
   const last = fresh.messages[0];
 
-  invalidateChatThreadsForParticipants(studentId, mentorId);
+  await invalidateChatThreadsForParticipants(studentId, mentorId);
 
   return NextResponse.json({
     thread: {

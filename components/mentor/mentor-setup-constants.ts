@@ -13,10 +13,21 @@ export const MENTOR_EXPERTISE_OPTIONS = [
 
 export const MENTOR_YEARS_OPTIONS = [
   "0–2 years",
-  "3–5 years",
+  "2–5 years",
   "6–10 years",
   "10+ years",
 ] as const;
+
+/** Map legacy DB values to current {@link MENTOR_YEARS_OPTIONS} labels. */
+export function normalizeMentorYearsBand(raw: string | null | undefined): string {
+  const v = (raw ?? "").trim();
+  const legacy: Record<string, string> = {
+    "3–5 years": "2–5 years",
+    "3-5 years": "2–5 years",
+  };
+  const mapped = legacy[v] ?? v;
+  return (MENTOR_YEARS_OPTIONS as readonly string[]).includes(mapped) ? mapped : "";
+}
 
 /** Stored in `mentorMentorshipFocus` as comma-separated titles (order: Academic → Career → Portfolio). */
 export const MENTORSHIP_PREFERENCE_OPTIONS = [
@@ -166,9 +177,6 @@ export function maxStudentsToMenteeBand(n: number): MenteeCapacityBand {
   return "5-10";
 }
 
-/** Default Sat/Sun 10am–12pm slot labels (half-hour steps; matches `buildHalfHourTimeSlots`). */
-const DEFAULT_WEEKEND_MORNING_SLOTS = ["10:00 AM", "10:30 AM", "11:00 AM", "11:30 AM"] as const;
-
 export type MentorAvailabilityJson = {
   sessionDurationMinutes: 15 | 30 | 45 | 60 | 90;
   availabilityType: "weekly" | "specific";
@@ -214,22 +222,12 @@ export function emptyWeeklySlots(): Record<WeekdayKey, string[]> {
 }
 
 export function defaultMentorAvailability(): MentorAvailabilityJson {
-  const sat = [...DEFAULT_WEEKEND_MORNING_SLOTS];
-  const sun = [...DEFAULT_WEEKEND_MORNING_SLOTS];
   return {
     sessionDurationMinutes: 30,
     availabilityType: "weekly",
     specificDates: [],
     specificDateSlots: {},
-    weeklySlots: {
-      mon: [],
-      tue: [],
-      wed: [],
-      thu: [],
-      fri: [],
-      sat,
-      sun,
-    },
+    weeklySlots: emptyWeeklySlots(),
     maxStudents: 10,
     planningHorizonDays: 14,
     availabilityWindowKind: "weekly",

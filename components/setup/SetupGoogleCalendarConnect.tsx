@@ -36,46 +36,61 @@ export function SetupGoogleCalendarConnect({ connected, returnPath, description,
 
   return (
     <div
-      className={`rounded-xl border p-4 shadow-sm ${
+      className={`rounded-xl border p-3.5 shadow-sm sm:p-4 ${
         connected ? "border-emerald-200/80 bg-emerald-50/40" : "border-black/[0.08] bg-white"
       }`}
     >
-      <div className="mb-3 flex items-start gap-3">
+      <div className="mb-3 flex items-start gap-2.5 sm:gap-3">
         <span
-          className={`flex size-9 shrink-0 items-center justify-center rounded-full ${
+          className={`flex size-9 shrink-0 items-center justify-center rounded-full sm:size-10 ${
             connected ? "bg-emerald-100 text-emerald-700" : "bg-primary/10 text-primary"
           }`}
         >
-          {connected ? <IconCheck className="size-5" /> : <IconCalendar className="size-5" />}
+          {connected ? <IconCheck className="size-[1.125rem] sm:size-5" /> : <IconCalendar className="size-[1.125rem] sm:size-5" />}
         </span>
         <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <h2 className="text-sm font-bold text-[#0a0a0a]">Google Calendar</h2>
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
+            <h2 className="text-[13px] font-bold leading-tight text-[#0a0a0a] sm:text-sm">Google Calendar</h2>
             {required ? (
-              <span className="rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary">
+              <span className="rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary sm:text-[11px]">
                 Required
               </span>
             ) : null}
           </div>
           {connected ? (
-            <p className="mt-1 text-[12px] font-medium text-emerald-800">Connected — sessions can sync to your calendar.</p>
+            <p className="mt-1 text-[12px] font-medium leading-snug text-emerald-800 sm:text-[13px]">
+              Connected — sessions can sync to your calendar.
+            </p>
           ) : null}
-          <p className={`text-[12px] leading-snug ${connected ? "mt-1 text-[#6b7280]" : "mt-0.5 text-[#6b7280]"}`}>
+          <p
+            className={`text-[12px] leading-relaxed sm:text-[13px] sm:leading-snug ${connected ? "mt-1 text-[#6b7280]" : "mt-0.5 text-[#6b7280]"}`}
+          >
             {description}
           </p>
         </div>
       </div>
-      <Link
-        href={href}
-        className={`flex w-full items-center justify-center gap-2 rounded-lg py-2.5 text-[13px] font-medium transition-colors sm:text-sm ${
-          connected
-            ? "border border-emerald-200 bg-white text-[#0a0a0a] hover:bg-emerald-50/60"
-            : "border border-black/10 bg-white text-[#0a0a0a] hover:bg-neutral-50"
-        }`}
-      >
-        <GoogleGlyph className="size-5" />
-        {connected ? "Reconnect or refresh permissions" : "Connect Google Calendar"}
-      </Link>
+      {connected ? (
+        <div className="space-y-2">
+          <p className="rounded-lg border border-emerald-200 bg-emerald-50/80 px-2 py-2.5 text-center text-[12px] font-semibold leading-snug text-emerald-900 sm:px-3 sm:text-sm">
+            Calendar connected
+          </p>
+          <Link
+            href={href}
+            className="flex min-h-[2.75rem] w-full touch-manipulation items-center justify-center gap-2 rounded-lg border border-black/10 bg-white px-3 py-2.5 text-[12px] font-medium text-neutral-700 transition-colors hover:bg-neutral-50 active:bg-neutral-100 sm:min-h-11 sm:text-[13px]"
+          >
+            <GoogleGlyph className="size-4 shrink-0 sm:size-5" />
+            Update Google connection
+          </Link>
+        </div>
+      ) : (
+        <Link
+          href={href}
+          className="flex min-h-[2.75rem] w-full touch-manipulation items-center justify-center gap-2 rounded-lg border border-black/10 bg-white px-3 py-2.5 text-[13px] font-medium text-[#0a0a0a] transition-colors hover:bg-neutral-50 active:bg-neutral-100 sm:min-h-11 sm:text-sm"
+        >
+          <GoogleGlyph className="size-[1.125rem] shrink-0 sm:size-5" />
+          Connect Google Calendar
+        </Link>
+      )}
     </div>
   );
 }
