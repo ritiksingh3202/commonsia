@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useCallback, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 
 import { isDefaultProfileCoverPath, profileCoverAspectStyle } from "@/lib/profile-cover";
 
@@ -46,12 +46,18 @@ export function ProfileCover({
 
   const onImgError = useCallback(() => setFailed(true), []);
 
+  /** Default asset must use a plain <img>: Next/Image + optimizer can fail on `/file.png?v=` and hid the cover until a custom upload “fixed” it. */
+  const isDefaultCover = isDefaultProfileCoverPath(imageSrc);
   const useNextImage =
-    showImage && !isDataOrBlobUrl(imageSrc) && !isRemoteHttpUrl(imageSrc) && imageSrc.startsWith("/");
+    showImage &&
+    !isDefaultCover &&
+    !isDataOrBlobUrl(imageSrc) &&
+    !isRemoteHttpUrl(imageSrc) &&
+    imageSrc.startsWith("/");
 
-  /** Skip optimizer in dev for the default public cover so replacing `public/profile_cover.png` shows after refresh. */
-  const unoptimizedDefaultCover =
-    process.env.NODE_ENV === "development" && isDefaultProfileCoverPath(imageSrc);
+  useEffect(() => {
+    setFailed(false);
+  }, [imageSrc]);
 
   const aspect = profileCoverAspectStyle();
 
@@ -79,12 +85,11 @@ export function ProfileCover({
               fill
               priority={priority}
               sizes="100vw"
-              unoptimized={unoptimizedDefaultCover}
               className="object-cover object-center"
               onError={onImgError}
             />
           ) : (
-            // eslint-disable-next-line @next/next/no-img-element -- data/blob/remote URLs
+            // eslint-disable-next-line @next/next/no-img-element -- data/blob/remote URLs + default public cover
             <img
               src={imageSrc}
               alt={alt}
