@@ -157,7 +157,12 @@ function buildExperienceLines(u: MentorRow): string[] {
   if (focus && !bullets.some((b) => b.includes(focus.slice(0, 40)))) {
     bullets.push(focus);
   }
-  return bullets;
+  return bullets.map(spacedListCommas);
+}
+
+/** Ensures a space after commas when mentors save comma-separated phrases without spaces (e.g. "A,B"). */
+function spacedListCommas(s: string): string {
+  return s.replace(/,(\S)/g, ", $1");
 }
 
 function buildSummary(u: MentorRow): string {

@@ -38,7 +38,7 @@ const mentorSpotlights = [
     quote:
       "I feel teachers should better guide inside the classrooms rather than merely focusing on attendance and timely submissions. Architecture colleges feel like some hardcore preparation of something that'll be completely new to students once they come out in the real world.",
     name: "Saqib Khan",
-    cred: "Architecture student",
+    cred: "Mentor and Practitioner",
     avatar: "/mentor_testimonial/saqib.jpeg",
   },
   {
@@ -134,7 +134,7 @@ export function HomePage({ testimonials }: { testimonials: HomeTestimonialCard[]
     <div className="section-gap-y min-w-0 max-w-full overflow-x-hidden bg-white pb-1">
       {/* Hero — one column, vertically centered; white → #FFEFD7 gradient (full band) */}
       <section className="home-hero-gradient home-hero-viewport relative flex flex-col overflow-hidden px-4 sm:px-6 lg:px-8">
-        <motion.div
+          <motion.div
           className="relative z-10 mx-auto flex w-full max-w-[100rem] flex-1 flex-col justify-center py-10 sm:py-12 md:py-16 lg:py-20"
           variants={heroStack}
           initial="hidden"
@@ -168,14 +168,14 @@ export function HomePage({ testimonials }: { testimonials: HomeTestimonialCard[]
                 whileTap={{ scale: 0.99 }}
                 transition={{ type: "spring", stiffness: 420, damping: 28 }}
                 className="w-full sm:w-auto"
-              >
-                <Link
-                  href="/mentors"
-                  prefetch
+            >
+              <Link
+                href="/mentors"
+                prefetch
                   className="inline-flex w-full min-h-[48px] items-center justify-center rounded-full bg-[#0a0a0a] px-9 py-3.5 text-[15px] font-semibold tracking-wide text-white shadow-md shadow-black/10 transition-[box-shadow] hover:shadow-lg sm:min-h-[52px] sm:min-w-[12rem] sm:px-10 sm:py-4 sm:text-base"
-                >
-                  Find a Mentor
-                </Link>
+              >
+                Find a Mentor
+              </Link>
               </motion.div>
               <motion.div
                 whileHover={{ y: -2 }}
@@ -187,13 +187,13 @@ export function HomePage({ testimonials }: { testimonials: HomeTestimonialCard[]
                   href="/auth/register/mentor"
                   prefetch
                   className="inline-flex w-full min-h-[48px] items-center justify-center rounded-full border-2 border-[#0a0a0a] bg-transparent px-9 py-3.5 text-[15px] font-semibold tracking-wide text-[#0a0a0a] transition-[background-color,box-shadow] hover:bg-black/[0.03] sm:min-h-[52px] sm:min-w-[12rem] sm:px-10 sm:py-4 sm:text-base"
-                >
-                  Become a Mentor
-                </Link>
+              >
+                Become a Mentor
+              </Link>
               </motion.div>
             </motion.div>
-          </div>
-        </motion.div>
+            </div>
+          </motion.div>
       </section>
 
       {/* Why us — `id` keeps /#who-we-are nav/footer links landing on meaningful content */}
@@ -211,21 +211,21 @@ export function HomePage({ testimonials }: { testimonials: HomeTestimonialCard[]
               <SectionReveal key={w.title} delay={i * 0.05}>
                 <div className="flex flex-col gap-3 sm:gap-4">
                   <div className="flex shrink-0 items-center justify-start">
-                    <Image
+              <Image
                       src={w.icon}
-                      alt=""
+                alt=""
                       width={64}
                       height={64}
                       className="h-14 w-auto max-w-full object-contain object-left sm:h-16"
-                    />
-                  </div>
+              />
+            </div>
                   <h3 className="text-heading-card text-ink">{w.title}</h3>
                   <p className="text-[15px] leading-relaxed text-neutral-600 sm:text-base lg:text-[17px] lg:leading-relaxed">
                     {w.body}
                   </p>
                 </div>
-              </SectionReveal>
-            ))}
+                </SectionReveal>
+              ))}
           </div>
         </div>
       </section>
@@ -413,15 +413,15 @@ export function HomePage({ testimonials }: { testimonials: HomeTestimonialCard[]
                 </span>
                 <span
                   className="pointer-events-none absolute -right-1 bottom-20 z-20 font-serif text-[clamp(3.5rem,14vw,5.5rem)] leading-none text-primary/20 sm:bottom-24 sm:right-0"
-                  aria-hidden
+                    aria-hidden
                 >
                   &rdquo;
                 </span>
 
                 <div className="relative z-10 flex min-h-[17.5rem] flex-col overflow-hidden rounded-[18px] border border-neutral-200/90 bg-[#FFF5E6] shadow-[0_16px_40px_-20px_rgba(0,0,0,0.12)] sm:min-h-[19rem] lg:min-h-[20rem]">
-                  <AnimatePresence mode="wait">
-                    <motion.div
-                      key={mIndex}
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={mIndex}
                       initial={{ opacity: 0, y: 8 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -8 }}
@@ -435,45 +435,45 @@ export function HomePage({ testimonials }: { testimonials: HomeTestimonialCard[]
                       </div>
                       <div className="mt-4 flex shrink-0 items-end gap-4 border-t border-black/[0.06] pt-4 sm:mt-4 sm:gap-4 sm:pt-5">
                         <div className="relative size-[56px] shrink-0 overflow-hidden rounded-full ring-2 ring-primary/30 ring-offset-2 ring-offset-[#FFF5E6] sm:size-[64px]">
-                          <Image
-                            src={mentorCurrent.avatar}
-                            alt=""
-                            fill
+                        <Image
+                          src={mentorCurrent.avatar}
+                          alt=""
+                          fill
                             className="object-cover object-center"
                             sizes="64px"
-                          />
-                        </div>
+                        />
+                      </div>
                         <div className="min-w-0 flex-1 pb-0.5 text-left">
                           <p className="text-base font-bold text-neutral-900 sm:text-lg">{mentorCurrent.name}</p>
                           <p className="mt-1 text-sm text-neutral-500">{mentorCurrent.cred}</p>
                         </div>
-                      </div>
-                    </motion.div>
-                  </AnimatePresence>
+                    </div>
+                  </motion.div>
+                </AnimatePresence>
                 </div>
               </div>
 
               <div className="mt-4 flex justify-center gap-2 sm:mt-5">
-                <motion.button
-                  type="button"
-                  aria-label="Previous mentor quote"
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={prevM}
+                  <motion.button
+                    type="button"
+                    aria-label="Previous mentor quote"
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={prevM}
                   className="flex size-10 items-center justify-center rounded-full border-2 border-primary bg-white shadow-sm transition hover:bg-primary/5"
-                >
-                  <Image src="/left_arrow.svg" alt="" width={14} height={11} className="icon-brand-line" />
-                </motion.button>
-                <motion.button
-                  type="button"
-                  aria-label="Next mentor quote"
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={nextM}
+                  >
+                    <Image src="/left_arrow.svg" alt="" width={14} height={11} className="icon-brand-line" />
+                  </motion.button>
+                  <motion.button
+                    type="button"
+                    aria-label="Next mentor quote"
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={nextM}
                   className="flex size-10 items-center justify-center rounded-full border-2 border-primary bg-white shadow-sm transition hover:bg-primary/5"
-                >
-                  <Image src="/right_arrow.svg" alt="" width={14} height={11} className="icon-brand-line" />
-                </motion.button>
+                  >
+                    <Image src="/right_arrow.svg" alt="" width={14} height={11} className="icon-brand-line" />
+                  </motion.button>
               </div>
             </SectionReveal>
           </div>

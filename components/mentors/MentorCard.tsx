@@ -61,11 +61,11 @@ export function MentorCard({
       {/* Text — fills remaining width; footer pinned to bottom for equal card heights */}
       <div className="flex min-h-0 min-w-0 flex-1 flex-col justify-between gap-3 p-3.5 sm:p-4 md:py-5 md:pl-5 md:pr-4">
         <div className="min-w-0 space-y-2">
-          <div>
+          <div className="space-y-2">
             <h3 className="break-words text-lg font-bold leading-tight tracking-tight text-[#0a0a0a] sm:text-xl">
               {mentor.name}
             </h3>
-            <p className="mt-0.5 break-words text-[11px] font-medium leading-snug text-neutral-600 sm:text-xs">
+            <p className="break-words text-[11px] font-medium leading-snug text-neutral-600 sm:text-xs">
               {mentor.role}
             </p>
           </div>

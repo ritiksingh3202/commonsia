@@ -135,15 +135,17 @@ export function PublicMentorProfile({
             </div>
 
             <div className={profileHero.content}>
-              <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:gap-x-10 lg:gap-y-1">
-                <h1 className="text-center font-heading text-[1.35rem] font-semibold tracking-tight text-[#0a0a0a] sm:text-2xl lg:text-left lg:text-[1.75rem] lg:col-start-1 lg:row-start-1">
-                  {mentor.name}
-                </h1>
-                <p className="mx-auto max-w-xl text-center text-[13px] italic leading-relaxed text-[#5c5c66] sm:text-sm lg:mx-0 lg:text-left lg:col-start-1 lg:row-start-2">
-                  {mentor.role}
-                </p>
+              <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:gap-x-10 lg:gap-y-2">
+                <div className="flex flex-col gap-2 text-center lg:col-start-1 lg:row-start-1 lg:text-left">
+                  <h1 className="font-heading text-[1.35rem] font-semibold tracking-tight text-[#0a0a0a] sm:text-2xl lg:text-[1.75rem]">
+                    {mentor.name}
+                  </h1>
+                  <p className="mx-auto max-w-xl text-[13px] italic leading-relaxed text-[#5c5c66] sm:text-sm lg:mx-0">
+                    {mentor.role}
+                  </p>
+                </div>
                 {mentor.bio?.trim() ? (
-                  <p className="mx-auto mt-2 max-w-2xl text-center text-[13px] leading-relaxed text-[#3e3e3e] sm:text-sm lg:mx-0 lg:text-left lg:col-start-1 lg:row-start-3">
+                  <p className="mx-auto max-w-2xl text-center text-[13px] leading-relaxed text-[#3e3e3e] sm:text-sm lg:mx-0 lg:text-left lg:col-start-1 lg:row-start-2">
                     {mentor.bio.trim()}
                   </p>
                 ) : null}
@@ -176,7 +178,7 @@ export function PublicMentorProfile({
 
                 <div
                   className={`mt-5 w-full border-t border-neutral-200/90 pt-5 sm:mt-6 sm:pt-6 lg:col-start-1 lg:max-w-2xl ${
-                    mentor.bio?.trim() ? "lg:row-start-4" : "lg:row-start-3"
+                    mentor.bio?.trim() ? "lg:row-start-3" : "lg:row-start-2"
                   }`}
                 >
                   {mentor.summary ? (
@@ -245,7 +247,7 @@ export function PublicMentorProfile({
               <div>
                 <h2 className="text-base font-semibold text-[#0a0a0a]">Experience &amp; Background</h2>
                 {experienceLines.length > 0 ? (
-                  <ul className="mt-3 list-inside list-disc space-y-1.5 text-[14px] leading-relaxed text-[#374151] marker:text-primary">
+                  <ul className="mt-3 list-inside list-disc space-y-1.5 text-[14px] leading-relaxed text-[#374151] marker:text-[#0a0a0a]">
                     {experienceLines.map((line, i) => (
                       <li key={`${i}-${line.slice(0, 24)}`}>{line}</li>
                     ))}
