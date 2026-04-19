@@ -1,5 +1,16 @@
 import type { NextConfig } from "next";
 
+if (process.env.VERCEL === "1") {
+  const hasAuthSecret = Boolean(
+    (process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET ?? "").trim().length,
+  );
+  if (!hasAuthSecret) {
+    throw new Error(
+      "Missing AUTH_SECRET (or NEXTAUTH_SECRET). Add it in Vercel → Project → Settings → Environment Variables. Generate a value locally with: npx auth secret",
+    );
+  }
+}
+
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   /** In dev, default cover is replaced often — avoid long-lived browser / optimizer caches on this file. */

@@ -6,6 +6,7 @@ import GoogleProvider from "next-auth/providers/google";
 import LinkedInProvider from "next-auth/providers/linkedin";
 
 import { getGoogleOAuthClient, getLinkedInOAuthClient } from "@/lib/oauth-credentials";
+import { resolveAuthSecret } from "@/lib/auth-secret";
 import { prisma } from "@/lib/prisma";
 
 /**
@@ -26,8 +27,6 @@ import { prisma } from "@/lib/prisma";
  * Google Calendar: sign-in requests `calendar` scope so refresh tokens can live on the Account row.
  * Booking uses server routes only (`/api/calendar/create-event`) — OAuth access tokens are not exposed on the client session.
  */
-const authSecret = process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET;
-
 function isLocalDevHost(host: string | null | undefined) {
   if (!host) return false;
   const hostname = host.split(":")[0]?.toLowerCase();
@@ -124,7 +123,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth((req) => {
   return {
     adapter: PrismaAdapter(prisma),
     trustHost: true,
-    secret: authSecret,
+    secret: resolveAuthSecret(),
     basePath: "/api/auth",
     cookies: cookieConfig(useSecureCookies),
     pages: {

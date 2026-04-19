@@ -52,32 +52,52 @@ const mentorSpotlights = [
   },
 ];
 
-const whyItems = [
+/** Desktop “Why Us” — center art, two blocks per side (matches wide layout reference). */
+const whyUsDesktopColumns = {
+  left: [
+    {
+      title: "Architecture Mentorship",
+      body: "Learn directly from experienced architects who guide students through design thinking, studio challenges, and real-world architectural practices.",
+      icon: "/home_assets/mentorship.svg",
+    },
+    {
+      title: "Design Guidance",
+      body: "Get practical advice on studio projects, design concepts, software tools, and portfolios to strengthen your architectural skills.",
+      icon: "/home_assets/guidance.svg",
+    },
+  ],
+  right: [
+    {
+      title: "1-on-1 Mentor Sessions",
+      body: "Connect with mentors through scheduled one-to-one meetings to discuss design ideas, resolve doubts, and receive personalized feedback on your work.",
+      icon: "/home_assets/1-1.svg",
+    },
+    {
+      title: "Software Guidance",
+      body: "Level up Rhino, BIM, and visualization workflows with mentors who use these tools every day in practice.",
+      icon: "/home_assets/software.svg",
+    },
+  ],
+} as const;
+
+/** Narrow screens — stacked list only (matches mobile reference). */
+const whyUsMobileStack = [
   {
-    title: "Architecture Mentorship",
-    body: "Learn directly from experienced architects who guide students through design thinking, studio challenges, and real-world architectural practices.",
+    title: "Studio & Design",
+    body: "Sharpen your design thinking with studio guidance, constructive critiques, building systems insight, and sustainability integration.",
     icon: "/home_assets/mentorship.svg",
-    align: "left" as const,
   },
   {
-    title: "Design Guidance",
-    body: "Get practical advice on studio projects, design concepts, software tools, and portfolios to strengthen your architectural skills.",
-    icon: "/home_assets/guidance.svg",
-    align: "left" as const,
-  },
-  {
-    title: "1-on-1 Mentor Sessions",
-    body: "Connect with mentors through scheduled one-to-one meetings to discuss design ideas, resolve doubts, and receive personalized feedback on your work.",
+    title: "Portfolio Reviews",
+    body: "Get meaningful, industry-informed feedback that elevates your portfolio and prepares you for real opportunities.",
     icon: "/home_assets/1-1.svg",
-    align: "right" as const,
   },
   {
-    title: "Software Guidance",
-    body: "Level up Rhino, BIM, and visualization workflows with mentors who use these tools every day in practice.",
+    title: "Career & Path",
+    body: "Navigate your career with clarity. Explore roles, build the right skills, connect with professionals, and discover internship opportunities.",
     icon: "/home_assets/software.svg",
-    align: "right" as const,
   },
-];
+] as const;
 
 /** Full-bleed strip — body `overflow-x-hidden` + clip here prevents horizontal page scroll */
 const fullBleed =
@@ -226,97 +246,66 @@ export function HomePage({ testimonials }: { testimonials: HomeTestimonialCard[]
       {/* Why us — `id` keeps /#who-we-are nav/footer links landing on meaningful content */}
       <section
         id="who-we-are"
-        className="section-y scroll-mt-24 px-4 pb-2 pt-3 sm:px-6 sm:pb-2.5 sm:pt-4 lg:px-8 lg:pb-3 lg:pt-5"
+        className="section-y scroll-mt-24 bg-white px-4 pb-4 pt-4 sm:px-6 sm:pb-6 sm:pt-5 lg:px-8 lg:pb-10 lg:pt-6"
       >
         <SectionReveal>
           <h2 className={`${MARKETING_SECTION_TITLE_CLASS} mx-auto max-w-4xl text-center text-ink`}>Why Us?</h2>
         </SectionReveal>
 
-        <div className="mt-3 lg:hidden">
-          <SectionReveal>
-            <div className="relative mx-auto aspect-[10/13] w-full max-w-lg min-h-[320px] sm:min-h-[360px]">
-              <Image
-                src={marketingImages.whyUsCenter}
-                alt=""
-                fill
-                className="object-contain object-center"
-                sizes="(max-width:1024px) 90vw, 512px"
-              />
-            </div>
-          </SectionReveal>
-          <div className="mt-3 grid grid-cols-1 gap-[30px] sm:grid-cols-2">
-            {whyItems.map((w, i) => (
-              <SectionReveal key={w.title} delay={i * 0.04}>
-                <motion.div
-                  className="flex flex-col gap-[15px] text-left"
-                  initial={{ opacity: 0, y: 16 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: i * 0.06 }}
-                  whileHover={{ scale: 1.02 }}
-                >
+        {/* Mobile / tablet: single column, three blocks (reference: stacked list) */}
+        <div className="mx-auto mt-8 max-w-xl lg:hidden">
+          <div className="flex flex-col gap-10 sm:gap-12">
+            {whyUsMobileStack.map((w, i) => (
+              <SectionReveal key={w.title} delay={i * 0.05}>
+                <div className="flex flex-col gap-3 text-left sm:gap-4">
                   <WhyIcon src={w.icon} />
                   <h3 className="text-heading-card text-ink">{w.title}</h3>
-                  <p className="text-left text-sm leading-relaxed text-neutral-600 sm:text-[15px]">
+                  <p className="text-[15px] leading-relaxed text-neutral-600 sm:text-base">
                     {w.body}
                   </p>
-                </motion.div>
+                </div>
               </SectionReveal>
             ))}
           </div>
         </div>
 
-        <div className="mx-auto mt-3 hidden max-w-7xl items-start lg:grid lg:grid-cols-[1fr_1.85fr_1fr] lg:gap-x-10 lg:gap-y-0 xl:gap-x-12">
-          <div className="flex min-w-0 flex-col gap-5 pt-0.5 lg:gap-[25px] lg:pt-1">
-            {whyItems
-              .filter((w) => w.align === "left")
-              .map((w, i) => (
-                <SectionReveal key={w.title} delay={i * 0.05}>
-                  <motion.div
-                    className="flex max-w-sm flex-col gap-[15px] text-left lg:max-w-[min(100%,20rem)]"
-                    whileHover={{ scale: 1.02 }}
-                    transition={{ type: "spring", stiffness: 400, damping: 22 }}
-                  >
-                    <WhyIcon src={w.icon} />
-                    <h3 className="text-heading-card text-ink">{w.title}</h3>
-                    <p className="text-left text-sm leading-relaxed text-neutral-600 sm:text-[15px] lg:text-base">
-                      {w.body}
-                    </p>
-                  </motion.div>
-                </SectionReveal>
-              ))}
+        {/* Desktop: left column | center illustration | right column; side blocks align to top/bottom of art */}
+        <div className="mx-auto mt-8 hidden max-w-7xl items-stretch gap-x-8 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(280px,1.2fr)_minmax(0,1fr)] xl:mt-10 xl:gap-x-14">
+          <div className="flex min-h-0 min-w-0 flex-col justify-between gap-8 pb-1 pt-1 lg:max-w-[min(100%,22rem)] lg:justify-self-end xl:gap-10">
+            {whyUsDesktopColumns.left.map((w, i) => (
+              <SectionReveal key={w.title} delay={i * 0.05}>
+                <div className="flex flex-col gap-3 text-left sm:gap-4">
+                  <WhyIcon src={w.icon} />
+                  <h3 className="text-heading-card text-ink">{w.title}</h3>
+                  <p className="text-[15px] leading-relaxed text-neutral-600 lg:text-base">{w.body}</p>
+                </div>
+              </SectionReveal>
+            ))}
           </div>
 
-          <SectionReveal className="sticky top-24 w-full min-w-0 self-start justify-self-stretch px-1 sm:px-2 lg:-mt-3 xl:-mt-4" delay={0.06}>
-            <div className="relative mx-auto aspect-[10/13] w-full max-w-[520px] xl:max-w-[560px]">
+          <SectionReveal className="flex min-h-0 min-w-0 items-center justify-center px-2 sm:px-4" delay={0.06}>
+            <div className="relative aspect-[10/13] w-full max-w-[min(100%,520px)]">
               <Image
                 src={marketingImages.whyUsCenter}
-                alt=""
+                alt="Mentors and students helping each other climb steps together"
                 fill
                 className="object-contain object-center"
-                sizes="(max-width: 1280px) 48vw, 560px"
+                sizes="(max-width: 1280px) 38vw, 520px"
+                priority={false}
               />
             </div>
           </SectionReveal>
 
-          <div className="flex min-w-0 flex-col gap-5 pt-0.5 lg:gap-[25px] lg:pt-1">
-            {whyItems
-              .filter((w) => w.align === "right")
-              .map((w, i) => (
-                <SectionReveal key={w.title} delay={i * 0.05}>
-                  <motion.div
-                    className="flex max-w-sm flex-col gap-[15px] text-left lg:max-w-[min(100%,20rem)]"
-                    whileHover={{ scale: 1.02 }}
-                    transition={{ type: "spring", stiffness: 400, damping: 22 }}
-                  >
-                    <WhyIcon src={w.icon} />
-                    <h3 className="text-heading-card text-ink">{w.title}</h3>
-                    <p className="text-left text-sm leading-relaxed text-neutral-600 sm:text-[15px] lg:text-base">
-                      {w.body}
-                    </p>
-                  </motion.div>
-                </SectionReveal>
-              ))}
+          <div className="flex min-h-0 min-w-0 flex-col justify-between gap-8 pb-1 pt-1 lg:max-w-[min(100%,22rem)] lg:justify-self-start xl:gap-10">
+            {whyUsDesktopColumns.right.map((w, i) => (
+              <SectionReveal key={w.title} delay={i * 0.05}>
+                <div className="flex flex-col gap-3 text-left sm:gap-4">
+                  <WhyIcon src={w.icon} />
+                  <h3 className="text-heading-card text-ink">{w.title}</h3>
+                  <p className="text-[15px] leading-relaxed text-neutral-600 lg:text-base">{w.body}</p>
+                </div>
+              </SectionReveal>
+            ))}
           </div>
         </div>
       </section>

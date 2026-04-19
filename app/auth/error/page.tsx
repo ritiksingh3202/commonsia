@@ -15,7 +15,9 @@ export default async function AuthErrorPage({
   searchParams: Promise<{ error?: string }>;
 }) {
   const sp = await searchParams;
-  const message = authErrorMessage(sp.error);
+  const code = sp.error;
+  const message = authErrorMessage(code);
+  const isConfiguration = code === "Configuration";
 
   return (
     <MarketingShell>
@@ -23,6 +25,25 @@ export default async function AuthErrorPage({
         <div className="mx-auto max-w-md rounded-xl border border-[#e5e5e5] bg-white px-6 py-8 text-center shadow-sm">
           <h1 className="font-heading text-lg font-semibold text-[#0a0a0a]">Sign-in problem</h1>
           <p className="mt-3 text-[13px] leading-relaxed text-[#717182]">{message}</p>
+          {isConfiguration ? (
+            <details className="mt-4 text-left">
+              <summary className="cursor-pointer text-[12px] font-medium text-[#717182] hover:text-[#0a0a0a]">
+                Deploying this app? (server checklist)
+              </summary>
+              <ul className="mt-2 list-inside list-disc space-y-1.5 pl-0.5 text-[12px] leading-relaxed text-[#717182]">
+                <li>
+                  Set <span className="font-mono text-[11px]">AUTH_SECRET</span> (or{" "}
+                  <span className="font-mono text-[11px]">NEXTAUTH_SECRET</span>) on your host — run{" "}
+                  <span className="font-mono text-[11px]">npx auth secret</span> and paste the value.
+                </li>
+                <li>
+                  Set <span className="font-mono text-[11px]">AUTH_URL</span> to the exact public origin (for example{" "}
+                  <span className="font-mono text-[11px]">https://www.yoursite.com</span>, no trailing slash).
+                </li>
+                <li>Google / LinkedIn sign-in only work after their client IDs and secrets are set in the same environment.</li>
+              </ul>
+            </details>
+          ) : null}
           <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:justify-center">
             <Link
               href="/auth/login"
