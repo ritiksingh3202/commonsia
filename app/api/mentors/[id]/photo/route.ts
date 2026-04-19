@@ -38,7 +38,8 @@ export async function GET(req: Request, ctx: Ctx) {
       return new NextResponse(null, { status: 304, headers: { ETag: etag } });
     }
     const mime = parsed.mime.startsWith("image/") ? parsed.mime : "image/jpeg";
-    return new NextResponse(parsed.buffer, {
+    const body = new Uint8Array(parsed.buffer);
+    return new NextResponse(body, {
       status: 200,
       headers: {
         "Content-Type": mime,

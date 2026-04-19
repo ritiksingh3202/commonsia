@@ -54,7 +54,9 @@ export function SiteFooter() {
                   height={18}
                   className="icon-black-line shrink-0"
                 />
-                <span>+91 9876543210</span>
+                <a href={`tel:${SITE_PHONE_TEL}`} className="hover:text-primary">
+                  {SITE_PHONE_DISPLAY}
+                </a>
               </li>
               <li className="flex items-start gap-2.5">
                 <Image
