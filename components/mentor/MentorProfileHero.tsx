@@ -95,15 +95,22 @@ export function MentorProfileHero({ user: initial }: Props) {
               Mockup: left — name, italic title, bio; right — edit (neutral), Message pill, socials.
               Grid keeps mobile order: name → title → actions → socials → bio.
             */}
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:gap-x-10 lg:gap-y-1">
-              <h1 className="text-center font-heading text-[1.35rem] font-semibold tracking-tight text-[#0a0a0a] sm:text-2xl lg:text-left lg:text-[1.75rem] lg:col-start-1 lg:row-start-1">
-                {displayName}
-              </h1>
-              {hasSubtitle ? (
-                <p className="mx-auto mt-0 max-w-xl text-center text-[13px] italic leading-relaxed text-[#5c5c66] sm:text-sm lg:mx-0 lg:text-left lg:col-start-1 lg:row-start-2">
-                  {subtitle}
-                </p>
-              ) : null}
+            <div className="flex flex-col gap-4 lg:grid lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start lg:gap-x-10 lg:gap-y-1">
+              <div className="flex flex-col gap-1 text-center lg:col-start-1 lg:text-left">
+                <h1 className="font-heading text-[1.35rem] font-semibold tracking-tight text-[#0a0a0a] sm:text-2xl lg:text-[1.75rem]">
+                  {displayName}
+                </h1>
+                {hasSubtitle ? (
+                  <p className="mx-auto max-w-xl text-[13px] italic leading-relaxed text-[#5c5c66] sm:text-sm lg:mx-0">
+                    {subtitle}
+                  </p>
+                ) : null}
+                {user.bio?.trim() ? (
+                  <p className="mx-auto mt-1 max-w-2xl text-[13px] leading-relaxed text-[#3e3e3e] sm:text-sm lg:mx-0">
+                    {user.bio.trim()}
+                  </p>
+                ) : null}
+              </div>
 
               <div className="flex flex-col items-center gap-3 lg:col-start-2 lg:row-start-1 lg:items-end lg:self-start">
                 <div className="flex flex-wrap items-center justify-center gap-2.5 lg:justify-end">
@@ -138,16 +145,6 @@ export function MentorProfileHero({ user: initial }: Props) {
                   <ProfileSettingsMenu editProfileHref="/mentor/profile/edit" compact />
                 </div>
               </div>
-
-              {user.bio?.trim() ? (
-                <p
-                  className={`text-left text-[13px] leading-relaxed text-[#3e3e3e] sm:text-sm lg:col-start-1 lg:max-w-2xl lg:pt-1 ${
-                    hasSubtitle ? "lg:row-start-3" : "lg:row-start-2"
-                  }`}
-                >
-                  {user.bio.trim()}
-                </p>
-              ) : null}
             </div>
           </div>
         </div>

@@ -5,21 +5,13 @@ import type { MentorDashboardUser } from "@/components/mentor/mentor-dashboard-t
 import { normalizeMentorYearsBand } from "@/components/mentor/mentor-setup-constants";
 import { MentorProfileHero } from "@/components/mentor/MentorProfileHero";
 import { profileSkillsSectionTitle } from "@/components/profile/profile-hero-classes";
+import { formatMentoringMinutesLong } from "@/lib/format-mentoring-minutes";
 import {
   formatRelativePast,
   formatSessionBadge,
 } from "@/lib/mentor-dashboard-stats";
 
 type Props = { user: MentorDashboardUser };
-
-function formatMinutesLong(total: number): string {
-  if (total <= 0) return "0 Minutes";
-  if (total < 60) return `${total} Minute${total === 1 ? "" : "s"}`;
-  const h = Math.floor(total / 60);
-  const m = total % 60;
-  if (m === 0) return `${h} Hour${h === 1 ? "" : "s"}`;
-  return `${h}h ${m}m`;
-}
 
 /** Figma Main Content (130:6879) — cards use 14px radius, hairline border */
 const card =
@@ -167,7 +159,7 @@ export function MentorDashboard({ user }: Props) {
                 </div>
                 <div>
                   <p className="text-lg font-semibold tabular-nums text-[#0a0a0a]">
-                    {formatMinutesLong(totalMentoringMinutes)}
+                    {formatMentoringMinutesLong(totalMentoringMinutes)}
                   </p>
                   <p className="text-[11px] text-[#6b7280]">Total Mentoring Time</p>
                 </div>

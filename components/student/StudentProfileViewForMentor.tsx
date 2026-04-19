@@ -89,6 +89,11 @@ export function StudentProfileViewForMentor({
                   <p className="mt-1.5 max-w-xl text-[13px] leading-relaxed text-[#5c5c66] sm:text-sm">
                     {subtitle}
                   </p>
+                  {user.bio?.trim() ? (
+                    <p className="mx-auto mt-3 max-w-2xl text-[13px] leading-relaxed text-[#3e3e3e] sm:mx-0 sm:text-sm">
+                      {user.bio.trim()}
+                    </p>
+                  ) : null}
                 </div>
                 <div className="flex shrink-0 items-center justify-center sm:justify-end sm:pt-1">
                   <Link
@@ -111,12 +116,6 @@ export function StudentProfileViewForMentor({
                 />
                 <SocialIconButton href={user.instagramUrl} label="Instagram" icon={<InstagramGlyph />} />
               </div>
-
-              {user.bio?.trim() ? (
-                <p className="mx-auto mt-5 max-w-2xl text-left text-[13px] leading-relaxed text-[#3e3e3e] sm:mx-0 sm:text-sm">
-                  {user.bio.trim()}
-                </p>
-              ) : null}
 
               <PortfolioViewerPanel
                 userId={user.id}

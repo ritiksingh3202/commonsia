@@ -10,7 +10,6 @@ import { SectionReveal } from "@/components/motion/SectionReveal";
 import { FaqAccordion } from "@/components/ui/FaqAccordion";
 import { defaultFaqItems } from "@/lib/faq-content";
 import type { HomeTestimonialCard } from "@/lib/testimonials";
-import { HOME_MARKETING_ASSETS } from "@/lib/home-marketing-assets";
 import { MARKETING_SECTION_TITLE_CLASS } from "@/lib/marketing-section-title";
 import { highResProfileImageUrl } from "@/lib/profile-image-url";
 import { MentorCarouselArrows } from "@/components/mentors/MentorCarouselArrows";
@@ -33,21 +32,21 @@ const steps = [
   },
 ];
 
+/** Home “What Mentors Say” — real quotes; headshots in `public/mentor_testimonial/`. */
 const mentorSpotlights = [
   {
     quote:
-      "Mentoring through Commonsia has been genuinely rewarding. I get to walk students through concept development, jury storytelling, and how studio work translates into practice. The questions are thoughtful, and each session stays focused so they leave with concrete next steps. I also appreciate being able to share drawings and references from live projects when it helps them see scale, coordination, and client conversations in context. Seeing them apply feedback in diagrams and models over the following weeks reminds me why I enjoy teaching alongside professional work.",
-    name: "Ar. Saurabh Singh",
-    cred: "IIT Roorkee",
-    avatar: HOME_MARKETING_ASSETS.student1,
+      "I feel teachers should better guide inside the classrooms rather than merely focusing on attendance and timely submissions. Architecture colleges feel like some hardcore preparation of something that'll be completely new to students once they come out in the real world.",
+    name: "Saqib Khan",
+    cred: "Architecture student",
+    avatar: "/mentor_testimonial/saqib.jpeg",
   },
   {
     quote:
-      "Students often arrive with strong instincts but not always the language to defend them. We work through representation, structure, and narrative so reviews feel intentional rather than improvised. I like how the platform surfaces context ahead of time—I can prepare examples from recent work and tune the conversation to their year, software, and studio brief. The cadence respects my calendar while still feeling personal: focused mentorship without the administrative drag, and conversations that carry forward into their portfolios and pinups.",
-    name: "Ar. Kavita Menon",
-    cred: "Principal Architect",
-    /** Human photo — `student_4` reads as female in marketing set (swap if your asset differs). */
-    avatar: HOME_MARKETING_ASSETS.student4,
+      "Great stuff!! I will be looking forward to it. Also, if someone is interested in working out a research among my topic of expertise, I will be more than happy to help.",
+    name: "Sahil Ali Khan",
+    cred: "Mentor & researcher",
+    avatar: "/mentor_testimonial/sahil.jpeg",
   },
 ];
 

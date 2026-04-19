@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { auth } from "@/auth";
 import { PublicMentorProfile } from "@/components/mentors/PublicMentorProfile";
 import { getPublicMentorById, getSimilarMentorsForProfile } from "@/lib/mentor-directory";
+import { getMentorBookingStats } from "@/lib/mentor-dashboard-stats";
 import { getPublicReviewsForMentor } from "@/lib/mentor-reviews";
 import { prisma } from "@/lib/prisma";
 
@@ -18,7 +19,8 @@ function initialsFromName(name: string): string {
 
 type Props = { params: Promise<{ id: string }> };
 
-export const revalidate = 60;
+/** Fresh booking stats when visitors open or refresh a mentor profile. */
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
@@ -50,6 +52,7 @@ export default async function PublicMentorPage({ params }: Props) {
     8,
   );
   const mentorReviews = await getPublicReviewsForMentor(mentor.id);
+  const bookingStats = await getMentorBookingStats(mentor.id);
   const back = `/mentors/${mentor.id}`;
   const linked = mentor.linkedUserId?.trim();
   const scheduleTarget = linked
@@ -106,6 +109,10 @@ export default async function PublicMentorPage({ params }: Props) {
   return (
     <PublicMentorProfile
       mentor={mentor}
+      publicBookingStats={{
+        completedSessionCount: bookingStats.completedSessionCount,
+        totalMentoringMinutes: bookingStats.totalMentoringMinutes,
+      }}
       mentorReviews={mentorReviews}
       similarMentors={similarMentors}
       similarMentorsPersonalized={viewerRole === "student"}

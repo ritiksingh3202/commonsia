@@ -11,6 +11,7 @@ import { ProfileCover } from "@/components/ProfileCover";
 import { PortfolioViewerPanel } from "@/components/profile/PortfolioViewerPanel";
 import { LinkedInGlyph, SocialIconButton } from "@/components/profile/ProfileSocialIcons";
 import { avatarColorsFromSeed } from "@/lib/avatar-initials";
+import { formatMentoringMinutesLong } from "@/lib/format-mentoring-minutes";
 import type { Mentor } from "@/lib/mentor-directory";
 import { profileCoverDisplaySrc } from "@/lib/profile-cover";
 import type { PublicMentorReview } from "@/lib/mentor-reviews";
@@ -45,6 +46,7 @@ function achievementsFromCertifications(raw: string | null): { title: string; bo
 
 export function PublicMentorProfile({
   mentor,
+  publicBookingStats,
   mentorReviews,
   similarMentors,
   messageHref,
@@ -53,6 +55,11 @@ export function PublicMentorProfile({
   similarMentorsPersonalized = false,
 }: {
   mentor: Mentor;
+  /** Completed `MentoringBooking` rows for this mentor (end time in the past). */
+  publicBookingStats: {
+    completedSessionCount: number;
+    totalMentoringMinutes: number;
+  };
   /** Session reviews for this mentor (from `SessionReview` where `mentorId` matches). */
   mentorReviews: PublicMentorReview[];
   similarMentors: Mentor[];
@@ -135,6 +142,11 @@ export function PublicMentorProfile({
                 <p className="mx-auto max-w-xl text-center text-[13px] italic leading-relaxed text-[#5c5c66] sm:text-sm lg:mx-0 lg:text-left lg:col-start-1 lg:row-start-2">
                   {mentor.role}
                 </p>
+                {mentor.bio?.trim() ? (
+                  <p className="mx-auto mt-2 max-w-2xl text-center text-[13px] leading-relaxed text-[#3e3e3e] sm:text-sm lg:mx-0 lg:text-left lg:col-start-1 lg:row-start-3">
+                    {mentor.bio.trim()}
+                  </p>
+                ) : null}
 
                 <div className="mb-1 flex flex-col items-center gap-3 sm:mb-2 lg:col-start-2 lg:row-start-1 lg:mb-0 lg:items-end lg:self-start">
                   <div className="flex flex-wrap items-center justify-center gap-2.5 lg:justify-end">
@@ -162,7 +174,11 @@ export function PublicMentorProfile({
                   </div>
                 </div>
 
-                <div className="mt-5 w-full border-t border-neutral-200/90 pt-5 sm:mt-6 sm:pt-6 lg:col-start-1 lg:row-start-3 lg:max-w-2xl">
+                <div
+                  className={`mt-5 w-full border-t border-neutral-200/90 pt-5 sm:mt-6 sm:pt-6 lg:col-start-1 lg:max-w-2xl ${
+                    mentor.bio?.trim() ? "lg:row-start-4" : "lg:row-start-3"
+                  }`}
+                >
                   {mentor.summary ? (
                     <div className="flex flex-wrap justify-center gap-x-2 gap-y-2.5 sm:gap-x-2.5 sm:gap-y-3 lg:justify-start">
                       {mentorshipFocusChips(mentor.summary).map((label) => (
@@ -250,7 +266,9 @@ export function PublicMentorProfile({
 
             <aside className="h-fit rounded-[14px] border border-black/10 bg-white p-4 shadow-sm sm:p-5">
               <h2 className="text-base font-semibold text-[#0a0a0a]">Statistics</h2>
-              <p className="mb-4 text-[11px] text-[#9ca3af]">Sample metrics for this profile.</p>
+              <p className="mb-4 text-[11px] text-[#9ca3af]">
+                Totals from completed sessions booked on Commonsia (past end time).
+              </p>
               <div className="grid gap-3">
                 <div className="flex gap-3 rounded-xl border border-sky-100 bg-sky-50/80 p-3">
                   <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-sky-100">
@@ -258,7 +276,9 @@ export function PublicMentorProfile({
                     <img src="/rocket.svg" alt="" className="icon-black-line size-5 object-contain" />
                   </div>
                   <div>
-                    <p className="text-lg font-semibold tabular-nums text-[#0a0a0a]">500 Minutes</p>
+                    <p className="text-lg font-semibold tabular-nums text-[#0a0a0a]">
+                      {formatMentoringMinutesLong(publicBookingStats.totalMentoringMinutes)}
+                    </p>
                     <p className="text-[11px] text-[#6b7280]">Total Mentoring Time</p>
                   </div>
                 </div>
@@ -268,7 +288,10 @@ export function PublicMentorProfile({
                     <img src="/session.svg" alt="" className="icon-black-line size-5 object-contain" />
                   </div>
                   <div>
-                    <p className="text-lg font-semibold tabular-nums text-[#0a0a0a]">60 Sessions</p>
+                    <p className="text-lg font-semibold tabular-nums text-[#0a0a0a]">
+                      {publicBookingStats.completedSessionCount} Session
+                      {publicBookingStats.completedSessionCount === 1 ? "" : "s"}
+                    </p>
                     <p className="text-[11px] text-[#6b7280]">Sessions Completed</p>
                   </div>
                 </div>
@@ -393,7 +416,12 @@ export function PublicMentorProfile({
           </p>
           <div className="mt-5 grid min-w-0 gap-4 sm:gap-5 md:grid-cols-2">
             {similar.slice(similarStart, similarStart + similarPageSize).map((m, i) => (
-              <MentorCard key={`${m.id}-${similarStart}-${i}`} mentor={m} index={similarStart + i} />
+              <MentorCard
+                key={`${m.id}-${similarStart}-${i}`}
+                mentor={m}
+                index={similarStart + i}
+                layout="spotlight"
+              />
             ))}
           </div>
           <div className="mt-6 flex justify-center">

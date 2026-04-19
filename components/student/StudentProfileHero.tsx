@@ -101,6 +101,11 @@ export function StudentProfileHero({ user: initial }: Props) {
                 <p className="mt-1.5 max-w-xl text-[13px] leading-relaxed text-[#5c5c66] sm:text-sm">
                   {subtitle}
                 </p>
+                {user.bio?.trim() ? (
+                  <p className="mx-auto mt-3 max-w-2xl text-[13px] leading-relaxed text-[#3e3e3e] sm:mx-0 sm:text-sm">
+                    {user.bio.trim()}
+                  </p>
+                ) : null}
               </div>
               <div className="flex shrink-0 flex-wrap items-center justify-center gap-2.5 sm:justify-end sm:pt-1">
                 <ProfileHeroEditMenuButton
@@ -123,12 +128,6 @@ export function StudentProfileHero({ user: initial }: Props) {
                 <ProfileSettingsMenu editProfileHref="/student/profile/edit" />
               </div>
             </div>
-
-            {user.bio?.trim() && (
-              <p className="mx-auto mt-5 max-w-2xl text-left text-[13px] leading-relaxed text-[#3e3e3e] sm:mx-0 sm:text-sm">
-                {user.bio.trim()}
-              </p>
-            )}
 
             {(interests.length > 0 || user.otherInterests?.trim()) && (
               <div className="mt-6 text-left">

@@ -23,6 +23,8 @@ export type Mentor = {
   linkedUserId: string | null;
   /** One paragraph under hero on public profile */
   summary: string;
+  /** Long-form bio from profile edit (shown under name on public profile). */
+  bio: string | null;
   /** Bullets for "Experience & Background" */
   experienceLines: string[];
   /** Public LinkedIn URL when the mentor added one */
@@ -131,8 +133,9 @@ function heroImage(image: string | null | undefined): string {
   return MENTOR_PAGE_HERO_ASSETS.mentorPhoto;
 }
 
-function hasRealProfilePhoto(image: string | null | undefined): boolean {
-  return Boolean(image?.trim());
+/** True when the user row has any stored avatar (OAuth URL or upload), independent of list payload stripping. */
+function hasStoredProfilePhoto(rawImage: string | null | undefined): boolean {
+  return Boolean(rawImage?.trim());
 }
 
 function buildExperienceLines(u: MentorRow): string[] {
@@ -153,9 +156,6 @@ function buildExperienceLines(u: MentorRow): string[] {
   const focus = u.mentorMentorshipFocus?.trim();
   if (focus && !bullets.some((b) => b.includes(focus.slice(0, 40)))) {
     bullets.push(focus);
-  }
-  if (u.bio?.trim() && bullets.length === 0) {
-    bullets.push(u.bio.trim());
   }
   return bullets;
 }
@@ -180,13 +180,23 @@ function mapRowToMentor(
     opts?.allowLargeDataUrlAvatar || !rawImg.startsWith("data:") || rawImg.length <= MAX_AVATAR_DATA_URL_CHARS
       ? rawImg
       : "";
+
+  /** Large uploads are omitted from cached JSON; cards load the same bytes via this URL (see `app/api/mentors/[id]/photo`). */
+  const useAvatarProxy =
+    Boolean(rawImg) &&
+    !opts?.allowLargeDataUrlAvatar &&
+    rawImg.startsWith("data:") &&
+    rawImg.length > MAX_AVATAR_DATA_URL_CHARS;
+
+  const cardImageSrc = useAvatarProxy ? `/api/mentors/${u.id}/photo` : listSafeImg;
+
   const tags = expertiseTags(u.mentorExpertise);
   const monthlyLookup: NextSlotMonthlyConsumedLookup | undefined = opts?.monthlyConsumed
     ? (year, monthIndex0) => opts.monthlyConsumed!.get(`${u.id}:${year}-${monthIndex0}`) ?? false
     : undefined;
   const slot = formatNextAvailableSlotLine(u.mentorAvailabilityJson, new Date(), monthlyLookup);
   const availabilityPattern = formatMentorAvailabilityPatternLabel(u.mentorAvailabilityJson);
-  const photo = hasRealProfilePhoto(listSafeImg || null);
+  const photo = hasStoredProfilePhoto(rawImg);
   return {
     id: u.id,
     name: displayName(u.name, u.email),
@@ -194,7 +204,7 @@ function mapRowToMentor(
     tags,
     availabilityPattern,
     slot,
-    image: heroImage(listSafeImg || null),
+    image: heroImage(cardImageSrc || null),
     hasProfilePhoto: photo,
     linkedUserId: u.id,
     summary: buildSummary(u),
@@ -205,6 +215,7 @@ function mapRowToMentor(
     onboardingComplete: u.mentorOnboardingComplete,
     yearsExperience:
       normalizeMentorYearsBand(u.mentorYearsExperience) || u.mentorYearsExperience?.trim() || null,
+    bio: u.bio?.trim() || null,
   };
 }
 

@@ -11,7 +11,7 @@
 
 const { PrismaClient } = require("@prisma/client");
 
-const PUBLIC_MENTORS_CACHE_KEY = "commonsia:v1:mentors:public-list:v2";
+const PUBLIC_MENTORS_CACHE_KEY = "commonsia:v1:mentors:public-list:v3";
 
 async function clearPublicMentorsRedis() {
   const url = process.env.UPSTASH_REDIS_REST_URL?.trim();

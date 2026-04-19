@@ -10,12 +10,15 @@ import type { Mentor } from "@/lib/mentor-directory";
 
 const MAX_SKILL_TAGS_ON_CARD = 5;
 
+/** `spotlight` matches home “What Mentors Say” card min-heights + radius (e.g. similar mentors on profile). */
 export function MentorCard({
   mentor,
   index,
+  layout = "default",
 }: {
   mentor: Mentor;
   index: number;
+  layout?: "default" | "spotlight";
 }) {
   const router = useRouter();
   const { data: session } = useSession();
@@ -27,6 +30,11 @@ export function MentorCard({
   const profileHref = `/mentors/${mentor.id}`;
   const visibleTags = mentor.tags.slice(0, MAX_SKILL_TAGS_ON_CARD);
   const extraTagCount = mentor.tags.length - visibleTags.length;
+
+  const shellClass =
+    layout === "spotlight"
+      ? "group flex h-full min-h-[17.5rem] w-full min-w-0 flex-col-reverse overflow-hidden rounded-[18px] border border-neutral-200/90 bg-white shadow-[0_16px_40px_-20px_rgba(0,0,0,0.12)] ring-1 ring-black/[0.04] sm:min-h-[19rem] md:min-h-[20rem] md:flex-row md:items-stretch"
+      : "group flex h-full min-h-[280px] w-full min-w-0 flex-col-reverse overflow-hidden rounded-xl border border-neutral-200/90 bg-white shadow-sm ring-1 ring-black/[0.04] md:min-h-[300px] md:flex-row md:items-stretch";
 
   return (
     <motion.article
@@ -48,7 +56,7 @@ export function MentorCard({
           router.push(profileHref);
         }
       }}
-      className="group flex h-full min-h-[280px] w-full min-w-0 flex-col-reverse overflow-hidden rounded-xl border border-neutral-200/90 bg-white shadow-sm ring-1 ring-black/[0.04] md:min-h-[300px] md:flex-row md:items-stretch"
+      className={shellClass}
     >
       {/* Text — fills remaining width; footer pinned to bottom for equal card heights */}
       <div className="flex min-h-0 min-w-0 flex-1 flex-col justify-between gap-3 p-3.5 sm:p-4 md:py-5 md:pl-5 md:pr-4">
