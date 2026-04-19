@@ -9,7 +9,8 @@
     "migrate:deploy": "prisma migrate deploy",
     "start": "next start",
     "lint": "eslint",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate",
+    "reset:mentors-students": "node scripts/reset-mentors-students.cjs"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.1",

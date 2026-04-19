@@ -129,6 +129,28 @@ export function MentorsPage({ mentors }: { mentors: Mentor[] }) {
 
   const slice = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
 
+  if (mentors.length === 0) {
+    return (
+      <div className="bg-white pb-16 sm:pb-20">
+        <div className="mx-auto min-w-0 max-w-2xl px-4 pt-10 text-center sm:px-6 sm:pt-14 md:pt-16">
+          <p className="font-sans text-[15px] font-semibold leading-normal text-[#6a7282] sm:text-base">
+            Connect, gain mentorship, and learn from real world practice.
+          </p>
+          <div className="mt-8 rounded-2xl border border-neutral-200/90 bg-gradient-to-b from-orange-50/40 to-white px-6 py-10 shadow-sm sm:mt-10 sm:px-8 sm:py-12">
+            <p className="text-xs font-semibold uppercase tracking-wider text-primary">Mentors</p>
+            <h1 className="mt-2 font-heading text-2xl font-semibold tracking-tight text-[#0a0a0a] sm:text-3xl">
+              Coming soon
+            </h1>
+            <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-neutral-600 sm:text-base">
+              We&apos;re onboarding mentors now. Once the first mentor profile is live, you&apos;ll see their cards
+              here. Sign up or check back shortly.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="bg-white pb-6 sm:pb-8">
       <div id="results" ref={resultsAnchorRef} className="mx-auto min-w-0 max-w-7xl scroll-mt-4 px-4 sm:px-6 lg:px-8">
@@ -212,11 +234,6 @@ export function MentorsPage({ mentors }: { mentors: Mentor[] }) {
           {filtered.length === 0 && mentors.length > 0 && (
             <p className="py-5 text-center text-sm text-neutral-600 sm:py-6">
               No mentors match your search and filters. Try different keywords or clear filters.
-            </p>
-          )}
-          {mentors.length === 0 && (
-            <p className="py-5 text-center text-sm text-neutral-600 sm:py-6">
-              No mentors are listed yet. Check back soon.
             </p>
           )}
         </SectionReveal>
