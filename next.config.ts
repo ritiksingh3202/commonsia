@@ -1,5 +1,17 @@
 import type { NextConfig } from "next";
 
+/**
+ * The bundled Auth.js client reads `NEXTAUTH_URL` before `AUTH_URL`. If production only sets
+ * `AUTH_URL`, copy it here so `/api/auth/*` and CSRF calls target the same origin as the server.
+ */
+(() => {
+  const authUrl = process.env.AUTH_URL?.trim();
+  const nextAuthUrl = process.env.NEXTAUTH_URL?.trim();
+  if (authUrl && !nextAuthUrl) {
+    process.env.NEXTAUTH_URL = authUrl;
+  }
+})();
+
 if (process.env.VERCEL === "1") {
   const hasAuthSecret = Boolean(
     (process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET ?? "").trim().length,

@@ -11,7 +11,6 @@ import { FaqAccordion } from "@/components/ui/FaqAccordion";
 import { defaultFaqItems } from "@/lib/faq-content";
 import type { HomeTestimonialCard } from "@/lib/testimonials";
 import { HOME_MARKETING_ASSETS } from "@/lib/home-marketing-assets";
-import { marketingImages } from "@/lib/marketing-images";
 import { MARKETING_SECTION_TITLE_CLASS } from "@/lib/marketing-section-title";
 import { highResProfileImageUrl } from "@/lib/profile-image-url";
 import { MentorCarouselArrows } from "@/components/mentors/MentorCarouselArrows";
@@ -52,50 +51,22 @@ const mentorSpotlights = [
   },
 ];
 
-/** Desktop “Why Us” — center art, two blocks per side (matches wide layout reference). */
-const whyUsDesktopColumns = {
-  left: [
-    {
-      title: "Architecture Mentorship",
-      body: "Learn directly from experienced architects who guide students through design thinking, studio challenges, and real-world architectural practices.",
-      icon: "/home_assets/mentorship.svg",
-    },
-    {
-      title: "Design Guidance",
-      body: "Get practical advice on studio projects, design concepts, software tools, and portfolios to strengthen your architectural skills.",
-      icon: "/home_assets/guidance.svg",
-    },
-  ],
-  right: [
-    {
-      title: "1-on-1 Mentor Sessions",
-      body: "Connect with mentors through scheduled one-to-one meetings to discuss design ideas, resolve doubts, and receive personalized feedback on your work.",
-      icon: "/home_assets/1-1.svg",
-    },
-    {
-      title: "Software Guidance",
-      body: "Level up Rhino, BIM, and visualization workflows with mentors who use these tools every day in practice.",
-      icon: "/home_assets/software.svg",
-    },
-  ],
-} as const;
-
-/** Narrow screens — stacked list only (matches mobile reference). */
-const whyUsMobileStack = [
+/** Why Us — three stacked points; icons from `public/*.svg` (updated studio / portfolio / career assets). */
+const whyUsItems = [
   {
     title: "Studio & Design",
     body: "Sharpen your design thinking with studio guidance, constructive critiques, building systems insight, and sustainability integration.",
-    icon: "/home_assets/mentorship.svg",
+    icon: "/studio.svg",
   },
   {
     title: "Portfolio Reviews",
     body: "Get meaningful, industry-informed feedback that elevates your portfolio and prepares you for real opportunities.",
-    icon: "/home_assets/1-1.svg",
+    icon: "/portfolio_review.svg",
   },
   {
     title: "Career & Path",
     body: "Navigate your career with clarity. Explore roles, build the right skills, connect with professionals, and discover internship opportunities.",
-    icon: "/home_assets/software.svg",
+    icon: "/career.svg",
   },
 ] as const;
 
@@ -123,22 +94,6 @@ const heroFadeUp = {
     transition: { duration: 0.58, ease: heroEase },
   },
 };
-
-function WhyIcon({ src, className }: { src: string; className?: string }) {
-  return (
-    <div
-      className={`flex h-14 w-14 shrink-0 items-center justify-center sm:h-16 sm:w-16 ${className ?? ""}`}
-    >
-      <Image
-        src={src}
-        alt=""
-        width={56}
-        height={56}
-        className="icon-brand-line max-h-full max-w-full object-contain"
-      />
-    </div>
-  );
-}
 
 export function HomePage({ testimonials }: { testimonials: HomeTestimonialCard[] }) {
   const router = useRouter();
@@ -186,28 +141,27 @@ export function HomePage({ testimonials }: { testimonials: HomeTestimonialCard[]
           initial="hidden"
           animate="visible"
         >
-          <div className="mx-auto flex w-full min-w-0 max-w-[min(100%,46rem)] flex-col items-center text-center sm:max-w-3xl md:max-w-[40rem] lg:max-w-[min(100%,48rem)] xl:max-w-[min(100%,52rem)]">
+          <div className="mx-auto flex w-full min-w-0 max-w-[min(100%,46rem)] flex-col items-stretch text-center sm:max-w-3xl md:max-w-[40rem] lg:max-w-[min(100%,48rem)] xl:max-w-[min(100%,52rem)]">
             <motion.h1
-              className="text-balance text-[clamp(1.85rem,6.5vw+0.35rem,2.75rem)] font-semibold leading-[1.12] tracking-[-0.02em] sm:text-[clamp(2.25rem,4.8vw+0.5rem,3.35rem)] sm:leading-[1.08] md:text-[clamp(2.5rem,3.8vw+0.65rem,3.65rem)] lg:text-[clamp(2.85rem,3.2vw+0.85rem,4rem)] lg:leading-[1.06]"
+              className="w-full max-w-full text-balance text-[clamp(1.85rem,6.5vw+0.35rem,2.75rem)] font-semibold leading-[1.12] tracking-[-0.02em] sm:text-[clamp(2.25rem,4.8vw+0.5rem,3.35rem)] sm:leading-[1.08] md:text-[clamp(2.5rem,3.8vw+0.65rem,3.65rem)] lg:text-[clamp(2.85rem,3.2vw+0.85rem,4rem)] lg:leading-[1.06]"
               variants={heroFadeUp}
             >
               <span className="text-primary">Architecture,</span>{" "}
               <span className="text-[#0a0a0a]">Beyond the Studios</span>
             </motion.h1>
-            {/* Hero subcopy — Figma 401:2488; line 1 / line 2, centered; one line each from lg where width fits ~90ch */}
             <motion.p
               variants={heroFadeUp}
-              className="mx-auto mt-6 flex w-full flex-col items-center gap-2 px-1 text-center font-sans text-[15px] font-normal leading-normal text-[#6a7282] sm:mt-7 sm:text-base md:mt-8"
+              className="mx-auto mt-6 w-full min-w-0 max-w-[min(100%,34rem)] space-y-2.5 self-center px-0.5 text-pretty text-center font-sans text-[14px] font-normal leading-relaxed text-[#6a7282] [overflow-wrap:anywhere] sm:mt-7 sm:max-w-[min(100%,40rem)] sm:px-0 sm:text-[15px] md:mt-8 md:text-base"
             >
-              <span className="block w-full max-w-full text-balance lg:whitespace-nowrap">
+              <span className="block w-full min-w-0">
                 A community first mentorship platform connecting students with practicing architects.
               </span>
-              <span className="block w-full whitespace-nowrap">
+              <span className="block w-full min-w-0">
                 Connect, gain mentorship, and learn from real world practice.
               </span>
             </motion.p>
             <motion.div
-              className="mt-8 flex w-full max-w-md flex-col items-stretch justify-center gap-4 sm:mt-9 sm:max-w-none sm:flex-row sm:items-center sm:justify-center md:mt-10 md:gap-5"
+              className="mx-auto mt-8 flex w-full max-w-md flex-col items-stretch justify-center gap-4 sm:mt-9 sm:max-w-none sm:flex-row sm:items-center sm:justify-center md:mt-10 md:gap-5"
               variants={heroFadeUp}
             >
               <motion.div
@@ -252,57 +206,24 @@ export function HomePage({ testimonials }: { testimonials: HomeTestimonialCard[]
           <h2 className={`${MARKETING_SECTION_TITLE_CLASS} mx-auto max-w-4xl text-center text-ink`}>Why Us?</h2>
         </SectionReveal>
 
-        {/* Mobile / tablet: single column, three blocks (reference: stacked list) */}
-        <div className="mx-auto mt-8 max-w-xl lg:hidden">
-          <div className="flex flex-col gap-10 sm:gap-12">
-            {whyUsMobileStack.map((w, i) => (
+        <div className="mx-auto mt-8 max-w-xl text-left lg:mt-10 lg:max-w-2xl">
+          <div className="flex flex-col gap-10 sm:gap-12 lg:gap-14">
+            {whyUsItems.map((w, i) => (
               <SectionReveal key={w.title} delay={i * 0.05}>
-                <div className="flex flex-col gap-3 text-left sm:gap-4">
-                  <WhyIcon src={w.icon} />
+                <div className="flex flex-col gap-3 sm:gap-4">
+                  <div className="flex shrink-0 items-center justify-start">
+                    <Image
+                      src={w.icon}
+                      alt=""
+                      width={64}
+                      height={64}
+                      className="h-14 w-auto max-w-full object-contain object-left sm:h-16"
+                    />
+                  </div>
                   <h3 className="text-heading-card text-ink">{w.title}</h3>
-                  <p className="text-[15px] leading-relaxed text-neutral-600 sm:text-base">
+                  <p className="text-[15px] leading-relaxed text-neutral-600 sm:text-base lg:text-[17px] lg:leading-relaxed">
                     {w.body}
                   </p>
-                </div>
-              </SectionReveal>
-            ))}
-          </div>
-        </div>
-
-        {/* Desktop: left column | center illustration | right column; side blocks align to top/bottom of art */}
-        <div className="mx-auto mt-8 hidden max-w-7xl items-stretch gap-x-8 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(280px,1.2fr)_minmax(0,1fr)] xl:mt-10 xl:gap-x-14">
-          <div className="flex min-h-0 min-w-0 flex-col justify-between gap-8 pb-1 pt-1 lg:max-w-[min(100%,22rem)] lg:justify-self-end xl:gap-10">
-            {whyUsDesktopColumns.left.map((w, i) => (
-              <SectionReveal key={w.title} delay={i * 0.05}>
-                <div className="flex flex-col gap-3 text-left sm:gap-4">
-                  <WhyIcon src={w.icon} />
-                  <h3 className="text-heading-card text-ink">{w.title}</h3>
-                  <p className="text-[15px] leading-relaxed text-neutral-600 lg:text-base">{w.body}</p>
-                </div>
-              </SectionReveal>
-            ))}
-          </div>
-
-          <SectionReveal className="flex min-h-0 min-w-0 items-center justify-center px-2 sm:px-4" delay={0.06}>
-            <div className="relative aspect-[10/13] w-full max-w-[min(100%,520px)]">
-              <Image
-                src={marketingImages.whyUsCenter}
-                alt="Mentors and students helping each other climb steps together"
-                fill
-                className="object-contain object-center"
-                sizes="(max-width: 1280px) 38vw, 520px"
-                priority={false}
-              />
-            </div>
-          </SectionReveal>
-
-          <div className="flex min-h-0 min-w-0 flex-col justify-between gap-8 pb-1 pt-1 lg:max-w-[min(100%,22rem)] lg:justify-self-start xl:gap-10">
-            {whyUsDesktopColumns.right.map((w, i) => (
-              <SectionReveal key={w.title} delay={i * 0.05}>
-                <div className="flex flex-col gap-3 text-left sm:gap-4">
-                  <WhyIcon src={w.icon} />
-                  <h3 className="text-heading-card text-ink">{w.title}</h3>
-                  <p className="text-[15px] leading-relaxed text-neutral-600 lg:text-base">{w.body}</p>
                 </div>
               </SectionReveal>
             ))}

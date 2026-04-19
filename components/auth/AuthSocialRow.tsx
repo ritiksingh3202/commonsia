@@ -15,9 +15,15 @@ export function AuthSocialRow({ callbackUrl = "/", onBeforeOAuth }: Props) {
   const [linkedin, setLinkedin] = useState(false);
   const [google, setGoogle] = useState(false);
   const [ready, setReady] = useState(false);
+  const [providerLoadError, setProviderLoadError] = useState<string | null>(null);
 
   useEffect(() => {
     void getProviders().then((p) => {
+      if (!p) {
+        setProviderLoadError(
+          "Could not reach the sign-in service. Refresh the page, or try again on a stable connection.",
+        );
+      }
       setLinkedin(!!p?.linkedin);
       setGoogle(!!p?.google);
       setReady(true);
@@ -32,15 +38,34 @@ export function AuthSocialRow({ callbackUrl = "/", onBeforeOAuth }: Props) {
     onBeforeOAuth?.();
     void (async () => {
       try {
-        await signIn(provider, { callbackUrl });
+        await signIn(provider, { callbackUrl, redirect: true });
       } catch {
+        window.alert(
+          "That sign-in could not be started from this page. Try again, use email and password, or open the site in a normal (not private) window.",
+        );
         setBusy(false);
       }
     })();
   };
 
   if (!ready) return null;
-  if (!linkedin && !google) return null;
+
+  if (providerLoadError) {
+    return (
+      <p className="max-w-[280px] text-center text-[11px] leading-snug text-red-700/90" role="alert">
+        {providerLoadError}
+      </p>
+    );
+  }
+
+  if (!linkedin && !google) {
+    return (
+      <p className="max-w-[280px] text-center text-[11px] leading-snug text-[#717182]">
+        Google and LinkedIn sign-in are not configured on this deployment. Use email and password, or
+        ask the site owner to add OAuth client credentials on the server.
+      </p>
+    );
+  }
 
   return (
     <div className="flex flex-col items-center gap-0">

@@ -146,7 +146,8 @@ export function SignupForm({ role, oauthCallbackUrl }: SignupFormProps) {
               await signIn("credentials", {
                 email: email.trim().toLowerCase(),
                 password: pw,
-                redirectTo: afterAuth,
+                callbackUrl: afterAuth,
+                redirect: true,
               });
               /* Unreachable on success — client navigates away. */
             } catch {

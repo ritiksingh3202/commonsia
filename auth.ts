@@ -24,8 +24,9 @@ import { prisma } from "@/lib/prisma";
  * - Google: {AUTH_URL}/api/auth/callback/google
  * - LinkedIn: {AUTH_URL}/api/auth/callback/linkedin
  *
- * Google Calendar: sign-in requests `calendar` scope so refresh tokens can live on the Account row.
- * Booking uses server routes only (`/api/calendar/create-event`) — OAuth access tokens are not exposed on the client session.
+ * Google Calendar: **not** requested on sign-in — calendar access uses the separate
+ * `/api/calendar/google/authorize` flow so Google “Sign in” stays on basic scopes (`openid email profile`)
+ * and works without Google’s sensitive-scope verification for the main OAuth client.
  */
 function isLocalDevHost(host: string | null | undefined) {
   if (!host) return false;
@@ -85,9 +86,8 @@ const oauthProviders = [
           authorization: {
             params: {
               access_type: "offline",
-              /** Improves chance Google returns a refresh_token (needed for Calendar sync from the Account row). */
-              prompt: "consent",
-              scope: "openid email profile https://www.googleapis.com/auth/calendar",
+              /** Basic scopes only — avoids “app not verified” / blocked sign-in for sensitive Calendar scope. */
+              scope: "openid email profile",
             },
           },
         }),

@@ -1,0 +1,50 @@
+"use client";
+
+import Image from "next/image";
+
+import { BRAND_LOGO_SYMBOL_SRC, BRAND_LOGO_WORDMARK_SRC } from "@/lib/brand-assets";
+
+type BrandLogoProps = {
+  className?: string;
+  priority?: boolean;
+  /** Navbar: compact. Footer: larger mark + wordmark for the cream band column. */
+  context?: "navbar" | "footer";
+};
+
+/**
+ * Mark + wordmark from `public/logo.svg` and `public/logo-text.svg`.
+ */
+export function BrandLogo({ className, priority = false, context = "navbar" }: BrandLogoProps) {
+  const isFooter = context === "footer";
+
+  const symbolClass = isFooter
+    ? "h-10 w-auto shrink-0 object-contain object-left sm:h-11 md:h-12"
+    : "h-9 w-auto shrink-0 object-contain object-left sm:h-10";
+
+  const wordmarkClass = isFooter
+    ? "h-7 w-auto min-w-0 max-w-full shrink object-contain object-left sm:h-8 md:h-9 lg:h-10"
+    : "h-6 w-auto min-w-0 max-w-full shrink object-contain object-left sm:h-7 md:h-8";
+
+  const gapClass = isFooter ? "gap-3 sm:gap-3.5 md:gap-4" : "gap-2 sm:gap-2.5";
+
+  return (
+    <span className={`inline-flex min-w-0 max-w-full items-center ${gapClass} ${className ?? ""}`}>
+      <Image
+        src={BRAND_LOGO_SYMBOL_SRC}
+        alt=""
+        width={40}
+        height={39}
+        priority={priority}
+        className={symbolClass}
+      />
+      <Image
+        src={BRAND_LOGO_WORDMARK_SRC}
+        alt="Commonsia"
+        width={182}
+        height={40}
+        priority={priority}
+        className={wordmarkClass}
+      />
+    </span>
+  );
+}

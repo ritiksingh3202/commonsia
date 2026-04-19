@@ -1,12 +1,12 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import Image from "next/image";
 import Link from "next/link";
 import { signOut, useSession } from "next-auth/react";
 import { usePathname, useRouter } from "next/navigation";
 import { startTransition, useEffect, useState } from "react";
 
+import { BrandLogo } from "@/components/brand/BrandLogo";
 import { NavNotificationsBell } from "@/components/navbar/NavNotificationsBell";
 
 const nav = [
@@ -73,16 +73,9 @@ export function Navbar() {
         <Link
           href="/"
           prefetch
-          className="relative z-10 block w-[min(46vw,200px)] shrink-0"
+          className="relative z-10 flex min-w-0 max-w-[min(72vw,280px)] shrink-0 items-center"
         >
-          <Image
-            src="/logo.svg"
-            alt="Commonsia"
-            width={220}
-            height={43}
-            className="h-8 w-auto sm:h-10"
-            priority
-          />
+          <BrandLogo priority />
         </Link>
 
         <motion.nav
