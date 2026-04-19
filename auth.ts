@@ -109,10 +109,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth((req) => {
   const proto = req?.headers.get("x-forwarded-proto") ?? "http";
   const isLocal = isLocalDevHost(host);
 
-  // If a production AUTH_URL/NEXTAUTH_URL is set while developing on localhost,
-  // Auth.js will issue Secure cookies + build OAuth callback URLs for prod,
-  // which breaks CSRF/session and Google/LinkedIn sign-in on http://localhost.
-  if (process.env.NODE_ENV !== "production" && isLocal && host) {
+  // On localhost (dev or `next start`), force canonical URL to the current origin so Auth.js
+  // callbacks / CSRF match the browser — even when `.env` still has a production AUTH_URL.
+  if (isLocal && host) {
     const origin = `${proto === "https" ? "https" : "http"}://${host}`;
     process.env.AUTH_URL = origin;
     process.env.NEXTAUTH_URL = origin;
@@ -123,7 +122,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth((req) => {
   return {
     adapter: PrismaAdapter(prisma),
     trustHost: true,
-    secret: resolveAuthSecret(),
+    secret: resolveAuthSecret(host),
     basePath: "/api/auth",
     cookies: cookieConfig(useSecureCookies),
     pages: {

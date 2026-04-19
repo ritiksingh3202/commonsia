@@ -40,7 +40,11 @@ export default async function AuthErrorPage({
                   Set <span className="font-mono text-[11px]">AUTH_URL</span> to the exact public origin (for example{" "}
                   <span className="font-mono text-[11px]">https://www.yoursite.com</span>, no trailing slash).
                 </li>
-                <li>Google / LinkedIn sign-in only work after their client IDs and secrets are set in the same environment.</li>
+                <li>
+                  Google / LinkedIn: set client ID and secret in the same environment, and register redirect URIs exactly as{" "}
+                  <span className="font-mono text-[11px]">{"{AUTH_URL}"}/api/auth/callback/google</span> (and{" "}
+                  <span className="font-mono text-[11px]">…/callback/linkedin</span>).
+                </li>
               </ul>
             </details>
           ) : null}

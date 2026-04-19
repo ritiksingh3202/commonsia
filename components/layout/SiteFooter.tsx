@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 
 import { BrandLogo } from "@/components/brand/BrandLogo";
+import { SITE_PHONE_DISPLAY, SITE_PHONE_TEL, SITE_WHATSAPP_URL } from "@/lib/site-contact";
 
 const explore = [
   { href: "/", label: "Home" },
@@ -68,7 +69,7 @@ export function SiteFooter() {
             </ul>
             <div className="mt-5 flex gap-4">
               <a
-                href="https://wa.me/"
+                href={SITE_WHATSAPP_URL}
                 className="transition-opacity hover:opacity-70"
                 aria-label="WhatsApp"
               >

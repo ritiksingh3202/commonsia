@@ -7,6 +7,7 @@ import { FaqAccordion } from "@/components/ui/FaqAccordion";
 import { defaultFaqItems } from "@/lib/faq-content";
 import { marketingImages } from "@/lib/marketing-images";
 import { MARKETING_SECTION_TITLE_CLASS } from "@/lib/marketing-section-title";
+import { SITE_PHONE_DISPLAY, SITE_PHONE_TEL } from "@/lib/site-contact";
 
 function IconDisc({
   children,
@@ -69,7 +70,7 @@ export function ContactPage() {
           </motion.a>
 
           <motion.a
-            href="tel:+919876543210"
+            href={`tel:${SITE_PHONE_TEL}`}
             whileHover={{ y: -4 }}
             whileTap={{ scale: 0.99 }}
             className="flex flex-col items-center gap-5 rounded-[20px] bg-primary px-8 py-9 text-center text-white shadow-lg"
@@ -84,7 +85,7 @@ export function ContactPage() {
               />
             </IconDisc>
             <p className="text-xl text-white/90">Working Together ? Call now</p>
-            <p className="text-xl font-semibold sm:text-2xl">+91 9876543210</p>
+            <p className="text-xl font-semibold sm:text-2xl">{SITE_PHONE_DISPLAY}</p>
           </motion.a>
 
           <motion.div

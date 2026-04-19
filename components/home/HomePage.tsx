@@ -338,7 +338,7 @@ export function HomePage({ testimonials }: { testimonials: HomeTestimonialCard[]
 
               <div
                 ref={studentScrollRef}
-                className="-mx-1 mt-3 flex min-w-0 snap-x snap-mandatory gap-4 overflow-x-auto overflow-y-visible px-1 pb-2 [-ms-overflow-style:none] [scrollbar-width:none] lg:mx-0 lg:grid lg:snap-none lg:grid-cols-4 lg:gap-[25px] lg:overflow-visible lg:px-0 lg:pb-0 [&::-webkit-scrollbar]:hidden"
+                className="-mx-1 mt-3 flex min-w-0 snap-x snap-mandatory gap-4 overflow-x-auto overflow-y-visible overscroll-x-contain overscroll-y-auto px-1 pb-2 [-ms-overflow-style:none] [scrollbar-width:none] lg:mx-0 lg:grid lg:snap-none lg:grid-cols-4 lg:gap-[25px] lg:overflow-visible lg:px-0 lg:pb-0 lg:overscroll-auto [&::-webkit-scrollbar]:hidden"
               >
                 {testimonials.map((s) => (
                   <article
@@ -429,7 +429,7 @@ export function HomePage({ testimonials }: { testimonials: HomeTestimonialCard[]
                       transition={{ duration: 0.3 }}
                       className="flex min-h-0 flex-1 flex-col px-6 pb-5 pt-7 sm:px-8 sm:pb-5 sm:pt-8"
                     >
-                      <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain pr-0.5 [scrollbar-color:rgba(0,0,0,0.2)_transparent] [scrollbar-width:thin]">
+                      <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-auto pr-0.5 [scrollbar-color:rgba(0,0,0,0.2)_transparent] [scrollbar-width:thin]">
                         <p className="text-pretty text-[15px] font-normal leading-[1.65] text-neutral-900 sm:text-base sm:leading-relaxed">
                           {mentorCurrent.quote}
                         </p>

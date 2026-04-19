@@ -107,36 +107,31 @@ export function Navbar() {
           {!loading && authed ? (
             <div className="flex items-center gap-1.5 sm:gap-2">
               <NavNotificationsBell />
-              {studentOnDashboard ? (
-                <div className="group relative hidden sm:inline-block">
-                  <Link
-                    href="/student"
-                    prefetch
-                    className="inline-flex rounded-full bg-primary px-4 py-2 text-xs font-semibold text-white shadow-sm transition-transform hover:scale-[1.02] active:scale-[0.98] sm:px-8 sm:py-2.5 sm:text-sm"
-                  >
-                    <span className="max-w-[7rem] truncate sm:max-w-none">My profile</span>
-                  </Link>
-                  <div className="pointer-events-none invisible absolute right-0 top-full z-[60] pt-1 opacity-0 transition-all duration-150 group-hover:pointer-events-auto group-hover:visible group-hover:opacity-100">
-                    <div className="min-w-[9rem] rounded-xl border border-black/[0.08] bg-white py-1 shadow-lg ring-1 ring-black/5">
-                      <button
-                        type="button"
-                        className="w-full px-3 py-2.5 text-left text-[13px] font-medium text-[#b91c1c] transition hover:bg-red-50"
-                        onClick={() => void signOut({ callbackUrl: "/" })}
-                      >
-                        Log out
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ) : (
+              <div className="group relative hidden sm:inline-block">
                 <Link
-                  href={dashboardHref}
+                  href={studentOnDashboard ? "/student" : dashboardHref}
                   prefetch
-                  className="hidden rounded-full bg-primary px-4 py-2 text-xs font-semibold text-white shadow-sm transition-transform hover:scale-[1.02] active:scale-[0.98] sm:inline-flex sm:px-8 sm:py-2.5 sm:text-sm"
+                  className="inline-flex rounded-full bg-primary px-4 py-2 text-xs font-semibold text-white shadow-sm transition-transform hover:scale-[1.02] active:scale-[0.98] sm:px-8 sm:py-2.5 sm:text-sm"
                 >
                   <span className="max-w-[7rem] truncate sm:max-w-none">My profile</span>
                 </Link>
-              )}
+                <div
+                  className="pointer-events-none invisible absolute right-0 top-full z-[60] -mt-1 pt-2 opacity-0 transition-all duration-150 group-hover:pointer-events-auto group-hover:visible group-hover:opacity-100"
+                  role="menu"
+                  aria-label="Account"
+                >
+                  <div className="min-w-[9rem] rounded-xl border border-black/[0.08] bg-white py-1 shadow-lg ring-1 ring-black/5">
+                    <button
+                      type="button"
+                      role="menuitem"
+                      className="w-full px-3 py-2.5 text-left text-[13px] font-medium text-[#b91c1c] transition hover:bg-red-50"
+                      onClick={() => void signOut({ callbackUrl: "/" })}
+                    >
+                      Log out
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
           ) : null}
           {!loading && !authed ? (
@@ -219,7 +214,7 @@ export function Navbar() {
                     {authed ? "My profile" : "Login / Register"}
                   </Link>
                 )}
-                {!loading && authed && studentOnDashboard ? (
+                {!loading && authed ? (
                   <button
                     type="button"
                     className="mt-2 w-full rounded-xl border border-red-200 bg-white px-3 py-3 text-center text-[15px] font-semibold text-red-700 shadow-sm"

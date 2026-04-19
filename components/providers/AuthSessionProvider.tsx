@@ -3,12 +3,13 @@
 import type { Session } from "next-auth";
 import { SessionProvider } from "next-auth/react";
 
-import { MergeSignupDraft } from "@/components/auth/MergeSignupDraft";
-
 /**
  * Omit `session` so the shell renders without blocking on `auth()` in the root layout; the client
  * loads `/api/auth/session` once (usually fast). Pass `session` from a page/layout when you want
  * to skip that round-trip (e.g. sensitive server-rendered UI).
+ *
+ * OAuth signup merge (`MergeSignupDraft`) lives under `MarketingChrome` so it shares the same
+ * `SessionProvider` instance as `Navbar` and other marketing client UI.
  */
 export function AuthSessionProvider({
   children,
@@ -24,7 +25,6 @@ export function AuthSessionProvider({
       basePath="/api/auth"
       refetchOnWindowFocus
     >
-      <MergeSignupDraft />
       {children}
     </SessionProvider>
   );
