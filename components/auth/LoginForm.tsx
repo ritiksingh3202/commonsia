@@ -80,19 +80,18 @@ export function LoginForm({ callbackUrl = "/auth/continue", authError }: LoginFo
             setCredsError(null);
             setSubmitting(true);
             try {
-              const res = await signIn("credentials", {
+              // `redirect: false` is unsafe here: next-auth parses `data.url` with `new URL(data.url)`
+              // which throws when the server returns a relative callback URL (common for credentials).
+              await signIn("credentials", {
                 email: email.toLowerCase(),
                 password,
-                redirect: false,
+                callbackUrl,
+                redirect: true,
               });
-              if (!res?.ok) {
-                setCredsError(
-                  "Invalid email or password. If you have not signed up yet, create an account first. If you use Google or LinkedIn, sign in with that option below.",
-                );
-                return;
-              }
-              window.location.assign(callbackUrl);
-            } finally {
+            } catch {
+              setCredsError(
+                "Could not sign in. Check your connection, refresh the page, and try again.",
+              );
               setSubmitting(false);
             }
           }}

@@ -509,7 +509,7 @@ export function HomePage({ testimonials }: { testimonials: HomeTestimonialCard[]
                   &rdquo;
                 </span>
 
-                <div className="relative z-10 flex min-h-[17.5rem] flex-col overflow-hidden rounded-[1.75rem] border border-neutral-200/90 bg-[#FFF5E6] shadow-[0_16px_40px_-20px_rgba(0,0,0,0.12)] sm:min-h-[19rem] sm:rounded-[2rem] lg:min-h-[20rem]">
+                <div className="relative z-10 flex min-h-[17.5rem] flex-col overflow-hidden rounded-[18px] border border-neutral-200/90 bg-[#FFF5E6] shadow-[0_16px_40px_-20px_rgba(0,0,0,0.12)] sm:min-h-[19rem] lg:min-h-[20rem]">
                   <AnimatePresence mode="wait">
                     <motion.div
                       key={mIndex}

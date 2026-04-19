@@ -7,6 +7,8 @@ export function authErrorMessage(code: string | undefined): string {
       return "Your session token expired. Refresh this page and try signing in again.";
     case "Configuration":
       return "Sign-in is misconfigured (for example missing AUTH_SECRET or OAuth keys). Check server environment variables.";
+    case "CredentialsSignin":
+      return "Invalid email or password. If you have not signed up yet, create an account first. If you use Google or LinkedIn, sign in with that option below.";
     case "AccessDenied":
       return "Sign-in was denied.";
     case "Verification":
