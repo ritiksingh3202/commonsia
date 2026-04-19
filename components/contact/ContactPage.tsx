@@ -6,6 +6,7 @@ import { SectionReveal } from "@/components/motion/SectionReveal";
 import { FaqAccordion } from "@/components/ui/FaqAccordion";
 import { defaultFaqItems } from "@/lib/faq-content";
 import { marketingImages } from "@/lib/marketing-images";
+import { MARKETING_SECTION_TITLE_CLASS } from "@/lib/marketing-section-title";
 
 function IconDisc({
   children,
@@ -49,7 +50,7 @@ export function ContactPage() {
 
         <div className="mx-auto mt-6 grid max-w-6xl gap-5 md:grid-cols-3">
           <motion.a
-            href="mailto:admin@commonsia.com"
+            href="mailto:hello@commonsia.com"
             whileHover={{ y: -4 }}
             whileTap={{ scale: 0.99 }}
             className="flex flex-col items-center gap-5 rounded-[20px] bg-black px-8 py-9 text-center text-white shadow-lg"
@@ -64,7 +65,7 @@ export function ContactPage() {
               />
             </IconDisc>
             <p className="text-xl text-white/90">Send a Message</p>
-            <p className="text-xl font-semibold sm:text-2xl">admin@commonsia.com</p>
+            <p className="text-xl font-semibold sm:text-2xl">hello@commonsia.com</p>
           </motion.a>
 
           <motion.a
@@ -100,17 +101,17 @@ export function ContactPage() {
               />
             </IconDisc>
             <p className="text-xl text-black">Work Station</p>
-            <p className="text-xl font-semibold text-black sm:text-2xl">DAP, IIT Roorkee</p>
+            <p className="text-xl font-semibold text-black sm:text-2xl">IIT Roorkee, Roorkee 247667</p>
           </motion.div>
         </div>
       </section>
 
       <SectionReveal className="mx-auto mt-8 w-full max-w-[100rem] px-4 sm:px-6 lg:px-10">
         <div className="mx-auto max-w-6xl">
-        <div className="overflow-hidden rounded-3xl bg-[#FF511A] shadow-[0_12px_40px_rgba(0,0,0,0.12)] lg:grid lg:min-h-[min(520px,70vh)] lg:grid-cols-[2fr_3fr]">
+        <div className="overflow-hidden rounded-3xl bg-primary shadow-[0_12px_40px_rgba(0,0,0,0.12)] lg:grid lg:min-h-[min(520px,70vh)] lg:grid-cols-[2fr_3fr]">
           {/* ~40% — informational */}
           <div className="flex min-h-[300px] flex-col gap-4 p-5 text-white sm:p-5 lg:min-h-0 lg:justify-between lg:gap-5 lg:p-6">
-            <p className="text-heading-display text-left leading-snug">
+            <p className="text-left text-xl font-semibold leading-snug sm:text-2xl">
               Questions? We&apos;re here
             </p>
             <div className="relative mx-auto h-[200px] w-full max-w-lg lg:mx-0 lg:mt-auto lg:h-[min(240px,30vh)] lg:max-w-none">
@@ -125,7 +126,7 @@ export function ContactPage() {
           </div>
           {/* ~60% — form */}
           <div className="flex flex-col bg-white p-5 sm:p-5 lg:p-6">
-            <h2 className="text-heading-display mb-4 text-left text-[#FF511A]">
+            <h2 className="text-heading-display mb-4 text-left text-primary">
               Send a Message
             </h2>
             <form
@@ -141,7 +142,7 @@ export function ContactPage() {
                 id="c-name"
                 name="name"
                 placeholder="Name"
-                className="h-11 rounded-md border border-neutral-300 bg-white px-3 text-base text-neutral-900 outline-none placeholder:text-neutral-400 focus:border-[#FF511A] focus:ring-2 focus:ring-[#FF511A]/25"
+                className="h-11 rounded-md border border-neutral-300 bg-white px-3 text-base text-neutral-900 outline-none placeholder:text-neutral-400 focus:border-primary focus:ring-2 focus:ring-primary/25"
               />
               <label className="sr-only" htmlFor="c-email">
                 Email
@@ -151,7 +152,7 @@ export function ContactPage() {
                 name="email"
                 type="email"
                 placeholder="Email"
-                className="h-11 rounded-md border border-neutral-300 bg-white px-3 text-base text-neutral-900 outline-none placeholder:text-neutral-400 focus:border-[#FF511A] focus:ring-2 focus:ring-[#FF511A]/25"
+                className="h-11 rounded-md border border-neutral-300 bg-white px-3 text-base text-neutral-900 outline-none placeholder:text-neutral-400 focus:border-primary focus:ring-2 focus:ring-primary/25"
               />
               <label className="sr-only" htmlFor="c-msg">
                 Message
@@ -161,13 +162,13 @@ export function ContactPage() {
                 name="message"
                 placeholder="Message"
                 rows={5}
-                className="min-h-[140px] resize-y rounded-md border border-neutral-300 bg-white px-3 py-2.5 text-base text-neutral-900 outline-none placeholder:text-neutral-400 focus:border-[#FF511A] focus:ring-2 focus:ring-[#FF511A]/25"
+                className="min-h-[140px] resize-y rounded-md border border-neutral-300 bg-white px-3 py-2.5 text-base text-neutral-900 outline-none placeholder:text-neutral-400 focus:border-primary focus:ring-2 focus:ring-primary/25"
               />
               <motion.button
                 type="submit"
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
-                className="mt-1 w-full max-w-[200px] self-start rounded-md bg-[#FF511A] px-8 py-2.5 text-base font-semibold text-white sm:max-w-[30%] sm:min-w-[7.5rem]"
+                className="mt-1 w-full max-w-[200px] self-start rounded-md bg-primary px-8 py-2.5 text-base font-semibold text-white shadow-sm ring-1 ring-primary/30 sm:max-w-[30%] sm:min-w-[7.5rem]"
               >
                 Send
               </motion.button>
@@ -182,7 +183,7 @@ export function ContactPage() {
         className="mx-auto mt-8 w-full max-w-[100rem] scroll-mt-24 overflow-x-hidden bg-[#ffffff] px-4 pb-3 pt-3 sm:mt-10 sm:px-6 sm:pb-4 sm:pt-4 lg:px-8 lg:pb-5 lg:pt-5"
       >
         <SectionReveal>
-          <h2 className="text-heading-display text-center text-[#1a1a1a]">
+          <h2 className={`${MARKETING_SECTION_TITLE_CLASS} text-center text-[#1a1a1a]`}>
             Frequently Asked <span className="text-primary">Questions</span>
           </h2>
         </SectionReveal>

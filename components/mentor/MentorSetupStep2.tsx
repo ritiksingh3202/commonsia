@@ -8,7 +8,6 @@ import {
   MENTORSHIP_PREFERENCE_ORDER,
 } from "@/components/mentor/mentor-setup-constants";
 import { MentorSetupShell } from "@/components/mentor/MentorSetupShell";
-import { SetupGoogleCalendarConnect } from "@/components/setup/SetupGoogleCalendarConnect";
 import { SetupLinkedInNotice } from "@/components/setup/SetupLinkedInNotice";
 import { setupRequiredStar } from "@/components/student/student-ui";
 import { useProfileAutosave } from "@/hooks/useProfileAutosave";
@@ -39,11 +38,9 @@ function serializeSelections(sel: Set<string>): string {
 export function MentorSetupStep2({
   initial,
   linkedInConnected,
-  googleCalendarConnected = false,
 }: {
   initial?: MentorSetupUserSnapshot;
   linkedInConnected?: boolean;
-  googleCalendarConnected?: boolean;
 }) {
   const router = useRouter();
   const scheduleSave = useProfileAutosave();
@@ -123,13 +120,6 @@ export function MentorSetupStep2({
               })}
             </div>
           </div>
-
-          <SetupGoogleCalendarConnect
-            connected={googleCalendarConnected}
-            returnPath="/mentor/setup/2"
-            required
-            description="Required before you can continue to availability after step 3. If you signed in with Google, this may already show as connected."
-          />
 
           <div className="flex flex-col gap-2 pt-4 sm:flex-row">
             <button type="button" onClick={() => router.push("/mentor/setup/1")} className={btnGhost}>

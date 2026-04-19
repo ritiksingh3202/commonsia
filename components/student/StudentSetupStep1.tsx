@@ -1,8 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { COUNTRY_OPTIONS, citiesForCountry } from "@/lib/country-city-options";
 import { PROGRAM_OPTIONS, PROGRAM_OTHER_VALUE, YEAR_OPTIONS } from "./student-setup-constants";
 import { StudentSetupShell } from "./StudentSetupShell";
 import { setupField, setupLabel, setupRequiredStar } from "./student-ui";
@@ -42,11 +43,22 @@ export function StudentSetupStep1({
     [initial?.major],
   );
 
+  const [country, setCountry] = useState(initial?.country ?? "");
+  const [city, setCity] = useState(initial?.city ?? "");
   const [university, setUniversity] = useState(initial?.university ?? "");
   const [year, setYear] = useState(initial?.yearOfStudy ?? "");
   const [program, setProgram] = useState(p0);
   const [majorOther, setMajorOther] = useState(mo0);
   const [phone, setPhone] = useState(initial?.phone ?? "");
+
+  const cityOptions = useMemo(() => (country ? citiesForCountry(country) : []), [country]);
+
+  useEffect(() => {
+    if (!country) return;
+    if (city && !cityOptions.includes(city)) {
+      setCity("");
+    }
+  }, [country, city, cityOptions]);
 
   return (
     <StudentSetupShell step={1} backHref="/auth/register/student">
@@ -59,13 +71,21 @@ export function StudentSetupStep1({
           </span>
         </h2>
         <p className="mb-1 text-[12px] leading-snug text-[#6b7280]">
-          University, year, program, and phone are required.
+          Country, city, university, year, program, and phone are required.
         </p>
         <p className="mb-3 text-[12px] text-[#6b7280]">Changes save automatically.</p>
         <form
           className="space-y-3"
           onSubmit={async (e) => {
             e.preventDefault();
+            if (!country.trim()) {
+              window.alert("Please select your country.");
+              return;
+            }
+            if (!city.trim()) {
+              window.alert("Please select your city.");
+              return;
+            }
             if (!university.trim()) {
               window.alert("Please enter your university or college.");
               return;
@@ -92,6 +112,8 @@ export function StudentSetupStep1({
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
                 role: "student",
+                country: country.trim() || null,
+                city: city.trim() || null,
                 university: university.trim() || null,
                 yearOfStudy: year.trim() || null,
                 major,
@@ -105,6 +127,72 @@ export function StudentSetupStep1({
             router.push("/student/setup/2");
           }}
         >
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <label htmlFor="studentCountry" className={setupLabel}>
+                Country <span className="text-primary">*</span>
+              </label>
+              <div className="relative">
+                <select
+                  id="studentCountry"
+                  name="country"
+                  value={country}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setCountry(v);
+                    setCity("");
+                    scheduleSave({ role: "student", country: v.trim() || null, city: null });
+                  }}
+                  className={`${setupField} appearance-none pr-9`}
+                  required
+                >
+                  <option value="" disabled>
+                    Select country
+                  </option>
+                  {COUNTRY_OPTIONS.map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))}
+                </select>
+                <span className="pointer-events-none absolute right-2.5 top-1/2 size-4 -translate-y-1/2 text-[#717182]">
+                  <ChevronDown />
+                </span>
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <label htmlFor="studentCity" className={setupLabel}>
+                City <span className="text-primary">*</span>
+              </label>
+              <div className="relative">
+                <select
+                  id="studentCity"
+                  name="city"
+                  value={city}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setCity(v);
+                    scheduleSave({ role: "student", city: v.trim() || null });
+                  }}
+                  className={`${setupField} appearance-none pr-9`}
+                  required
+                  disabled={!country}
+                >
+                  <option value="" disabled>
+                    {country ? "Select city" : "Select country first"}
+                  </option>
+                  {cityOptions.map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))}
+                </select>
+                <span className="pointer-events-none absolute right-2.5 top-1/2 size-4 -translate-y-1/2 text-[#717182]">
+                  <ChevronDown />
+                </span>
+              </div>
+            </div>
+          </div>
           <div className="space-y-1.5">
             <label htmlFor="university" className={setupLabel}>
               University / College <span className="text-primary">*</span>

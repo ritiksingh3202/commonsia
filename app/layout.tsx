@@ -38,11 +38,12 @@ export const metadata: Metadata = {
   title: "Commonsia",
   description:
     "Connect with mentors, discuss design, and grow with the architecture student community.",
+  /** Tab + PWA icons — files live in `public/` (`favicon.ico`, `favicon.svg`, `favicon.png`). */
   icons: {
     icon: [
-      { url: "/favicon.ico", sizes: "any" },
-      { url: "/favicon.png", type: "image/png", sizes: "32x32" },
       { url: "/favicon.svg", type: "image/svg+xml" },
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/favicon.png", type: "image/png" },
     ],
     shortcut: "/favicon.ico",
     apple: "/favicon.png",

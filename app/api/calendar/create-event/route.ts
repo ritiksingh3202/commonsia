@@ -4,7 +4,14 @@ import { google } from "googleapis";
 import { NextResponse } from "next/server";
 
 import { auth } from "@/auth";
-import { validateBookingInAvailability } from "@/lib/booking-availability-slots";
+import { normalizeAvailabilityWindowKind } from "@/components/mentor/mentor-setup-constants";
+import {
+  calendarDateToIso,
+  validateBookingInAvailability,
+} from "@/lib/booking-availability-slots";
+import { mergeAvailabilityForSlot } from "@/lib/mentor-availability-merge";
+import { jsWeekdayFromIsoLocal } from "@/lib/mentor-availability-slots";
+import { mentorHasBookingOnWeekdayInIstMonth } from "@/lib/mentor-monthly-booking";
 import { fetchPrimaryCalendarBusy, intervalOverlapsBusy } from "@/lib/google-calendar-busy";
 import { meetLinkFromCalendarEventPayload } from "@/lib/google-calendar-meet-link";
 import { defaultCalendarTimeZone } from "@/lib/schedule-slot-ist";
@@ -106,6 +113,22 @@ export async function POST(req: Request) {
         { status: 400 },
       );
     }
+    const av = mergeAvailabilityForSlot(m.mentorAvailabilityJson);
+    const bookIso = calendarDateToIso(bookYear, bookMonthIndex, bookDay);
+    let slotOpts: { monthlyPatternConsumedThisIstMonth?: boolean } | undefined;
+    if (
+      normalizeAvailabilityWindowKind(av.availabilityWindowKind) === "monthly" &&
+      typeof av.recurringWeekdayJs === "number" &&
+      jsWeekdayFromIsoLocal(bookIso) === av.recurringWeekdayJs
+    ) {
+      const consumed = await mentorHasBookingOnWeekdayInIstMonth(
+        m.id,
+        bookYear,
+        bookMonthIndex,
+        av.recurringWeekdayJs,
+      );
+      slotOpts = { monthlyPatternConsumedThisIstMonth: consumed };
+    }
     const slotCheck = validateBookingInAvailability(
       m.mentorAvailabilityJson,
       bookYear,
@@ -114,6 +137,7 @@ export async function POST(req: Request) {
       startLabel.trim(),
       durationMin,
       new Date(),
+      slotOpts,
     );
     if (!slotCheck.ok) {
       return NextResponse.json({ error: slotCheck.error }, { status: 400 });

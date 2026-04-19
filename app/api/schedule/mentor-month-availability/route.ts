@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 
+import { normalizeAvailabilityWindowKind } from "@/components/mentor/mentor-setup-constants";
 import { calendarDateToIso, getBookableSlotSegmentsForDate } from "@/lib/booking-availability-slots";
-import { fetchPrimaryCalendarBusy, intervalOverlapsBusy } from "@/lib/google-calendar-busy";
-import { getGoogleCalendarOAuth2Client } from "@/lib/google-calendar-oauth-client";
+import { mergeAvailabilityForSlot } from "@/lib/mentor-availability-merge";
+import { mentorHasBookingOnWeekdayInIstMonth } from "@/lib/mentor-monthly-booking";
 import { prisma } from "@/lib/prisma";
 import { CacheKeys, CacheTtl, SCHEDULE_API_CACHE_CONTROL, withJsonCache } from "@/lib/redis-cache";
 
@@ -14,7 +15,7 @@ function daysInMonth(year: number, monthIndex: number): number {
  * Returns which days in a month have at least one bookable 30-min segment.
  * Used to disable/fade unavailable dates in the booking calendar (Calendly-like UX).
  *
- * Redis: read-through cache **includes** Prisma + Google so a hit skips both.
+ * Redis: read-through cache includes Prisma availability resolution.
  */
 export async function GET(req: Request) {
   const url = new URL(req.url);
@@ -42,28 +43,25 @@ export async function GET(req: Request) {
 
     const now = new Date();
     const dim = daysInMonth(year, month);
-
-    const oauth2 = await getGoogleCalendarOAuth2Client(mentorUserId);
-    let busy: { start: Date; end: Date }[] | null = null;
-    if (oauth2) {
-      const isoStart = calendarDateToIso(year, month, 1);
-      const isoEnd = calendarDateToIso(year, month, dim);
-      const timeMin = new Date(`${isoStart}T00:00:00+05:30`);
-      const timeMax = new Date(`${isoEnd}T23:59:59.999+05:30`);
-      try {
-        busy = await fetchPrimaryCalendarBusy(oauth2, timeMin, timeMax);
-      } catch (e) {
-        console.error("Google Calendar freebusy.query failed (month):", e);
-        busy = null;
-      }
+    const av = mergeAvailabilityForSlot(user.mentorAvailabilityJson);
+    let monthlyConsumed = false;
+    if (
+      normalizeAvailabilityWindowKind(av.availabilityWindowKind) === "monthly" &&
+      typeof av.recurringWeekdayJs === "number"
+    ) {
+      monthlyConsumed = await mentorHasBookingOnWeekdayInIstMonth(
+        mentorUserId,
+        year,
+        month,
+        av.recurringWeekdayJs,
+      );
     }
 
     const availableDays: number[] = [];
     for (let d = 1; d <= dim; d++) {
-      let slots = getBookableSlotSegmentsForDate(user.mentorAvailabilityJson, year, month, d, now);
-      if (busy && slots.length > 0) {
-        slots = slots.filter((s) => !intervalOverlapsBusy(new Date(s.startISO), new Date(s.endISO), busy!));
-      }
+      const slots = getBookableSlotSegmentsForDate(user.mentorAvailabilityJson, year, month, d, now, {
+        monthlyPatternConsumedThisIstMonth: monthlyConsumed,
+      });
       if (slots.length > 0) availableDays.push(d);
     }
 

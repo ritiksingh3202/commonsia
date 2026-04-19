@@ -68,7 +68,7 @@ export function Navbar() {
   }, [router, session?.user, status]);
 
   return (
-    <header className="sticky top-0 z-50 border-b border-black/[0.06] bg-[#ffffff]">
+    <header className="fixed inset-x-0 top-0 z-50 border-b border-black/[0.06] bg-[#ffffff]">
       <div className="relative z-[100] mx-auto flex min-w-0 max-w-7xl items-center justify-between gap-2 bg-[#ffffff] px-3 py-2.5 sm:gap-4 sm:px-6 sm:py-3 lg:px-8">
         <Link
           href="/"
@@ -88,8 +88,6 @@ export function Navbar() {
         <motion.nav
           className="absolute left-1/2 top-1/2 hidden -translate-x-1/2 -translate-y-1/2 items-center gap-1 rounded-full border border-black/[0.08] bg-[#ffffff] px-2 py-1.5 text-[15px] text-ink shadow-sm md:flex lg:gap-1 lg:px-4"
           aria-label="Main"
-          whileHover={{ scale: 1.01 }}
-          transition={{ type: "spring", stiffness: 400, damping: 25 }}
         >
           {nav.map((item) => (
             <Link
@@ -152,7 +150,7 @@ export function Navbar() {
             <Link
               href="/auth"
               prefetch
-              className="hidden rounded-full bg-primary px-3 py-2 text-xs font-semibold text-white shadow-sm transition-transform hover:scale-[1.02] active:scale-[0.98] sm:inline-flex sm:px-8 sm:py-2.5 sm:text-sm"
+              className="hidden rounded-full bg-primary px-4 py-2 text-xs font-semibold tracking-wide text-white shadow-sm transition-transform hover:scale-[1.02] active:scale-[0.98] sm:inline-flex sm:px-7 sm:py-2.5 sm:text-sm"
             >
               <span className="sm:hidden">Login</span>
               <span className="hidden sm:inline">Login/Register</span>

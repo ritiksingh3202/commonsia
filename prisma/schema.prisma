@@ -50,6 +50,9 @@ model User {
   university       String?
   yearOfStudy      String?
   major            String?
+  /// Location (profile setup — dropdowns on mentor/student step 1)
+  country          String?
+  city             String?
   interests        Json?
   softwareSkills   String?
   otherInterests   String?   @db.Text

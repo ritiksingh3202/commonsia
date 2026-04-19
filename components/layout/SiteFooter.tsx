@@ -45,8 +45,8 @@ export function SiteFooter() {
                   height={18}
                   className="icon-black-line shrink-0"
                 />
-                <a href="mailto:admin@commonsia.com" className="hover:text-primary">
-                  admin@commonsia.com
+                <a href="mailto:hello@commonsia.com" className="hover:text-primary">
+                  hello@commonsia.com
                 </a>
               </li>
               <li className="flex items-center gap-2.5">
@@ -67,7 +67,7 @@ export function SiteFooter() {
                   height={18}
                   className="icon-black-line mt-0.5 shrink-0"
                 />
-                <span>DAP IIT Roorkee, Roorkee 247667</span>
+                <span>IIT Roorkee, Roorkee 247667</span>
               </li>
             </ul>
             <div className="mt-5 flex gap-4">

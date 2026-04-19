@@ -17,6 +17,8 @@ export type ProfilePayload = {
   university?: string | null;
   yearOfStudy?: string | null;
   major?: string | null;
+  country?: string | null;
+  city?: string | null;
   interests?: string[] | null;
   softwareSkills?: string | null;
   otherInterests?: string | null;
@@ -57,6 +59,8 @@ export async function PATCH(req: Request) {
   if (body.university !== undefined) data.university = body.university;
   if (body.yearOfStudy !== undefined) data.yearOfStudy = body.yearOfStudy;
   if (body.major !== undefined) data.major = body.major;
+  if (body.country !== undefined) data.country = body.country;
+  if (body.city !== undefined) data.city = body.city;
   if (body.interests !== undefined) data.interests = body.interests;
   if (body.softwareSkills !== undefined) data.softwareSkills = body.softwareSkills;
   if (body.otherInterests !== undefined) data.otherInterests = body.otherInterests;

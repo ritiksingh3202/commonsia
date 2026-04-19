@@ -147,11 +147,17 @@ export type BlockedDateEntry = {
 };
 
 /** Smart Automation: how the mentor thinks about repeating availability (drives Schedule tab). */
-export type AvailabilityWindowKind = "weekly" | "fifteen_days" | "monthly" | "custom";
+export type AvailabilityWindowKind = "weekends" | "fifteen_days" | "monthly" | "custom";
+
+/** Legacy DB value `"weekly"` is treated as {@link AvailabilityWindowKind} weekends. */
+export function normalizeAvailabilityWindowKind(raw: string | undefined | null): AvailabilityWindowKind {
+  if (raw === "fifteen_days" || raw === "monthly" || raw === "custom" || raw === "weekends") return raw;
+  return "weekends";
+}
 
 export const AVAILABILITY_WINDOW_OPTIONS: { value: AvailabilityWindowKind; label: string }[] = [
-  { value: "weekly", label: "Weekly" },
-  { value: "fifteen_days", label: "15 days" },
+  { value: "weekends", label: "Weekends" },
+  { value: "fifteen_days", label: "15 days (bi-weekly)" },
   { value: "monthly", label: "In a month" },
   { value: "custom", label: "Custom" },
 ];
@@ -188,6 +194,12 @@ export type MentorAvailabilityJson = {
   /** Planning horizon in days (e.g. 15 when window is “15 days”). */
   planningHorizonDays?: number;
   availabilityWindowKind?: AvailabilityWindowKind;
+  /** 0=Sun … 6=Sat — recurring weekday for 15-day / monthly patterns. */
+  recurringWeekdayJs?: number | null;
+  /** Anchor ISO date (YYYY-MM-DD) on that weekday; bi-weekly parity is computed from whole weeks since anchor. */
+  biweeklyAnchorIso?: string | null;
+  /** Slot labels (IST half-hour starts) applied on each matching pattern day. */
+  patternSlotLabels?: string[];
   menteeCapacityBand?: MenteeCapacityBand;
   autoAcceptSessionRequests?: boolean;
   bufferBetweenSessions?: string;
@@ -230,7 +242,7 @@ export function defaultMentorAvailability(): MentorAvailabilityJson {
     weeklySlots: emptyWeeklySlots(),
     maxStudents: 10,
     planningHorizonDays: 14,
-    availabilityWindowKind: "weekly",
+    availabilityWindowKind: "weekends",
     menteeCapacityBand: "5-10",
     autoAcceptSessionRequests: true,
     bufferBetweenSessions: "0",

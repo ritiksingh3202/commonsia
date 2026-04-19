@@ -3,14 +3,16 @@
 import { AnimatePresence, motion } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { useRef, useState } from "react";
 import { SectionReveal } from "@/components/motion/SectionReveal";
 import { FaqAccordion } from "@/components/ui/FaqAccordion";
 import { defaultFaqItems } from "@/lib/faq-content";
-import { HOME_MARKETING_ASSETS } from "@/lib/home-marketing-assets";
 import type { HomeTestimonialCard } from "@/lib/testimonials";
-import { MENTOR_PAGE_HERO_ASSETS } from "@/lib/mentor-page-assets";
+import { HOME_MARKETING_ASSETS } from "@/lib/home-marketing-assets";
 import { marketingImages } from "@/lib/marketing-images";
+import { MARKETING_SECTION_TITLE_CLASS } from "@/lib/marketing-section-title";
 import { highResProfileImageUrl } from "@/lib/profile-image-url";
 import { MentorCarouselArrows } from "@/components/mentors/MentorCarouselArrows";
 
@@ -35,17 +37,18 @@ const steps = [
 const mentorSpotlights = [
   {
     quote:
-      "Mentoring students through this platform has been a rewarding experience. It allows us to guide young architects, review their ideas, and share industry perspectives that help them grow academically and professionally.",
+      "Mentoring through Commonsia has been genuinely rewarding. I get to walk students through concept development, jury storytelling, and how studio work translates into practice. The questions are thoughtful, and each session stays focused so they leave with concrete next steps. I also appreciate being able to share drawings and references from live projects when it helps them see scale, coordination, and client conversations in context. Seeing them apply feedback in diagrams and models over the following weeks reminds me why I enjoy teaching alongside professional work.",
     name: "Ar. Saurabh Singh",
     cred: "IIT Roorkee",
-    avatar: MENTOR_PAGE_HERO_ASSETS.mentorPhoto,
+    avatar: HOME_MARKETING_ASSETS.student1,
   },
   {
     quote:
-      "The questions students bring here are sharp — we work through representation, structure, and narrative so their juries land with clarity and confidence.",
+      "Students often arrive with strong instincts but not always the language to defend them. We work through representation, structure, and narrative so reviews feel intentional rather than improvised. I like how the platform surfaces context ahead of time—I can prepare examples from recent work and tune the conversation to their year, software, and studio brief. The cadence respects my calendar while still feeling personal: focused mentorship without the administrative drag, and conversations that carry forward into their portfolios and pinups.",
     name: "Ar. Kavita Menon",
     cred: "Principal Architect",
-    avatar: HOME_MARKETING_ASSETS.student2,
+    /** Human photo — `student_4` reads as female in marketing set (swap if your asset differs). */
+    avatar: HOME_MARKETING_ASSETS.student4,
   },
 ];
 
@@ -80,12 +83,26 @@ const whyItems = [
 const fullBleed =
   "relative left-1/2 right-auto w-screen max-w-[100vw] -translate-x-1/2 overflow-x-clip";
 
-/** Hero figures — `public/home_assets/img_2.png` (left), `img_3.png` (right). */
-const HOME_HERO_LEFT = "/home_assets/img_2.png";
-const HOME_HERO_RIGHT = "/home_assets/img_3.png";
-
 /** Illustration for “Start in 3 simple steps” (`public/home_assets/steps.png`) */
 const STEPS_MAIN_IMAGE = "/home_assets/steps.png";
+
+const heroEase: [number, number, number, number] = [0.22, 1, 0.36, 1];
+
+const heroStack = {
+  hidden: {},
+  visible: {
+    transition: { staggerChildren: 0.13, delayChildren: 0.06 },
+  },
+};
+
+const heroFadeUp = {
+  hidden: { opacity: 0, y: 22 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.58, ease: heroEase },
+  },
+};
 
 function WhyIcon({ src, className }: { src: string; className?: string }) {
   return (
@@ -104,9 +121,27 @@ function WhyIcon({ src, className }: { src: string; className?: string }) {
 }
 
 export function HomePage({ testimonials }: { testimonials: HomeTestimonialCard[] }) {
+  const router = useRouter();
+  const { data: session, status: sessionStatus } = useSession();
   const [stepOpen, setStepOpen] = useState<number | null>(null);
   const [mIndex, setMIndex] = useState(0);
   const studentScrollRef = useRef<HTMLDivElement>(null);
+
+  const onJoinCommonsia = () => {
+    if (sessionStatus === "loading") return;
+    if (sessionStatus === "authenticated" && session?.user) {
+      const role = session.user.role;
+      if (role === "mentor") {
+        router.push("/mentor");
+        return;
+      }
+      if (role === "student") {
+        router.push("/student");
+        return;
+      }
+    }
+    router.push("/role-select");
+  };
 
   const mentorCurrent = mentorSpotlights[mIndex];
   const mLen = mentorSpotlights.length;
@@ -123,222 +158,78 @@ export function HomePage({ testimonials }: { testimonials: HomeTestimonialCard[]
 
   return (
     <div className="section-gap-y min-w-0 max-w-full overflow-x-hidden bg-white pb-1">
-      {/* Hero — white bg + flanking figures */}
-      <section className="relative overflow-hidden bg-[#ffffff] px-4 pb-4 pt-12 sm:px-6 sm:pb-6 sm:pt-16 lg:px-8 lg:pb-8 lg:pt-24">
-        <div className="relative mx-auto w-full max-w-[100rem] px-3 sm:px-5 lg:px-10">
-          
-          {/* Left Flanking Image (Absolute on Desktop) */}
-          <motion.div
-            className="hidden md:block absolute left-0 top-[15%] lg:top-[20%] xl:top-[25%] w-[120px] lg:w-[160px] xl:w-[200px] 2xl:w-[240px] z-10"
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.55 }}
-          >
-            <div className="relative aspect-[3/5] w-full">
-              <Image
-                src={HOME_HERO_LEFT}
-                alt=""
-                fill
-                className="object-contain object-bottom object-center"
-                sizes="240px"
-              />
-            </div>
-          </motion.div>
-
-          <div className="relative z-20 mx-auto flex w-full min-w-0 max-w-2xl flex-col items-center justify-center px-1 text-center sm:max-w-4xl sm:px-2 lg:max-w-5xl xl:max-w-[65rem] 2xl:max-w-[75rem]">
-            <motion.div
-              className="relative mb-4 flex w-full max-w-[min(100%,360px)] justify-center sm:max-w-[420px]"
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.08 }}
-            >
-              <div className="relative h-11 w-full sm:h-14">
-                <Image
-                  src={HOME_MARKETING_ASSETS.heroTop}
-                  alt=""
-                  fill
-                  className="object-contain object-center"
-                  sizes="(max-width:640px) 360px, 420px"
-                  priority
-                />
-              </div>
-            </motion.div>
-            <motion.p
-              className="text-[11px] font-normal text-neutral-600 sm:text-xs lg:text-[13px]"
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.09 }}
-            >
-              The Community Platform for Architecture Students
-            </motion.p>
-
+      {/* Hero — one column, vertically centered; white → #FFEFD7 gradient (full band) */}
+      <section className="home-hero-gradient home-hero-viewport relative flex flex-col overflow-hidden px-4 sm:px-6 lg:px-8">
+        <motion.div
+          className="relative z-10 mx-auto flex w-full max-w-[100rem] flex-1 flex-col justify-center py-10 sm:py-12 md:py-16 lg:py-20"
+          variants={heroStack}
+          initial="hidden"
+          animate="visible"
+        >
+          <div className="mx-auto flex w-full min-w-0 max-w-[min(100%,46rem)] flex-col items-center text-center sm:max-w-3xl md:max-w-[40rem] lg:max-w-[min(100%,48rem)] xl:max-w-[min(100%,52rem)]">
             <motion.h1
-              className="mx-auto mt-4 w-full min-w-0 max-w-[1117px] px-1 text-center text-[clamp(1.3rem,5.2vw+0.4rem,2.2rem)] font-semibold leading-[1.25] tracking-tight sm:px-2 sm:text-[2.5rem] sm:leading-[1.2] md:text-[3.15rem] md:leading-[1.18] lg:text-[3.65rem] xl:text-[4.1rem] 2xl:text-[4.75rem]"
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+              className="text-balance text-[clamp(1.85rem,6.5vw+0.35rem,2.75rem)] font-semibold leading-[1.12] tracking-[-0.02em] sm:text-[clamp(2.25rem,4.8vw+0.5rem,3.35rem)] sm:leading-[1.08] md:text-[clamp(2.5rem,3.8vw+0.65rem,3.65rem)] lg:text-[clamp(2.85rem,3.2vw+0.85rem,4rem)] lg:leading-[1.06]"
+              variants={heroFadeUp}
             >
-              <span className="block max-w-full text-balance break-words [overflow-wrap:anywhere]">
-                <span className="text-[#0a0a0a]">Learn &amp; Discuss </span>
-                <span className="text-primary">Architecture</span>
-              </span>
-              <span className="mt-1 block max-w-full text-balance break-words [overflow-wrap:anywhere] md:mt-0">
-                <span className="text-[#0a0a0a]">Beyond the </span>
-                <span className="text-primary">Classroom</span>
-              </span>
+              <span className="text-primary">Architecture,</span>{" "}
+              <span className="text-[#0a0a0a]">Beyond the Studios</span>
             </motion.h1>
-            <p className="mx-auto mt-4 max-w-4xl text-pretty text-center text-[14px] leading-relaxed text-neutral-600 sm:mt-6 sm:text-[16px] lg:text-lg">
-              Connect with experienced mentors, ask questions, discuss design ideas, and
-              explore insights shared by the architecture community. A platform where
-              students learn beyond studios and grow through real conversations and
-              guidance.
-            </p>
-            <motion.div
-              className="mt-6 flex w-full max-w-sm flex-col items-center justify-center gap-3 sm:max-w-none sm:flex-row sm:gap-5"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
+            {/* Hero subcopy — Figma 401:2488; line 1 / line 2, centered; one line each from lg where width fits ~90ch */}
+            <motion.p
+              variants={heroFadeUp}
+              className="mx-auto mt-6 flex w-full flex-col items-center gap-2 px-1 text-center font-sans text-[15px] font-normal leading-normal text-[#6a7282] sm:mt-7 sm:text-base md:mt-8"
             >
-              <Link
-                href="/mentors"
-                prefetch
-                className="w-full text-center rounded-full bg-primary px-8 py-3 text-[15px] font-semibold tracking-wide text-white shadow-md transition-all hover:scale-[1.03] hover:shadow-lg sm:w-auto sm:px-10 sm:py-3.5 sm:text-base"
+              <span className="block w-full max-w-full text-balance lg:whitespace-nowrap">
+                A community first mentorship platform connecting students with practicing architects.
+              </span>
+              <span className="block w-full whitespace-nowrap">
+                Connect, gain mentorship, and learn from real world practice.
+              </span>
+            </motion.p>
+            <motion.div
+              className="mt-8 flex w-full max-w-md flex-col items-stretch justify-center gap-4 sm:mt-9 sm:max-w-none sm:flex-row sm:items-center sm:justify-center md:mt-10 md:gap-5"
+              variants={heroFadeUp}
+            >
+              <motion.div
+                whileHover={{ y: -2 }}
+                whileTap={{ scale: 0.99 }}
+                transition={{ type: "spring", stiffness: 420, damping: 28 }}
+                className="w-full sm:w-auto"
               >
-                Find a Mentor
-              </Link>
-              <Link
-                href="/mentors"
-                prefetch
-                className="w-full text-center rounded-full border-2 border-primary bg-white px-8 py-3 text-[15px] font-semibold tracking-wide text-primary transition-all hover:scale-[1.03] hover:bg-primary/5 sm:w-auto sm:px-10 sm:py-3.5 sm:text-base"
+                <Link
+                  href="/mentors"
+                  prefetch
+                  className="inline-flex w-full min-h-[48px] items-center justify-center rounded-full bg-[#0a0a0a] px-9 py-3.5 text-[15px] font-semibold tracking-wide text-white shadow-md shadow-black/10 transition-[box-shadow] hover:shadow-lg sm:min-h-[52px] sm:min-w-[12rem] sm:px-10 sm:py-4 sm:text-base"
+                >
+                  Find a Mentor
+                </Link>
+              </motion.div>
+              <motion.div
+                whileHover={{ y: -2 }}
+                whileTap={{ scale: 0.99 }}
+                transition={{ type: "spring", stiffness: 420, damping: 28 }}
+                className="w-full sm:w-auto"
               >
-                Become a Mentor
-              </Link>
+                <Link
+                  href="/auth/register/mentor"
+                  prefetch
+                  className="inline-flex w-full min-h-[48px] items-center justify-center rounded-full border-2 border-[#0a0a0a] bg-transparent px-9 py-3.5 text-[15px] font-semibold tracking-wide text-[#0a0a0a] transition-[background-color,box-shadow] hover:bg-black/[0.03] sm:min-h-[52px] sm:min-w-[12rem] sm:px-10 sm:py-4 sm:text-base"
+                >
+                  Become a Mentor
+                </Link>
+              </motion.div>
             </motion.div>
           </div>
-
-          {/* Right Flanking Image (Absolute on Desktop) */}
-          <motion.div
-            className="hidden md:block absolute right-0 top-[15%] lg:top-[20%] xl:top-[25%] w-[120px] lg:w-[160px] xl:w-[200px] 2xl:w-[240px] z-10"
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.55 }}
-          >
-            <div className="relative aspect-[3/5] w-full">
-              <Image
-                src={HOME_HERO_RIGHT}
-                alt=""
-                fill
-                className="object-contain object-bottom object-center"
-                sizes="240px"
-              />
-            </div>
-          </motion.div>
-        </div>
+        </motion.div>
       </section>
 
-      {/* Empowering */}
+      {/* Why us — `id` keeps /#who-we-are nav/footer links landing on meaningful content */}
       <section
         id="who-we-are"
-        className="section-y scroll-mt-24 px-4 sm:px-6 lg:px-8"
+        className="section-y scroll-mt-24 px-4 pb-2 pt-3 sm:px-6 sm:pb-2.5 sm:pt-4 lg:px-8 lg:pb-3 lg:pt-5"
       >
         <SectionReveal>
-          <h2 className="text-heading-display mx-auto max-w-4xl text-center text-[#1a1a1a]">
-            Empowering Learning and{" "}
-            <span className="text-primary">Transforming Futures</span>
-          </h2>
-        </SectionReveal>
-        <div className="mx-auto mt-3 grid max-w-7xl auto-rows-fr gap-[30px] lg:grid-cols-12 lg:grid-rows-2">
-          <SectionReveal className="lg:col-span-5 lg:row-span-1">
-            <div className="flex h-full min-h-[280px] flex-col rounded-[20px] bg-cream-soft p-5 text-left sm:p-6 lg:min-h-[300px]">
-              <h3 className="text-heading-card text-[#1a1a1a]">
-                Building the Future of Architecture
-              </h3>
-              <div className="relative mt-2 min-h-0 flex-1 overflow-hidden rounded-[12px]">
-                <Image
-                  src={marketingImages.featureBuilding}
-                  alt=""
-                  fill
-                  className="object-cover"
-                  sizes="(max-width:1024px) 100vw, 42vw"
-                />
-              </div>
-            </div>
-          </SectionReveal>
-          <SectionReveal className="lg:col-span-4 lg:row-span-1" delay={0.05}>
-            <div className="flex h-full min-h-[280px] flex-col rounded-[20px] bg-mint p-5 text-left sm:p-6 lg:min-h-[300px]">
-              <h3 className="text-heading-card text-[#1a1a1a]">
-                A Community of Designers
-              </h3>
-              <div className="relative mt-2 min-h-0 flex-1 overflow-hidden rounded-[12px]">
-                <Image
-                  src={marketingImages.featureCommunity}
-                  alt=""
-                  fill
-                  className="object-cover"
-                  sizes="(max-width:1024px) 100vw, 35vw"
-                />
-              </div>
-            </div>
-          </SectionReveal>
-          <SectionReveal className="lg:col-span-3 lg:row-span-2" delay={0.1}>
-            <div className="flex h-full min-h-[320px] flex-col rounded-[20px] bg-[#fff9e6] p-5 text-left sm:p-6 lg:min-h-0">
-              <h3 className="text-heading-card text-[#1a1a1a]">
-                Mentorship that Matters
-              </h3>
-              <p className="mt-1.5 text-left text-sm leading-relaxed text-[#1a1a1a] sm:text-base">
-                By connecting students with experienced mentors, we aim to provide
-                practical insights that help young architects grow with confidence.
-              </p>
-              <div className="relative mt-2 min-h-[200px] flex-1 overflow-hidden rounded-[15px] lg:min-h-0">
-                <Image
-                  src={marketingImages.featureMentorship}
-                  alt=""
-                  fill
-                  className="object-cover"
-                  sizes="(max-width:1024px) 100vw, 28vw"
-                />
-              </div>
-            </div>
-          </SectionReveal>
-          <SectionReveal
-            className="lg:col-span-9 lg:row-span-1 lg:col-start-1 lg:row-start-2"
-            delay={0.08}
-          >
-            <div className="grid h-full min-h-[280px] gap-[14px] rounded-[20px] bg-mint p-5 text-left sm:p-6 md:grid-cols-2 md:items-center lg:min-h-[300px]">
-              <div className="flex flex-col justify-center text-left">
-                <h3 className="text-heading-card text-[#1a1a1a]">
-                  Learning Beyond the Studio
-                </h3>
-                <p className="mt-2 text-left text-sm leading-relaxed text-[#1a1a1a] sm:text-base">
-                  We believe architecture learning should not stop after class. Students
-                  deserve a space where they can ask questions, explore ideas, and
-                  receive guidance anytime.
-                </p>
-              </div>
-              <div className="relative min-h-[200px] w-full overflow-hidden rounded-[14px] md:min-h-[220px]">
-                <Image
-                  src={marketingImages.featureStudio}
-                  alt=""
-                  fill
-                  className="object-cover"
-                  sizes="(max-width:1024px) 100vw, 50vw"
-                />
-              </div>
-            </div>
-          </SectionReveal>
-        </div>
-      </section>
-
-      {/* Why us — tighter bottom so gap to Steps isn’t huge */}
-      <section className="px-4 pb-2 pt-3 sm:px-6 sm:pb-2.5 sm:pt-4 lg:px-8 lg:pb-3 lg:pt-5">
-        <SectionReveal>
-          <p className="text-center text-sm font-semibold text-ink sm:text-base">
-            Why Us?
-          </p>
-          <h2 className="text-heading-display mx-auto mt-2 max-w-4xl text-center text-ink">
-            Receive Guidance from{" "}
-            <span className="text-primary">Industry Experts</span>
-          </h2>
+          <h2 className={`${MARKETING_SECTION_TITLE_CLASS} mx-auto max-w-4xl text-center text-ink`}>Why Us?</h2>
         </SectionReveal>
 
         <div className="mt-3 lg:hidden">
@@ -434,7 +325,7 @@ export function HomePage({ testimonials }: { testimonials: HomeTestimonialCard[]
       <section className="-mt-3 bg-white px-4 pb-3 pt-2 sm:px-6 sm:-mt-4 sm:pb-4 sm:pt-2.5 lg:-mt-5 lg:px-8 lg:pb-5 lg:pt-3">
         <div className="mx-auto grid max-w-7xl gap-5 lg:grid-cols-2 lg:items-stretch lg:gap-[17px]">
           <SectionReveal className="flex flex-col justify-center text-left">
-            <h2 className="text-heading-display text-left text-[#1a1a1a]">
+            <h2 className={`${MARKETING_SECTION_TITLE_CLASS} text-left text-[#1a1a1a]`}>
               Start in 3 simple <span className="text-primary">steps</span>
             </h2>
             <ul className="mt-2.5 flex flex-col gap-[27px] text-left sm:mt-3">
@@ -532,7 +423,7 @@ export function HomePage({ testimonials }: { testimonials: HomeTestimonialCard[]
                 transition={{ delay: 0.04 }}
                 className="text-heading-display text-center text-white"
               >
-                What <span className="text-[#f16422]">Students</span> Say
+                What <span className="text-primary">Students</span> Say
               </motion.p>
 
               <div
@@ -591,95 +482,89 @@ export function HomePage({ testimonials }: { testimonials: HomeTestimonialCard[]
         </section>
       ) : null}
 
-      {/* Mentors say — Figma 44:351–363, 45:421 */}
-      <section className="overflow-x-hidden bg-white px-4 pb-3 pt-4 sm:px-6 sm:pb-4 sm:pt-5 lg:px-8 lg:pb-5 lg:pt-6">
-        <div className="mx-auto min-w-0 max-w-[1200px]">
+      {/* Mentors say — #FFF5E6 card, fixed height + scrollable quote, arrows only */}
+      <section className="overflow-x-hidden bg-white px-4 pb-6 pt-4 sm:px-6 sm:pb-8 sm:pt-5 lg:px-8 lg:pb-10 lg:pt-6">
+        <div className="mx-auto min-w-0 max-w-7xl">
           <SectionReveal>
-            <h2 className="text-heading-display text-center text-black">
+            <h2 className={`${MARKETING_SECTION_TITLE_CLASS} text-center text-black`}>
               <span>What </span>
               <span className="text-primary">Mentors</span>
               <span> Say</span>
             </h2>
           </SectionReveal>
-          <div className="mt-3 grid min-w-0 gap-6 sm:mt-4 lg:grid-cols-[minmax(260px,34%)_minmax(0,1fr)] lg:items-stretch lg:gap-8 xl:gap-[50px]">
-            <SectionReveal delay={0.05} className="flex min-h-0 min-w-0 justify-center lg:justify-start">
-              <div className="flex h-full w-full max-w-[380px] flex-col gap-[54px] overflow-hidden rounded-[20px] bg-black shadow-sm">
-                <div className="relative min-h-[130px] shrink-0 px-5 py-6 sm:px-6 sm:py-8">
-                  <div
-                    className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_95%_100%_at_100%_0%,#ff7700_0%,#c15b01_22%,#442204_55%,#0a0a0a_88%,#000_100%)]"
-                    aria-hidden
-                  />
-                  <p className="text-heading-display relative z-10 max-w-[300px] leading-[1.15] text-white">
-                    90% of Students Succeed after Mentorship
-                  </p>
-                </div>
-                <div className="relative min-h-[200px] flex-1 p-3">
-                  <div className="relative h-full min-h-[180px] overflow-hidden rounded-[15px]">
-                    <Image
-                      src={marketingImages.mentorsStatCardPhoto}
-                      alt=""
-                      fill
-                      className="object-cover object-center"
-                      sizes="380px"
-                    />
-                  </div>
+
+          <div className="mx-auto mt-4 min-w-0 max-w-[min(100%,52rem)] sm:mt-5 sm:max-w-[min(100%,60rem)] lg:max-w-[min(100%,68rem)]">
+            <SectionReveal delay={0.06} className="flex min-w-0 flex-col">
+              <div className="relative mx-auto w-full px-2 sm:px-4">
+                <span
+                  className="pointer-events-none absolute -left-1 top-2 z-20 font-serif text-[clamp(3.5rem,14vw,5.5rem)] leading-none text-primary/20 sm:-left-0 sm:top-3"
+                  aria-hidden
+                >
+                  &ldquo;
+                </span>
+                <span
+                  className="pointer-events-none absolute -right-1 bottom-20 z-20 font-serif text-[clamp(3.5rem,14vw,5.5rem)] leading-none text-primary/20 sm:bottom-24 sm:right-0"
+                  aria-hidden
+                >
+                  &rdquo;
+                </span>
+
+                <div className="relative z-10 flex min-h-[17.5rem] flex-col overflow-hidden rounded-[1.75rem] border border-neutral-200/90 bg-[#FFF5E6] shadow-[0_16px_40px_-20px_rgba(0,0,0,0.12)] sm:min-h-[19rem] sm:rounded-[2rem] lg:min-h-[20rem]">
+                  <AnimatePresence mode="wait">
+                    <motion.div
+                      key={mIndex}
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -8 }}
+                      transition={{ duration: 0.3 }}
+                      className="flex min-h-0 flex-1 flex-col px-6 pb-5 pt-7 sm:px-8 sm:pb-5 sm:pt-8"
+                    >
+                      <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain pr-0.5 [scrollbar-color:rgba(0,0,0,0.2)_transparent] [scrollbar-width:thin]">
+                        <p className="text-pretty text-[15px] font-normal leading-[1.65] text-neutral-900 sm:text-base sm:leading-relaxed">
+                          {mentorCurrent.quote}
+                        </p>
+                      </div>
+                      <div className="mt-4 flex shrink-0 items-end gap-4 border-t border-black/[0.06] pt-4 sm:mt-4 sm:gap-4 sm:pt-5">
+                        <div className="relative size-[56px] shrink-0 overflow-hidden rounded-full ring-2 ring-primary/30 ring-offset-2 ring-offset-[#FFF5E6] sm:size-[64px]">
+                          <Image
+                            src={mentorCurrent.avatar}
+                            alt=""
+                            fill
+                            className="object-cover object-center"
+                            sizes="64px"
+                          />
+                        </div>
+                        <div className="min-w-0 flex-1 pb-0.5 text-left">
+                          <p className="text-base font-bold text-neutral-900 sm:text-lg">{mentorCurrent.name}</p>
+                          <p className="mt-1 text-sm text-neutral-500">{mentorCurrent.cred}</p>
+                        </div>
+                      </div>
+                    </motion.div>
+                  </AnimatePresence>
                 </div>
               </div>
-            </SectionReveal>
-            <SectionReveal delay={0.08} className="flex min-h-0 min-w-0 h-full flex-col">
-              <div className="relative flex min-h-[350px] min-w-0 flex-1 flex-col overflow-hidden rounded-[20px] bg-[#fff5e6] p-6 sm:min-h-[380px] sm:p-8 lg:min-h-[400px]">
-                <AnimatePresence mode="wait">
-                  <motion.div
-                    key={mIndex}
-                    initial={{ opacity: 0, x: 10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: -10 }}
-                    transition={{ duration: 0.28 }}
-                    className="flex min-h-0 flex-1 flex-col pb-14"
-                  >
-                    <p className="flex-1 text-xl font-normal italic leading-[1.15] text-black sm:text-2xl">
-                      &ldquo;{mentorCurrent.quote}&rdquo;
-                    </p>
-                    <div className="mt-4 flex items-center gap-[14px]">
-                      <div className="relative size-[60px] shrink-0 overflow-hidden rounded-full">
-                        <Image
-                          src={mentorCurrent.avatar}
-                          alt=""
-                          fill
-                          className="object-cover"
-                          sizes="60px"
-                        />
-                      </div>
-                      <div className="min-w-0 text-left">
-                        <p className="text-base font-semibold italic text-black">{mentorCurrent.name}</p>
-                        <p className="mt-0.5 text-xs font-semibold italic text-black">{mentorCurrent.cred}</p>
-                      </div>
-                    </div>
-                  </motion.div>
-                </AnimatePresence>
 
-                <div className="absolute bottom-5 right-5 flex gap-2">
-                  <motion.button
-                    type="button"
-                    aria-label="Previous mentor quote"
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={prevM}
-                    className="flex size-10 items-center justify-center rounded-full border-2 border-primary bg-white"
-                  >
-                    <Image src="/left_arrow.svg" alt="" width={14} height={11} className="icon-brand-line" />
-                  </motion.button>
-                  <motion.button
-                    type="button"
-                    aria-label="Next mentor quote"
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={nextM}
-                    className="flex size-10 items-center justify-center rounded-full border-2 border-primary bg-white"
-                  >
-                    <Image src="/right_arrow.svg" alt="" width={14} height={11} className="icon-brand-line" />
-                  </motion.button>
-                </div>
+              <div className="mt-4 flex justify-center gap-2 sm:mt-5">
+                <motion.button
+                  type="button"
+                  aria-label="Previous mentor quote"
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={prevM}
+                  className="flex size-10 items-center justify-center rounded-full border-2 border-primary bg-white shadow-sm transition hover:bg-primary/5"
+                >
+                  <Image src="/left_arrow.svg" alt="" width={14} height={11} className="icon-brand-line" />
+                </motion.button>
+                <motion.button
+                  type="button"
+                  aria-label="Next mentor quote"
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={nextM}
+                  className="flex size-10 items-center justify-center rounded-full border-2 border-primary bg-white shadow-sm transition hover:bg-primary/5"
+                >
+                  <Image src="/right_arrow.svg" alt="" width={14} height={11} className="icon-brand-line" />
+                </motion.button>
               </div>
             </SectionReveal>
           </div>
@@ -692,7 +577,7 @@ export function HomePage({ testimonials }: { testimonials: HomeTestimonialCard[]
         className="scroll-mt-24 overflow-x-hidden bg-[#ffffff] px-4 pb-3 pt-3 sm:px-6 sm:pb-4 sm:pt-4 lg:px-8 lg:pb-5 lg:pt-5"
       >
         <SectionReveal>
-          <h2 className="text-heading-display text-center text-[#1a1a1a]">
+          <h2 className={`${MARKETING_SECTION_TITLE_CLASS} text-center text-[#1a1a1a]`}>
             Frequently Asked <span className="text-primary">Questions</span>
           </h2>
         </SectionReveal>
@@ -701,42 +586,25 @@ export function HomePage({ testimonials }: { testimonials: HomeTestimonialCard[]
         </div>
       </section>
 
-      {/* Join community — black band, orange glow from right, left copy + right art */}
+      {/* Join community — black band, left-aligned headline + sub + pill CTA (marketing reference) */}
       <section id="join-community" className="scroll-mt-24 mb-10 sm:mb-12 lg:mb-14">
-        <div className={`${fullBleed} overflow-hidden bg-[#0a0a0a]`}>
-          <div
-            className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_90%_120%_at_92%_50%,rgba(255,107,53,0.75),rgba(255,87,34,0.35)_32%,rgba(0,0,0,0)_62%)]"
-            aria-hidden
-          />
-          <div
-            className="pointer-events-none absolute inset-0 bg-gradient-to-l from-primary/45 from-[8%] via-transparent via-55% to-transparent"
-            aria-hidden
-          />
-          <div className="relative z-10 mx-auto flex max-w-7xl flex-col items-center gap-4 px-4 py-3.5 sm:px-6 sm:py-4 lg:flex-row lg:items-center lg:justify-between lg:gap-[22px] lg:px-8 lg:py-5">
-            <div className="w-full max-w-[min(100%,52rem)] text-center lg:flex-1 lg:text-left">
-              <h2 className="text-heading-display text-balance tracking-tight text-white">
+        <div className={`${fullBleed} bg-black`}>
+          <div className="relative z-10 mx-auto w-full max-w-7xl px-4 py-12 sm:px-6 sm:py-14 lg:px-8 lg:py-16">
+            <div className="max-w-3xl text-left">
+              <h2 className="text-balance text-2xl font-bold leading-tight tracking-tight text-white sm:text-3xl lg:text-4xl">
                 Learn, Share, and Grow with the Architecture Community!
               </h2>
-              <p className="mx-auto mt-2 max-w-2xl text-sm leading-relaxed text-white/95 sm:text-[15px] lg:mx-0 lg:max-w-3xl">
-                Discover a platform built for architecture students to connect with
-                mentors, discuss ideas, and explore insights from the community. Take the
-                next step in your design journey.
+              <p className="mt-2 max-w-2xl font-normal leading-relaxed text-white sm:mt-3 sm:text-base lg:text-lg">
+                Connect, gain mentorship, and learn from real world practice.
               </p>
-              <Link
-                href="/auth"
-                className="mt-3 inline-flex rounded-full bg-primary px-8 py-2.5 text-sm font-semibold text-white shadow-sm transition-transform hover:scale-[1.02] lg:mx-0"
+              <button
+                type="button"
+                onClick={onJoinCommonsia}
+                disabled={sessionStatus === "loading"}
+                className="mt-8 inline-flex rounded-full bg-[#FF5C35] px-8 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-[#f04d28] active:scale-[0.98] disabled:pointer-events-none disabled:opacity-60 sm:mt-10 sm:py-3.5 sm:text-base"
               >
-                Join the Community
-              </Link>
-            </div>
-            <div className="relative h-[220px] w-full max-w-[420px] shrink-0 sm:h-[260px] sm:max-w-[480px] lg:h-[min(320px,34vh)] lg:w-[min(46%,440px)] lg:max-w-none">
-              <Image
-                src={marketingImages.joinCommunityHero}
-                alt=""
-                fill
-                className="object-contain object-center lg:object-right lg:object-bottom"
-                sizes="(max-width:1024px) 420px, 440px"
-              />
+                Join Commonsia
+              </button>
             </div>
           </div>
         </div>

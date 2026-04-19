@@ -1,8 +1,5 @@
 "use client";
 
-import { motion } from "framer-motion";
-import Image from "next/image";
-import Link from "next/link";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { MentorCard } from "@/components/mentors/MentorCard";
 import { MentorFilterBar } from "@/components/mentors/MentorFilterBar";
@@ -19,7 +16,6 @@ import {
   type LocationFilter,
 } from "@/lib/mentor-discover-search";
 import { NO_UPCOMING_AVAILABILITY_LABEL } from "@/lib/mentor-next-slot";
-import { MENTOR_PAGE_HERO_ASSETS } from "@/lib/mentor-page-assets";
 
 const PAGE_SIZE = 10;
 
@@ -135,118 +131,12 @@ export function MentorsPage({ mentors }: { mentors: Mentor[] }) {
 
   return (
     <div className="bg-white pb-6 sm:pb-8">
-      {/* Hero — padding, eyebrow → title → body → CTAs, and flanking art: match homepage section 0 */}
-      <section className="relative overflow-hidden bg-[#ffffff] px-4 pb-4 pt-12 sm:px-6 sm:pb-6 sm:pt-16 lg:px-8 lg:pb-8 lg:pt-24">
-        <div className="relative mx-auto w-full max-w-[100rem] px-3 sm:px-5 lg:px-10">
-          <motion.div
-            className="absolute left-0 top-[15%] z-10 hidden w-[120px] md:block lg:top-[20%] lg:w-[160px] xl:top-[25%] xl:w-[200px] 2xl:w-[240px]"
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.55 }}
-          >
-            <div className="relative aspect-[3/5] w-full">
-              <Image
-                src={MENTOR_PAGE_HERO_ASSETS.leftFigure}
-                alt=""
-                fill
-                className="object-contain object-bottom object-center"
-                sizes="240px"
-              />
-            </div>
-          </motion.div>
-
-          <div className="relative z-20 mx-auto flex w-full min-w-0 max-w-2xl flex-col items-center justify-center px-1 text-center sm:max-w-4xl sm:px-2 lg:max-w-5xl xl:max-w-[65rem] 2xl:max-w-[75rem]">
-            <motion.div
-              className="relative mb-4 flex w-full max-w-[min(100%,360px)] justify-center sm:max-w-[420px]"
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.08 }}
-            >
-              <div className="relative h-11 w-full sm:h-14">
-                <Image
-                  src={MENTOR_PAGE_HERO_ASSETS.topStrip}
-                  alt=""
-                  fill
-                  className="object-contain object-center"
-                  sizes="(max-width:640px) 360px, 420px"
-                  priority
-                />
-              </div>
-            </motion.div>
-            <motion.p
-              className="text-[11px] font-normal text-neutral-600 sm:text-xs lg:text-[13px]"
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.09 }}
-            >
-              The Community Platform for Architecture Students
-            </motion.p>
-
-            <motion.h1
-              className="mx-auto mt-4 flex w-full min-w-0 max-w-[1117px] flex-col items-center gap-y-1.5 px-1 text-center text-[clamp(1.3rem,5.2vw+0.4rem,2.2rem)] font-semibold leading-[1.25] tracking-tight sm:mt-4 sm:gap-y-2 sm:px-2 sm:text-[2.5rem] sm:leading-[1.2] md:gap-y-2 md:text-[3.15rem] md:leading-[1.18] lg:text-[3.65rem] xl:text-[4.1rem] 2xl:text-[4.75rem]"
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-            >
-              <span className="block w-full max-w-full text-balance break-words [overflow-wrap:anywhere] xl:whitespace-nowrap">
-                <span className="text-[#0a0a0a]">Stuck in Your </span>
-                <span className="text-primary">Design Journey?</span>
-              </span>
-              <span className="block w-full max-w-full text-balance break-words [overflow-wrap:anywhere] xl:whitespace-nowrap md:mt-0">
-                <span className="text-[#0a0a0a]">Find a </span>
-                <span className="text-primary">Mentor</span>
-                <span className="text-[#0a0a0a]">.</span>
-              </span>
-            </motion.h1>
-
-            <p className="mx-auto mt-4 max-w-4xl text-pretty text-center text-[14px] leading-relaxed text-neutral-600 sm:mt-6 sm:text-[16px] lg:text-lg">
-              Connect with experienced architects, professors, and industry experts who
-              guide you through design, portfolios, or real-world projects.
-            </p>
-
-            <motion.div
-              className="mt-6 flex w-full max-w-sm flex-col items-center justify-center gap-3 sm:max-w-none sm:flex-row sm:gap-5"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-            >
-              <Link
-                href="/mentors#results"
-                prefetch
-                className="w-full rounded-full bg-primary px-8 py-3 text-center text-[15px] font-semibold tracking-wide text-white shadow-md transition-all hover:scale-[1.03] hover:shadow-lg sm:w-auto sm:px-10 sm:py-3.5 sm:text-base"
-              >
-                Find a Mentor
-              </Link>
-              <Link
-                href="/auth"
-                prefetch
-                className="w-full rounded-full border-2 border-primary bg-white px-8 py-3 text-center text-[15px] font-semibold tracking-wide text-primary transition-all hover:scale-[1.03] hover:bg-primary/5 sm:w-auto sm:px-10 sm:py-3.5 sm:text-base"
-              >
-                Become a Mentor
-              </Link>
-            </motion.div>
-          </div>
-
-          <motion.div
-            className="absolute right-0 top-[15%] z-10 hidden w-[120px] md:block lg:top-[20%] lg:w-[160px] xl:top-[25%] xl:w-[200px] 2xl:w-[240px]"
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.55 }}
-          >
-            <div className="relative aspect-[3/5] w-full">
-              <Image
-                src={MENTOR_PAGE_HERO_ASSETS.rightFigure}
-                alt=""
-                fill
-                className="object-contain object-bottom object-center"
-                sizes="240px"
-              />
-            </div>
-          </motion.div>
-        </div>
-      </section>
-
       <div id="results" ref={resultsAnchorRef} className="mx-auto min-w-0 max-w-7xl scroll-mt-4 px-4 sm:px-6 lg:px-8">
+        <div className="flex min-w-0 flex-col gap-5 pt-6 sm:gap-6 sm:pt-8 md:pt-10">
+          <p className="w-full text-left font-sans text-[15px] font-semibold leading-normal text-[#6a7282] sm:text-base">
+            Connect, gain mentorship, and learn from real world practice.
+          </p>
+
         <div className="flex min-w-0 flex-col gap-3">
           <div className="flex min-w-0 flex-row items-stretch gap-3 sm:items-center sm:gap-4">
             <MentorSearchBar
@@ -304,6 +194,7 @@ export function MentorsPage({ mentors }: { mentors: Mentor[] }) {
             hasActiveFilters={hasActiveFilters}
           />
         </div>
+        </div>
 
         <SectionReveal className="mt-5 sm:mt-6">
           {mentors.length > 0 ? (
@@ -313,7 +204,7 @@ export function MentorsPage({ mentors }: { mentors: Mentor[] }) {
                 : `Showing ${filtered.length} of ${mentors.length} mentor${mentors.length === 1 ? "" : "s"}`}
             </p>
           ) : null}
-          <div className="grid min-w-0 grid-cols-1 items-stretch gap-3.5 sm:gap-4 lg:grid-cols-2 lg:gap-y-5 lg:gap-x-8">
+          <div className="grid min-w-0 grid-cols-1 items-stretch gap-3.5 sm:gap-4 md:gap-5 lg:grid-cols-2 lg:gap-x-8 lg:gap-y-5">
             {slice.map((m, i) => (
               <MentorCard key={m.id} mentor={m} index={i} />
             ))}

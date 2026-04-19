@@ -1,17 +1,16 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import {
-  isoFromCalendarYmd,
-  jsWeekdayFromIsoLocal,
-  scheduleCustomExtraSlotLabels,
-  sortSlotLabels,
-} from "@/lib/mentor-availability-slots";
+  WEEKEND_TIME_PRESETS,
+  presetIdsFromSlotLabels,
+  slotLabelsForPresetRange,
+} from "@/lib/mentor-availability-patterns";
+import { isoFromCalendarYmd, jsWeekdayFromIsoLocal, sortSlotLabels } from "@/lib/mentor-availability-slots";
 import {
   type AvailabilityWindowKind,
   type WeekdayKey,
-  WEEKDAY_KEYS,
   WEEKDAY_LABELS,
   monthName,
 } from "./mentor-setup-constants";
@@ -48,36 +47,33 @@ export const SCHEDULE_KIND_CARDS: {
   description: string;
 }[] = [
   {
-    kind: "weekly",
-    title: "Recurring weekly",
-    description:
-      "Repeating weekly hours. You can switch mode or edit times anytime in availability settings.",
+    kind: "weekends",
+    title: "Weekends",
+    description: "Saturday and/or Sunday only. Tick each day you mentor, then choose two-hour IST ranges.",
   },
   {
     kind: "fifteen_days",
-    title: "15 days",
+    title: "15 days (bi-weekly)",
     description:
-      "Rolling two-week window: pick days in the next 15 days (biweekly-style). Change later if needed.",
+      "Choose one weekday — you appear every other week on that day within a rolling 15-day window.",
   },
   {
     kind: "monthly",
     title: "In a month",
     description:
-      "One calendar month at a time. Update your availability whenever plans change.",
+      "One weekday per calendar month. After a session on that weekday, the next opening is the same weekday next month.",
   },
   {
     kind: "custom",
     title: "Custom",
     description:
-      "Pick any future dates. Adjust anytime from availability settings.",
+      "Tap exact calendar dates and time ranges. The same day-of-month repeats every month forward for booking.",
   },
 ];
 
 type MentorSchedulePanelProps = {
   kind: AvailabilityWindowKind;
   onKindChange: (k: AvailabilityWindowKind) => void;
-  /** Weekly */
-  gridLabels: string[];
   weeklySlots: Record<WeekdayKey, string[]>;
   onToggleWeeklySlot: (day: WeekdayKey, label: string) => void;
   onClearWeekly: () => void;
@@ -89,15 +85,17 @@ type MentorSchedulePanelProps = {
   onCalendarNext: () => void;
   specificDatesSlots: Record<string, string[]>;
   onToggleCalendarDate: (iso: string) => void;
-  onToggleSpecificSlot: (iso: string, label: string) => void;
+  onToggleCustomDatePreset?: (iso: string, presetId: string) => void;
+  onToggleSharedCustomDatePreset?: (presetId: string) => void;
   onClearCalendarSelection: () => void;
   calendarSelectable: (iso: string) => boolean;
-  /** Select / clear every selectable date in the visible month that falls on this weekday (0=Sun … 6=Sat). */
-  onBulkWeekdayInMonth?: (jsWeekday: number) => void;
-  /** Button styling for bulk weekday row. */
-  bulkWeekdayFill?: (jsWeekday: number) => "none" | "partial" | "full";
-  /** When every selected date is the same weekday, toggle this slot on all of them at once. */
-  onToggleSharedCalendarSlot?: (label: string) => void;
+  /** 15-day / monthly rhythm */
+  recurringWeekdayJs?: number;
+  onRecurringWeekdayJs?: (js: number) => void;
+  patternSlotLabels?: string[];
+  onTogglePatternPreset?: (presetId: string) => void;
+  onClearPatternSlots?: () => void;
+  onClearWeeklyDay?: (day: WeekdayKey) => void;
 };
 
 const CAL_WEEK = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
@@ -113,66 +111,9 @@ function calendarCells(year: number, month: number): (number | null)[] {
   return cells;
 }
 
-/** Renders stored labels like `10:00 AM` with clear AM / PM. */
-function SlotPillContent({ label }: { label: string }) {
-  const m = label.trim().match(/^(\d{1,2}:\d{2})\s+(AM|PM)$/i);
-  if (!m) return <span className="tabular-nums">{label}</span>;
-  const ap = m[2].toUpperCase();
-  return (
-    <span className="flex flex-col items-center justify-center gap-0.5 leading-none">
-      <span className="tabular-nums tracking-tight">{m[1]}</span>
-      <span className="text-[0.65rem] font-semibold uppercase leading-none sm:text-[0.7rem]">
-        {ap}
-      </span>
-    </span>
-  );
-}
-
-function AddCustomTimeSelect({
-  options,
-  disabledIds,
-  onPick,
-}: {
-  options: string[];
-  disabledIds: Set<string>;
-  onPick: (label: string) => void;
-}) {
-  const [v, setV] = useState("");
-  const pickable = options.filter((lab) => !disabledIds.has(lab));
-  if (pickable.length === 0) return null;
-  return (
-    <div className="mt-3">
-      <label className="mb-1 block text-[11px] font-medium text-neutral-500">
-        Add another time (IST)
-      </label>
-      <select
-        value={v}
-        className="w-full max-w-xs rounded-lg border border-neutral-200 bg-white px-2 py-2 text-xs text-neutral-800 shadow-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
-        onChange={(e) => {
-          const label = e.target.value;
-          if (label) {
-            onPick(label);
-            setV("");
-          } else {
-            setV(label);
-          }
-        }}
-      >
-        <option value="">Choose a time…</option>
-        {pickable.map((lab) => (
-          <option key={lab} value={lab}>
-            {lab}
-          </option>
-        ))}
-      </select>
-    </div>
-  );
-}
-
 export function MentorSchedulePanel({
   kind,
   onKindChange,
-  gridLabels,
   weeklySlots,
   onToggleWeeklySlot,
   onClearWeekly,
@@ -183,15 +124,33 @@ export function MentorSchedulePanel({
   onCalendarNext,
   specificDatesSlots,
   onToggleCalendarDate,
-  onToggleSpecificSlot,
+  onToggleCustomDatePreset,
+  onToggleSharedCustomDatePreset,
   onClearCalendarSelection,
   calendarSelectable,
-  onBulkWeekdayInMonth,
-  bulkWeekdayFill,
-  onToggleSharedCalendarSlot,
+  recurringWeekdayJs = 5,
+  onRecurringWeekdayJs,
+  patternSlotLabels = [],
+  onTogglePatternPreset,
+  onClearPatternSlots,
+  onClearWeeklyDay,
 }: MentorSchedulePanelProps) {
-  const extraSlotLabels = useMemo(() => scheduleCustomExtraSlotLabels(), []);
-  const [weeklyOpen, setWeeklyOpen] = useState<Partial<Record<WeekdayKey, boolean>>>({});
+  const patternPresetIds = useMemo(() => presetIdsFromSlotLabels(patternSlotLabels), [patternSlotLabels]);
+  const [weekendArmed, setWeekendArmed] = useState<Record<"sat" | "sun", boolean>>(() => ({
+    sat: (weeklySlots.sat?.length ?? 0) > 0,
+    sun: (weeklySlots.sun?.length ?? 0) > 0,
+  }));
+
+  const prevScheduleKind = useRef(kind);
+  useEffect(() => {
+    if (kind === "weekends" && prevScheduleKind.current !== "weekends") {
+      setWeekendArmed({
+        sat: (weeklySlots.sat?.length ?? 0) > 0,
+        sun: (weeklySlots.sun?.length ?? 0) > 0,
+      });
+    }
+    prevScheduleKind.current = kind;
+  }, [kind, weeklySlots.sat, weeklySlots.sun]);
   const cells = calendarCells(calendarViewYear, calendarViewMonth);
   const selectedDates = Object.keys(specificDatesSlots).sort();
   const selectedCount = selectedDates.length;
@@ -200,17 +159,17 @@ export function MentorSchedulePanel({
     selectedDates.length >= 2 &&
     selectedDates.every((iso) => jsWeekdayFromIsoLocal(iso) === jsWeekdayFromIsoLocal(selectedDates[0]!));
 
-  const sharedSlotOn = (label: string) =>
-    Boolean(
-      onToggleSharedCalendarSlot &&
-        sameWeekdayMulti &&
-        selectedDates.length > 0 &&
-        selectedDates.every((iso) => (specificDatesSlots[iso] ?? []).includes(label)),
-    );
+  const presetFullySelectedForIso = (iso: string, presetId: string) => {
+    const p = WEEKEND_TIME_PRESETS.find((x) => x.id === presetId);
+    if (!p) return false;
+    const labs = slotLabelsForPresetRange(p.range[0], p.range[1]);
+    const s = specificDatesSlots[iso] ?? [];
+    return labs.length > 0 && labs.every((lab) => s.includes(lab));
+  };
 
-  const toggleSharedSlot = (label: string) => {
-    if (!onToggleSharedCalendarSlot || !sameWeekdayMulti) return;
-    onToggleSharedCalendarSlot(label);
+  const sharedCustomPresetOn = (presetId: string) => {
+    if (selectedDates.length === 0) return false;
+    return selectedDates.every((iso) => presetFullySelectedForIso(iso, presetId));
   };
 
   return (
@@ -225,8 +184,8 @@ export function MentorSchedulePanel({
               Availability type
             </h3>
             <p className="text-sm text-neutral-600">
-              Pick one of the four options below and add at least one time slot (required). You can change
-              mode or edit later anytime.
+              Pick one of the four options below and add at least one two-hour range (required). You can change mode or
+              edit later anytime.
             </p>
           </div>
         </div>
@@ -272,93 +231,7 @@ export function MentorSchedulePanel({
         </div>
       </section>
 
-      {kind === "weekly" ? (
-        <section className="rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm sm:p-6">
-          <div className="mb-4 flex items-start gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
-              <IconClockGlyph className="h-5 w-5" />
-            </div>
-            <div>
-              <h3 className="text-base font-semibold text-neutral-900">
-                Select your available time slots
-              </h3>
-              <p className="text-sm text-neutral-600">
-                Times are in IST (India Standard Time), 10:00 AM–8:00 PM by default. Use the menu under a day
-                to add other times.
-              </p>
-            </div>
-          </div>
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-xl bg-primary/10 px-4 py-2.5 text-sm">
-            <span className="font-medium text-neutral-800">
-              {weeklyTotal} time slot{weeklyTotal === 1 ? "" : "s"} selected
-              across the week
-            </span>
-            <button
-              type="button"
-              onClick={onClearWeekly}
-              className="text-sm font-semibold text-primary hover:underline"
-            >
-              Clear all
-            </button>
-          </div>
-          <div className="space-y-2">
-            {WEEKDAY_KEYS.map((day: WeekdayKey) => {
-              const slots = weeklySlots[day] ?? [];
-              const n = slots.length;
-              const open = weeklyOpen[day] ?? false;
-              return (
-                <div key={day} className="rounded-xl border border-neutral-100 bg-neutral-50/50 p-3 sm:p-4">
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setWeeklyOpen((prev) => ({
-                        ...prev,
-                        [day]: !open,
-                      }))
-                    }
-                    className="flex w-full items-center justify-between gap-2 rounded-lg px-0.5 py-1 text-left transition hover:bg-white/60"
-                  >
-                    <span className="text-sm font-semibold text-neutral-900">{WEEKDAY_LABELS[day]}</span>
-                    <span className="text-xs text-neutral-500">
-                      {n} slot{n === 1 ? "" : "s"}
-                      <span className="ml-2 font-medium text-primary">{open ? "▾ Hide" : "▸ Pick times"}</span>
-                    </span>
-                  </button>
-                  {open ? (
-                    <div className="mt-3 space-y-3 border-t border-neutral-200/80 pt-3">
-                      <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-5 lg:grid-cols-7">
-                        {gridLabels.map((lab) => {
-                          const on = slots.includes(lab);
-                          return (
-                            <button
-                              key={lab}
-                              type="button"
-                              onClick={() => onToggleWeeklySlot(day, lab)}
-                              className={cx(
-                                "min-h-[2.75rem] rounded-lg border px-1 py-1.5 text-center text-[10px] font-medium transition-colors sm:min-h-[3rem] sm:text-xs",
-                                on
-                                  ? "border-primary bg-primary text-white"
-                                  : "border-neutral-200 bg-white text-neutral-700 hover:border-neutral-300",
-                              )}
-                            >
-                              <SlotPillContent label={lab} />
-                            </button>
-                          );
-                        })}
-                      </div>
-                      <AddCustomTimeSelect
-                        options={extraSlotLabels}
-                        disabledIds={new Set(slots)}
-                        onPick={(lab) => onToggleWeeklySlot(day, lab)}
-                      />
-                    </div>
-                  ) : null}
-                </div>
-              );
-            })}
-          </div>
-        </section>
-      ) : (
+      {kind === "custom" ? (
         <>
           <section className="rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm sm:p-6">
             <div className="mb-4 flex items-start gap-3">
@@ -370,7 +243,8 @@ export function MentorSchedulePanel({
                   Select specific dates
                 </h3>
                 <p className="text-sm text-neutral-600">
-                  Choose the dates you&apos;re available.
+                  Choose the dates you&apos;re available. One tap sets that calendar day each month forward (same time
+                  ranges) for students to book.
                 </p>
               </div>
             </div>
@@ -435,36 +309,6 @@ export function MentorSchedulePanel({
                 );
               })}
             </div>
-            {onBulkWeekdayInMonth ? (
-              <div className="mt-4 rounded-xl border border-neutral-100 bg-neutral-50/80 px-3 py-3">
-                <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-neutral-500">
-                  Whole month — same weekday
-                </p>
-                <p className="mb-2 text-xs text-neutral-600">
-                  Tap a weekday to select or clear every matching day in this month (only days you can book).
-                </p>
-                <div className="flex flex-wrap gap-1.5">
-                  {CAL_WEEK.map((label, js) => {
-                    const fill = bulkWeekdayFill?.(js) ?? "none";
-                    return (
-                      <button
-                        key={label}
-                        type="button"
-                        onClick={() => onBulkWeekdayInMonth(js)}
-                        className={cx(
-                          "min-w-[2.75rem] rounded-lg border px-2 py-1.5 text-center text-[11px] font-semibold transition-colors",
-                          fill === "full" && "border-primary bg-primary text-white",
-                          fill === "partial" && "border-amber-400 bg-amber-50 text-amber-950",
-                          fill === "none" && "border-neutral-200 bg-white text-neutral-700 hover:border-primary/40",
-                        )}
-                      >
-                        {label}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            ) : null}
             <div className="mt-4 flex flex-col gap-2 rounded-xl bg-primary/10 px-4 py-3 text-sm">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <span className="font-medium text-neutral-800">
@@ -492,8 +336,7 @@ export function MentorSchedulePanel({
                   Time slots per date
                 </h3>
                 <p className="text-sm text-neutral-600">
-                  For each selected date, choose times in IST (default grid 10:00 AM–8:00 PM). Use the menu to
-                  add other times.
+                  For each selected date, choose one or more two-hour time ranges (IST).
                 </p>
               </div>
             </div>
@@ -501,7 +344,7 @@ export function MentorSchedulePanel({
               <p className="rounded-xl border border-dashed border-neutral-200 bg-neutral-50 px-4 py-8 text-center text-sm text-neutral-500">
                 Select one or more dates in the calendar above.
               </p>
-            ) : sameWeekdayMulti && onToggleSharedCalendarSlot ? (
+            ) : sameWeekdayMulti && onToggleSharedCustomDatePreset ? (
               <div className="space-y-6">
                 <div className="rounded-xl border border-primary/25 bg-primary/[0.04] p-3 sm:p-4">
                   <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
@@ -509,39 +352,35 @@ export function MentorSchedulePanel({
                       All {CAL_WEEK[jsWeekdayFromIsoLocal(selectedDates[0]!)]}s selected ({selectedDates.length}{" "}
                       days)
                     </span>
-                    <span className="text-xs text-neutral-600">One grid updates every selected day.</span>
+                    <span className="text-xs text-neutral-600">One set of ranges applies to every selected day.</span>
                   </div>
-                  <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-5 lg:grid-cols-7">
-                    {gridLabels.map((lab) => {
-                      const on = sharedSlotOn(lab);
+                  <div className="flex flex-wrap gap-2">
+                    {WEEKEND_TIME_PRESETS.map((p) => {
+                      const on = sharedCustomPresetOn(p.id);
                       return (
                         <button
-                          key={lab}
+                          key={p.id}
                           type="button"
-                          onClick={() => toggleSharedSlot(lab)}
+                          onClick={() => onToggleSharedCustomDatePreset(p.id)}
                           className={cx(
-                            "min-h-[2.75rem] rounded-lg border px-1 py-1.5 text-center text-[10px] font-medium transition-colors sm:min-h-[3rem] sm:text-xs",
+                            "rounded-lg border px-2.5 py-1.5 text-left text-[11px] font-medium transition-colors sm:text-xs",
                             on
                               ? "border-primary bg-primary text-white"
-                              : "border-neutral-200 bg-white text-neutral-700 hover:border-neutral-300",
+                              : "border-neutral-200 bg-white text-neutral-700 hover:border-primary/40",
                           )}
                         >
-                          <SlotPillContent label={lab} />
+                          {p.label}
                         </button>
                       );
                     })}
                   </div>
-                  <AddCustomTimeSelect
-                    options={extraSlotLabels}
-                    disabledIds={new Set(sortSlotLabels(selectedDates.flatMap((iso) => specificDatesSlots[iso] ?? [])))}
-                    onPick={(lab) => toggleSharedSlot(lab)}
-                  />
                 </div>
               </div>
             ) : (
               <div className="space-y-6">
                 {selectedDates.map((iso) => {
                   const slots = sortSlotLabels(specificDatesSlots[iso] ?? []);
+                  const rangeCount = presetIdsFromSlotLabels(slots).size;
                   return (
                     <div
                       key={iso}
@@ -552,35 +391,29 @@ export function MentorSchedulePanel({
                           {iso}
                         </span>
                         <span className="text-xs text-neutral-500">
-                          {slots.length} slot{slots.length === 1 ? "" : "s"}{" "}
-                          selected
+                          {rangeCount} range{rangeCount === 1 ? "" : "s"} selected
                         </span>
                       </div>
-                      <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-5 lg:grid-cols-7">
-                        {gridLabels.map((lab) => {
-                          const on = slots.includes(lab);
+                      <div className="flex flex-wrap gap-2">
+                        {WEEKEND_TIME_PRESETS.map((p) => {
+                          const on = presetFullySelectedForIso(iso, p.id);
                           return (
                             <button
-                              key={lab}
+                              key={p.id}
                               type="button"
-                              onClick={() => onToggleSpecificSlot(iso, lab)}
+                              onClick={() => onToggleCustomDatePreset?.(iso, p.id)}
                               className={cx(
-                                "min-h-[2.75rem] rounded-lg border px-1 py-1.5 text-center text-[10px] font-medium transition-colors sm:min-h-[3rem] sm:text-xs",
+                                "rounded-lg border px-2.5 py-1.5 text-left text-[11px] font-medium transition-colors sm:text-xs",
                                 on
                                   ? "border-primary bg-primary text-white"
-                                  : "border-neutral-200 bg-white text-neutral-700 hover:border-neutral-300",
+                                  : "border-neutral-200 bg-white text-neutral-700 hover:border-primary/40",
                               )}
                             >
-                              <SlotPillContent label={lab} />
+                              {p.label}
                             </button>
                           );
                         })}
                       </div>
-                      <AddCustomTimeSelect
-                        options={extraSlotLabels}
-                        disabledIds={new Set(slots)}
-                        onPick={(lab) => onToggleSpecificSlot(iso, lab)}
-                      />
                     </div>
                   );
                 })}
@@ -588,6 +421,196 @@ export function MentorSchedulePanel({
             )}
           </section>
         </>
+      ) : kind === "fifteen_days" || kind === "monthly" ? (
+        <section className="rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm sm:p-6">
+          <div className="mb-4 flex items-start gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+              <IconClockGlyph className="h-5 w-5" />
+            </div>
+            <div>
+              <h3 className="text-base font-semibold text-neutral-900">Rhythm &amp; time slots</h3>
+              <p className="text-sm text-neutral-600">
+                {kind === "fifteen_days"
+                  ? "Pick one weekday — bookings open on every other occurrence within about 15 days."
+                  : "Pick one weekday per month. After you complete a session on that weekday in a month, students see the next opening in the following month."}
+              </p>
+            </div>
+          </div>
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-xl bg-primary/10 px-4 py-2.5 text-sm">
+            <span className="font-medium text-neutral-800">
+              {presetIdsFromSlotLabels(patternSlotLabels).size} time range
+              {presetIdsFromSlotLabels(patternSlotLabels).size === 1 ? "" : "s"} on your rhythm day
+            </span>
+            <button
+              type="button"
+              onClick={() => onClearPatternSlots?.()}
+              className="text-sm font-semibold text-primary hover:underline"
+            >
+              Clear times
+            </button>
+          </div>
+          <div className="mb-5">
+            <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-neutral-500">Weekday</p>
+            <div className="flex flex-wrap gap-1.5">
+              {CAL_WEEK.map((label, js) => {
+                const sel = recurringWeekdayJs === js;
+                return (
+                  <button
+                    key={label}
+                    type="button"
+                    onClick={() => onRecurringWeekdayJs?.(js)}
+                    className={cx(
+                      "min-w-[2.75rem] rounded-lg border px-2 py-1.5 text-center text-[11px] font-semibold transition-colors",
+                      sel
+                        ? "border-primary bg-primary text-white"
+                        : "border-neutral-200 bg-white text-neutral-700 hover:border-primary/40",
+                    )}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+          <div className="mb-5">
+            <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-neutral-500">
+              Preset two-hour bands
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {WEEKEND_TIME_PRESETS.map((p) => {
+                const on = patternPresetIds.has(p.id);
+                return (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => onTogglePatternPreset?.(p.id)}
+                    className={cx(
+                      "rounded-lg border px-2.5 py-1.5 text-left text-[11px] font-medium transition-colors sm:text-xs",
+                      on
+                        ? "border-primary bg-primary text-white"
+                        : "border-neutral-200 bg-white text-neutral-700 hover:border-primary/40",
+                    )}
+                  >
+                    {p.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+      ) : (
+        <section className="rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm sm:p-6">
+          <div className="mb-4 flex items-start gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+              <IconClockGlyph className="h-5 w-5" />
+            </div>
+            <div>
+              <h3 className="text-base font-semibold text-neutral-900">Weekend time slots</h3>
+              <p className="text-sm text-neutral-600">
+                Tick the days you mentor on, then choose two-hour time ranges for each day (IST).
+              </p>
+            </div>
+          </div>
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-xl bg-primary/10 px-4 py-2.5 text-sm">
+            <span className="font-medium text-neutral-800">
+              {(weeklySlots.sat?.length ?? 0) + (weeklySlots.sun?.length ?? 0) > 0
+                ? `${presetIdsFromSlotLabels([...(weeklySlots.sat ?? []), ...(weeklySlots.sun ?? [])]).size} range(s) across Sat–Sun`
+                : "Pick at least one day and time range"}
+            </span>
+            <button
+              type="button"
+              onClick={() => {
+                onClearWeekly();
+                setWeekendArmed({ sat: false, sun: false });
+              }}
+              className="text-sm font-semibold text-primary hover:underline"
+            >
+              Clear all
+            </button>
+          </div>
+          <div className="space-y-4">
+            {(["sat", "sun"] as const).map((day) => {
+              const slots = weeklySlots[day] ?? [];
+              const armed = weekendArmed[day];
+              return (
+                <div key={day} className="rounded-xl border border-neutral-100 bg-neutral-50/50 p-3 sm:p-4">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
+                    <button
+                      type="button"
+                      role="checkbox"
+                      aria-checked={armed}
+                      onClick={() => {
+                        if (armed) {
+                          onClearWeeklyDay?.(day);
+                          setWeekendArmed((p) => ({ ...p, [day]: false }));
+                        } else {
+                          setWeekendArmed((p) => ({ ...p, [day]: true }));
+                        }
+                      }}
+                      className="flex shrink-0 items-center gap-2 rounded-lg text-left"
+                    >
+                      <span
+                        className={cx(
+                          "flex size-6 shrink-0 items-center justify-center rounded-md border-2 transition",
+                          armed
+                            ? "border-primary bg-primary text-white"
+                            : "border-neutral-300 bg-white text-transparent",
+                        )}
+                      >
+                        ✓
+                      </span>
+                      <span className="text-sm font-semibold text-neutral-900">{WEEKDAY_LABELS[day]}</span>
+                    </button>
+                    <div className="min-w-0 flex-1">
+                      <p className="mb-2 text-[11px] text-neutral-500">
+                        {armed
+                          ? "Time ranges (tap to toggle)"
+                          : "Tick this day first, then choose one or more ranges."}
+                      </p>
+                      <div
+                        className={cx(
+                          "flex flex-wrap gap-2 transition",
+                          !armed && "pointer-events-none opacity-40",
+                        )}
+                      >
+                        {WEEKEND_TIME_PRESETS.map((p) => {
+                          const labs = slotLabelsForPresetRange(p.range[0], p.range[1]);
+                          const on = labs.length > 0 && labs.every((lab) => slots.includes(lab));
+                          return (
+                            <button
+                              key={p.id}
+                              type="button"
+                              disabled={!armed}
+                              onClick={() => {
+                                if (on) {
+                                  for (const lab of labs) {
+                                    if (slots.includes(lab)) onToggleWeeklySlot(day, lab);
+                                  }
+                                } else {
+                                  for (const lab of labs) {
+                                    if (!slots.includes(lab)) onToggleWeeklySlot(day, lab);
+                                  }
+                                }
+                              }}
+                              className={cx(
+                                "rounded-lg border px-2.5 py-1.5 text-left text-[11px] font-medium transition-colors sm:text-xs",
+                                on
+                                  ? "border-primary bg-primary text-white"
+                                  : "border-neutral-200 bg-white text-neutral-700 hover:border-primary/40",
+                              )}
+                            >
+                              {p.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
       )}
     </div>
   );

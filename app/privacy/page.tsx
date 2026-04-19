@@ -113,8 +113,8 @@ export default function PrivacyPolicyPage() {
           </ul>
           <p>
             To exercise these rights, contact us at{" "}
-            <a href="mailto:admin@commonsia.com" className="font-medium text-primary hover:underline">
-              admin@commonsia.com
+            <a href="mailto:hello@commonsia.com" className="font-medium text-primary hover:underline">
+              hello@commonsia.com
             </a>
             . We may verify your identity before fulfilling requests.
           </p>
@@ -160,8 +160,8 @@ export default function PrivacyPolicyPage() {
           <h2>10. Contact us</h2>
           <p>
             For questions about this Privacy Policy or our data practices, email{" "}
-            <a href="mailto:admin@commonsia.com" className="font-medium text-primary hover:underline">
-              admin@commonsia.com
+            <a href="mailto:hello@commonsia.com" className="font-medium text-primary hover:underline">
+              hello@commonsia.com
             </a>{" "}
             or use our{" "}
             <Link href="/contact" className="font-medium text-primary hover:underline">

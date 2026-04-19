@@ -4,7 +4,6 @@ import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { MentorEditProfileForm } from "@/components/mentor/MentorEditProfileForm";
 import { getMentorOnboardingRedirectPath } from "@/lib/mentor-onboarding";
-import { getGoogleCalendarRefreshTokenForUser } from "@/lib/google-calendar-oauth-client";
 import { prisma } from "@/lib/prisma";
 
 export const metadata: Metadata = {
@@ -68,11 +67,8 @@ export default async function MentorProfileEditPage() {
     redirect(onboardingPath);
   }
 
-  const googleCalendarConnected = !!(await getGoogleCalendarRefreshTokenForUser(session.user.id));
-
   return (
     <MentorEditProfileForm
-      googleCalendarConnected={googleCalendarConnected}
       initial={{
         name: user.name,
         email: user.email,

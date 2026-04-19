@@ -4,9 +4,9 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useMemo } from "react";
 
 const CONFETTI_COLORS = [
-  "#ff571f",
-  "#f16422",
-  "#ea580c",
+  "#ff6600",
+  "#ff8533",
+  "#e65c00",
   "#f97316",
   "#fb923c",
   "#a855f7",
@@ -19,6 +19,8 @@ const CONFETTI_COLORS = [
 const AUTO_DISMISS_MS = 5_800;
 
 export type BookingSuccessPayload = {
+  /** When set to `request_submitted`, the student asked for a time — Commonsia confirms manually (no instant calendar book). */
+  mode?: "booked" | "request_submitted";
   dateLine: string;
   timeLine: string;
   istHint: string | null;
@@ -135,10 +137,12 @@ export function BookingSuccessModal({
               id="booking-success-title"
               className="font-heading text-[1.2rem] font-semibold leading-snug tracking-tight text-[#0a0a0a] sm:text-[1.35rem] md:text-2xl"
             >
-              Your session is booked!
+              {payload.mode === "request_submitted" ? "Request sent" : "Your session is booked!"}
             </h2>
             <p className="mt-1.5 text-[13px] font-medium text-emerald-700 sm:mt-2 sm:text-sm md:text-[15px]">
-              You did it — see you there!
+              {payload.mode === "request_submitted"
+                ? "We’ll confirm the time with your mentor over WhatsApp."
+                : "You did it — see you there!"}
             </p>
 
             <div className="mt-5 rounded-xl bg-[#FFF8F1] px-3.5 py-3.5 text-left ring-1 ring-orange-100/80 sm:mt-6 sm:px-4 sm:py-4">
@@ -155,23 +159,32 @@ export function BookingSuccessModal({
               </p>
             </div>
 
-            <p className="mt-3.5 text-left text-[13px] leading-relaxed text-neutral-600 sm:mt-4 sm:text-sm">
-              If transactional email is configured for this site, Commonsia sends a confirmation to both you and your
-              mentor at your profile email addresses (in addition to any Google Calendar invites).
-            </p>
-            {payload.calendarSynced ? (
-              <p className="mt-2 text-left text-[13px] leading-relaxed text-neutral-600 sm:text-sm">
-                Google Calendar was updated — you may receive a calendar invite from Google as well. Check spam if you
-                don&apos;t see it.
+            {payload.mode === "request_submitted" ? (
+              <p className="mt-3.5 text-left text-[13px] leading-relaxed text-neutral-600 sm:mt-4 sm:text-sm">
+                {payload.softMessage?.trim() ||
+                  "Our team coordinates every mentor session. You’ll get a WhatsApp update once the mentor accepts and the final time band is set."}
               </p>
             ) : (
-              <p className="mt-2 text-left text-[13px] leading-relaxed text-neutral-600 sm:text-sm">
-                {payload.softMessage?.trim() ||
-                  "Connect Google Calendar on your dashboard to add this to your calendar and get Meet links by email when available."}
-              </p>
+              <>
+                <p className="mt-3.5 text-left text-[13px] leading-relaxed text-neutral-600 sm:mt-4 sm:text-sm">
+                  If transactional email is configured for this site, Commonsia sends a confirmation to both you and
+                  your mentor at your profile email addresses (in addition to any Google Calendar invites).
+                </p>
+                {payload.calendarSynced ? (
+                  <p className="mt-2 text-left text-[13px] leading-relaxed text-neutral-600 sm:text-sm">
+                    Google Calendar was updated — you may receive a calendar invite from Google as well. Check spam if
+                    you don&apos;t see it.
+                  </p>
+                ) : (
+                  <p className="mt-2 text-left text-[13px] leading-relaxed text-neutral-600 sm:text-sm">
+                    {payload.softMessage?.trim() ||
+                      "Connect Google Calendar on your dashboard to add this to your calendar and get Meet links by email when available."}
+                  </p>
+                )}
+              </>
             )}
 
-            {payload.meetLink?.trim() ? (
+            {payload.mode !== "request_submitted" && payload.meetLink?.trim() ? (
               <a
                 href={payload.meetLink.trim()}
                 target="_blank"

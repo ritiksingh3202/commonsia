@@ -349,21 +349,27 @@ export function ScheduleCallPage({
       const startISO = start.toISOString();
       const endISO = end.toISOString();
 
+      if (mentorUserId) {
+        setBookingSuccess({
+          mode: "request_submitted",
+          dateLine: summaryDate,
+          timeLine: summaryTimePrimary,
+          istHint: summaryTimeIstHint,
+          durationMin,
+          calendarSynced: false,
+          meetLink: null,
+          softMessage:
+            "No calendar event is created yet. Share this preference with us — we’ll message the mentor on WhatsApp for a yes/no, then lock the two-hour band and schedule the call for both of you.",
+        });
+        return;
+      }
+
       const res = await fetch("/api/calendar/create-event", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          mentorUserId: mentorUserId ?? undefined,
           startISO,
           endISO,
-          ...(mentorUserId
-            ? {
-                bookYear: viewYear,
-                bookMonthIndex: viewMonth,
-                bookDay: displayDay,
-                startLabel: selected.startLabel,
-              }
-            : {}),
           title: mentorDisplayName ? `Commonsia: Session with ${mentorDisplayName}` : undefined,
           description: mentorDisplayName
             ? `Mentoring session via Commonsia with ${mentorDisplayName}.`
@@ -391,7 +397,6 @@ export function ScheduleCallPage({
         meetLink: data.meetLink ?? null,
         softMessage: data.message ?? null,
       });
-      if (mentorUserId) void loadMentorSlots();
       {
         const role = sessionData?.user?.role;
         const dashboardHref = role === "mentor" ? "/mentor" : "/student";
@@ -418,7 +423,7 @@ export function ScheduleCallPage({
         payload={bookingSuccess}
         onClose={dismissBookingSuccess}
       />
-      <div className="mx-auto max-w-[1200px] px-4 sm:px-6">
+      <div className="mx-auto max-w-[1200px] px-3 sm:px-5 md:px-6">
         <Link
           href="/mentors"
           className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-neutral-700 transition hover:text-primary"
@@ -427,8 +432,8 @@ export function ScheduleCallPage({
           Back
         </Link>
 
-        <div className="rounded-2xl border border-neutral-200/80 bg-white p-4 shadow-xl sm:p-6 lg:p-8">
-          <div className="grid gap-8 lg:grid-cols-[minmax(0,260px)_1fr_minmax(0,280px)] lg:items-start lg:gap-10">
+        <div className="rounded-2xl border border-neutral-200/80 bg-white p-3 shadow-xl sm:p-5 md:p-6 lg:p-8">
+          <div className="grid grid-cols-1 gap-6 sm:gap-8 lg:grid-cols-[minmax(0,240px)_1fr_minmax(0,260px)] lg:items-start lg:gap-8 xl:gap-10">
             {/* Left — invite & summary */}
             <aside className="order-3 flex flex-col gap-5 lg:order-1 lg:self-start">
               {mentorDisplayName ? (
@@ -526,13 +531,21 @@ export function ScheduleCallPage({
                 onClick={() => void scheduleCall()}
                 className="w-full rounded-xl bg-primary py-3.5 text-sm font-semibold text-white shadow-md transition hover:bg-primary/90 disabled:opacity-60"
               >
-                {booking ? "Booking…" : "Book a session"}
+                {booking
+                  ? mentorUserId
+                    ? "Sending…"
+                    : "Booking…"
+                  : mentorUserId
+                    ? "Request this session"
+                    : "Book a session"}
               </button>
             </aside>
 
             {/* Middle — calendar */}
             <section className="order-1 lg:order-2 lg:self-start">
-              <h1 className="text-xl font-bold text-[#0a0a0a] sm:text-2xl">Book a session</h1>
+              <h1 className="text-xl font-bold text-[#0a0a0a] sm:text-2xl">
+                {mentorUserId ? "Request a session" : "Book a session"}
+              </h1>
 
               <div className="mt-5 rounded-2xl border border-neutral-100 bg-white p-4 shadow-sm sm:p-5">
                 <div className="mb-4 flex items-center justify-between gap-2">

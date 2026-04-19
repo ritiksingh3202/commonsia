@@ -2,6 +2,8 @@ import type { Prisma } from "@prisma/client";
 
 /** Fields needed across mentor onboarding steps (server load once per request). */
 export const mentorSetupUserSelect = {
+  country: true,
+  city: true,
   mentorTitle: true,
   mentorCompany: true,
   mentorYearsExperience: true,
@@ -22,6 +24,8 @@ export type MentorSetupUserSnapshot = Prisma.UserGetPayload<{
 }>;
 
 export const studentSetupUserSelect = {
+  country: true,
+  city: true,
   university: true,
   yearOfStudy: true,
   major: true,

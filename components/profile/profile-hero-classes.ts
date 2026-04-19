@@ -3,7 +3,7 @@
  * across student profile, mentor profile, public mentor profile, and mentor-viewing-student.
  */
 export const profileHero = {
-  inner: "relative z-10 mx-auto max-w-6xl px-4 pb-8 pt-0 sm:px-6 sm:pb-10 lg:px-10",
+  inner: "relative z-10 mx-auto max-w-6xl px-3 pb-8 pt-0 sm:px-5 sm:pb-9 md:px-6 md:pb-10 lg:px-10",
   row: "flex flex-col gap-5 sm:flex-row sm:items-start sm:gap-8 lg:gap-10",
   /** Pulls avatar up so it straddles cover and content (~half cover height). */
   avatarOuter:

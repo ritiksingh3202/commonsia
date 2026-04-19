@@ -138,18 +138,22 @@ export function SignupForm({ role, oauthCallbackUrl }: SignupFormProps) {
                 return;
               }
 
-              const signInRes = await signIn("credentials", {
+              /**
+               * Use Auth.js default redirect so the browser follows the callback response with
+               * Set-Cookie before landing on setup. `redirect: false` + manual navigation can
+               * leave the server session missing on the first load (credentials + JWT race).
+               */
+              await signIn("credentials", {
                 email: email.trim().toLowerCase(),
                 password: pw,
-                redirect: false,
+                redirectTo: afterAuth,
               });
-              if (!signInRes?.ok) {
-                window.alert("Account created. Please sign in with your email and password.");
-                router.push(c.loginHref);
-                return;
-              }
-              // Full navigation so the session cookie is always present on the setup page (avoids RSC race).
-              window.location.assign(afterAuth);
+              /* Unreachable on success — client navigates away. */
+            } catch {
+              window.alert(
+                "Your account was created, but automatic sign-in failed. Please sign in with your email and password.",
+              );
+              router.push(c.loginHref);
             } finally {
               setSubmitting(false);
             }

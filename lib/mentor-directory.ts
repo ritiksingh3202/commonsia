@@ -1,6 +1,8 @@
 import { normalizeMentorYearsBand } from "@/components/mentor/mentor-setup-constants";
+import { formatMentorAvailabilityPatternLabel } from "@/lib/mentor-availability-display";
 import { MENTOR_PAGE_HERO_ASSETS } from "@/lib/mentor-page-assets";
-import { formatNextAvailableSlotLine } from "@/lib/mentor-next-slot";
+import { buildMonthlyWeekdayConsumedMap } from "@/lib/mentor-monthly-booking";
+import { formatNextAvailableSlotLine, type NextSlotMonthlyConsumedLookup } from "@/lib/mentor-next-slot";
 import { CacheKeys, CacheTtl, withJsonCache } from "@/lib/redis-cache";
 import { prisma } from "@/lib/prisma";
 
@@ -11,6 +13,8 @@ export type Mentor = {
   /** Title + company, e.g. "Assistant Professor, CEPT" */
   role: string;
   tags: string[];
+  /** Short rhythm label from saved availability (e.g. "Weekends · IST"). */
+  availabilityPattern: string;
   slot: string;
   image: string;
   /** True when the user uploaded or OAuth provided an avatar (not the default placeholder). */
@@ -167,7 +171,9 @@ function buildSummary(u: MentorRow): string {
 function mapRowToMentor(
   u: MentorRow,
   opts?: { /** Profile page: keep large data-URL avatars; list/grid strips them to save cache size. */
-    allowLargeDataUrlAvatar?: boolean },
+    allowLargeDataUrlAvatar?: boolean;
+    monthlyConsumed?: Map<string, boolean>;
+  },
 ): Mentor {
   const rawImg = u.image?.trim() ?? "";
   const listSafeImg =
@@ -175,13 +181,18 @@ function mapRowToMentor(
       ? rawImg
       : "";
   const tags = expertiseTags(u.mentorExpertise);
-  const slot = formatNextAvailableSlotLine(u.mentorAvailabilityJson);
+  const monthlyLookup: NextSlotMonthlyConsumedLookup | undefined = opts?.monthlyConsumed
+    ? (year, monthIndex0) => opts.monthlyConsumed!.get(`${u.id}:${year}-${monthIndex0}`) ?? false
+    : undefined;
+  const slot = formatNextAvailableSlotLine(u.mentorAvailabilityJson, new Date(), monthlyLookup);
+  const availabilityPattern = formatMentorAvailabilityPatternLabel(u.mentorAvailabilityJson);
   const photo = hasRealProfilePhoto(listSafeImg || null);
   return {
     id: u.id,
     name: displayName(u.name, u.email),
     role: formatRoleLine(u.mentorTitle, u.mentorCompany),
     tags,
+    availabilityPattern,
     slot,
     image: heroImage(listSafeImg || null),
     hasProfilePhoto: photo,
@@ -199,11 +210,22 @@ function mapRowToMentor(
 
 async function fetchPublicMentorsFromDb(): Promise<Mentor[]> {
   const rows = await prisma.user.findMany({
-    where: { role: "mentor" },
-    orderBy: [{ mentorOnboardingComplete: "desc" }, { name: "asc" }],
+    where: { role: "mentor", mentorOnboardingComplete: true },
+    orderBy: [{ name: "asc" }],
     select: mentorSelectDirectory,
   });
-  return rows.map((u) => mapRowToMentor({ ...(u as MentorRow), bannerImageUrl: null }));
+  const since = new Date();
+  since.setMonth(since.getMonth() - 6);
+  const ids = rows.map((r) => r.id);
+  const bookings =
+    ids.length === 0
+      ? []
+      : await prisma.mentoringBooking.findMany({
+          where: { mentorId: { in: ids }, startAt: { gte: since } },
+          select: { mentorId: true, startAt: true },
+        });
+  const monthlyConsumed = buildMonthlyWeekdayConsumedMap(rows, bookings);
+  return rows.map((u) => mapRowToMentor({ ...(u as MentorRow), bannerImageUrl: null }, { monthlyConsumed }));
 }
 
 /** Cached in Redis (not Next data cache) so large mentor sets stay under Next’s 2MB limit. */
@@ -219,11 +241,21 @@ export async function getPublicMentors(): Promise<Mentor[]> {
 
 export async function getPublicMentorById(id: string): Promise<Mentor | null> {
   const u = await prisma.user.findFirst({
-    where: { id, role: "mentor" },
+    where: { id, role: "mentor", mentorOnboardingComplete: true },
     select: mentorSelectFull,
   });
   if (!u) return null;
-  return mapRowToMentor(u as MentorRow, { allowLargeDataUrlAvatar: true });
+  const since = new Date();
+  since.setMonth(since.getMonth() - 6);
+  const bookings = await prisma.mentoringBooking.findMany({
+    where: { mentorId: id, startAt: { gte: since } },
+    select: { mentorId: true, startAt: true },
+  });
+  const monthlyConsumed = buildMonthlyWeekdayConsumedMap(
+    [{ id, mentorAvailabilityJson: u.mentorAvailabilityJson }],
+    bookings,
+  );
+  return mapRowToMentor(u as MentorRow, { allowLargeDataUrlAvatar: true, monthlyConsumed });
 }
 
 /**
@@ -237,11 +269,24 @@ export async function getSimilarMentorsForProfile(
   take = 8,
 ): Promise<Mentor[]> {
   const rows = await prisma.user.findMany({
-    where: { role: "mentor", NOT: { id: excludeId } },
-    orderBy: [{ mentorOnboardingComplete: "desc" }, { name: "asc" }],
+    where: { role: "mentor", mentorOnboardingComplete: true, NOT: { id: excludeId } },
+    orderBy: [{ name: "asc" }],
     select: mentorSelectDirectory,
   });
-  const list = rows.map((u) => mapRowToMentor({ ...(u as MentorRow), bannerImageUrl: null }));
+  const since = new Date();
+  since.setMonth(since.getMonth() - 6);
+  const simIds = rows.map((r) => r.id);
+  const simBookings =
+    simIds.length === 0
+      ? []
+      : await prisma.mentoringBooking.findMany({
+          where: { mentorId: { in: simIds }, startAt: { gte: since } },
+          select: { mentorId: true, startAt: true },
+        });
+  const monthlyConsumedSimilar = buildMonthlyWeekdayConsumedMap(rows, simBookings);
+  const list = rows.map((u) =>
+    mapRowToMentor({ ...(u as MentorRow), bannerImageUrl: null }, { monthlyConsumed: monthlyConsumedSimilar }),
+  );
 
   const studentPhrases: string[] = [];
   if (studentUserId) {
@@ -323,8 +368,8 @@ export async function getSimilarMentorsForPublic(excludeId: string, take = 6): P
   const anchor = (await getPublicMentorById(excludeId)) ?? null;
   if (!anchor) {
     const rows = await prisma.user.findMany({
-      where: { role: "mentor", NOT: { id: excludeId } },
-      orderBy: [{ mentorOnboardingComplete: "desc" }, { name: "asc" }],
+      where: { role: "mentor", mentorOnboardingComplete: true, NOT: { id: excludeId } },
+      orderBy: [{ name: "asc" }],
       take,
       select: mentorSelectDirectory,
     });

@@ -5,7 +5,7 @@ export function MarketingShell({ children }: { children: React.ReactNode }) {
   return (
     <>
       <Navbar />
-      <main className="min-h-[50vh] w-full min-w-0 max-w-[100%] overflow-x-hidden">
+      <main className="min-h-[50vh] w-full min-w-0 max-w-[100%] overflow-x-hidden pt-[var(--marketing-header-offset)]">
         {children}
       </main>
       <SiteFooter />

@@ -1,19 +1,16 @@
 import { NextResponse } from "next/server";
 
-import {
-  calendarDateToIso,
-  getBookableSlotSegmentsForDate,
-} from "@/lib/booking-availability-slots";
-import { fetchPrimaryCalendarBusy, intervalOverlapsBusy } from "@/lib/google-calendar-busy";
-import { getGoogleCalendarOAuth2Client } from "@/lib/google-calendar-oauth-client";
+import { normalizeAvailabilityWindowKind } from "@/components/mentor/mentor-setup-constants";
+import { calendarDateToIso, getBookableSlotSegmentsForDate } from "@/lib/booking-availability-slots";
+import { mergeAvailabilityForSlot } from "@/lib/mentor-availability-merge";
+import { jsWeekdayFromIsoLocal } from "@/lib/mentor-availability-slots";
+import { mentorHasBookingOnWeekdayInIstMonth } from "@/lib/mentor-monthly-booking";
 import { prisma } from "@/lib/prisma";
 import { CacheKeys, CacheTtl, SCHEDULE_API_CACHE_CONTROL, withJsonCache } from "@/lib/redis-cache";
 
 /**
  * Bookable 30-minute segments for a civil calendar day (slots stored in IST in mentor settings).
- * When the mentor has Google Calendar connected, busy times on their primary calendar are removed.
- *
- * Redis: read-through cache **includes** Prisma + Google so a hit skips both.
+ * Redis: read-through cache includes Prisma availability resolution.
  */
 export async function GET(req: Request) {
   const url = new URL(req.url);
@@ -41,22 +38,24 @@ export async function GET(req: Request) {
     }
 
     const now = new Date();
-    let slots = getBookableSlotSegmentsForDate(user.mentorAvailabilityJson, year, month, day, now);
-
-    const oauth2 = await getGoogleCalendarOAuth2Client(mentorUserId);
-    if (oauth2 && slots.length > 0) {
-      const iso = calendarDateToIso(year, month, day);
-      const timeMin = new Date(`${iso}T00:00:00+05:30`);
-      const timeMax = new Date(`${iso}T23:59:59.999+05:30`);
-      try {
-        const busy = await fetchPrimaryCalendarBusy(oauth2, timeMin, timeMax);
-        slots = slots.filter(
-          (s) => !intervalOverlapsBusy(new Date(s.startISO), new Date(s.endISO), busy),
-        );
-      } catch (e) {
-        console.error("Google Calendar freebusy.query failed:", e);
-      }
+    const av = mergeAvailabilityForSlot(user.mentorAvailabilityJson);
+    const iso = calendarDateToIso(year, month, day);
+    let monthlyConsumed = false;
+    if (
+      normalizeAvailabilityWindowKind(av.availabilityWindowKind) === "monthly" &&
+      typeof av.recurringWeekdayJs === "number" &&
+      jsWeekdayFromIsoLocal(iso) === av.recurringWeekdayJs
+    ) {
+      monthlyConsumed = await mentorHasBookingOnWeekdayInIstMonth(
+        mentorUserId,
+        year,
+        month,
+        av.recurringWeekdayJs,
+      );
     }
+    const slots = getBookableSlotSegmentsForDate(user.mentorAvailabilityJson, year, month, day, now, {
+      monthlyPatternConsumedThisIstMonth: monthlyConsumed,
+    });
 
     return {
       ok: true as const,

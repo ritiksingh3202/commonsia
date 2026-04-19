@@ -19,6 +19,14 @@ const expertisePill = "mentor-tag-expertise-pill";
 
 type Tab = "overview" | "reviews" | "achievements";
 
+/** Comma-separated mentorship focus (setup step 2) → spaced chips on the hero. */
+function mentorshipFocusChips(raw: string): string[] {
+  return raw
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
 /** Lines from mentor profile “Certifications” (setup step) — split on `;` or newlines. */
 function achievementsFromCertifications(raw: string | null): { title: string; body: string; year: string }[] {
   if (!raw?.trim()) return [];
@@ -128,7 +136,7 @@ export function PublicMentorProfile({
                   {mentor.role}
                 </p>
 
-                <div className="flex flex-col items-center gap-3 lg:col-start-2 lg:row-start-1 lg:items-end lg:self-start">
+                <div className="mb-1 flex flex-col items-center gap-3 sm:mb-2 lg:col-start-2 lg:row-start-1 lg:mb-0 lg:items-end lg:self-start">
                   <div className="flex flex-wrap items-center justify-center gap-2.5 lg:justify-end">
                     <Link
                       href={messageHref}
@@ -154,13 +162,20 @@ export function PublicMentorProfile({
                   </div>
                 </div>
 
-                <div className="min-h-[4.5rem] lg:col-start-1 lg:row-start-3 lg:max-w-2xl lg:pt-1">
+                <div className="mt-5 w-full border-t border-neutral-200/90 pt-5 sm:mt-6 sm:pt-6 lg:col-start-1 lg:row-start-3 lg:max-w-2xl">
                   {mentor.summary ? (
-                    <p className="text-left text-[13px] leading-relaxed text-[#3e3e3e] sm:text-sm">
-                      {mentor.summary}
-                    </p>
+                    <div className="flex flex-wrap justify-center gap-x-2 gap-y-2.5 sm:gap-x-2.5 sm:gap-y-3 lg:justify-start">
+                      {mentorshipFocusChips(mentor.summary).map((label) => (
+                        <span
+                          key={label}
+                          className="inline-flex max-w-full rounded-full border border-primary/25 bg-primary/[0.08] px-3 py-1.5 text-center text-[12px] font-medium leading-snug text-[#3a3a44] shadow-sm sm:px-3.5 sm:py-2 sm:text-[13px]"
+                        >
+                          {label}
+                        </span>
+                      ))}
+                    </div>
                   ) : (
-                    <p className="text-left text-[13px] text-neutral-400 sm:text-sm">&nbsp;</p>
+                    <p className="text-center text-[13px] text-neutral-400 sm:text-sm lg:text-left">&nbsp;</p>
                   )}
                 </div>
               </div>
@@ -169,8 +184,8 @@ export function PublicMentorProfile({
         </div>
       </section>
 
-      <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-10">
-        <nav className="mt-8 flex gap-8 border-b border-black/[0.08]">
+      <div className="mx-auto max-w-6xl px-3 sm:px-5 md:px-6 lg:px-10">
+        <nav className="mt-6 flex gap-5 overflow-x-auto border-b border-black/[0.08] pb-0.5 [-webkit-overflow-scrolling:touch] sm:mt-8 sm:gap-8 md:gap-10">
           {(
             [
               ["overview", "Overview"],
@@ -182,7 +197,7 @@ export function PublicMentorProfile({
               key={id}
               type="button"
               onClick={() => setTab(id)}
-              className={`relative pb-3 text-sm font-semibold transition ${
+              className={`relative shrink-0 whitespace-nowrap pb-3 text-sm font-semibold transition sm:text-[15px] ${
                 tab === id ? "text-primary" : "text-neutral-500 hover:text-[#0a0a0a]"
               }`}
             >
@@ -195,7 +210,7 @@ export function PublicMentorProfile({
         </nav>
 
         {tab === "overview" ? (
-          <div className="mt-8 grid gap-10 lg:grid-cols-[minmax(0,65%)_minmax(0,35%)] lg:gap-10">
+          <div className="mt-6 grid gap-8 sm:mt-8 sm:gap-10 lg:grid-cols-[minmax(0,65%)_minmax(0,35%)] lg:gap-10">
             <div className="space-y-8">
               <div>
                 <h2 className={profileSkillsSectionTitle}>Specialization</h2>

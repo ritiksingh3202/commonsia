@@ -4,13 +4,12 @@ import { Suspense } from "react";
 
 import { auth } from "@/auth";
 import { MentorAvailabilityForm } from "@/components/mentor/MentorAvailabilityForm";
-import { getGoogleCalendarRefreshTokenForUser } from "@/lib/google-calendar-oauth-client";
 import { getMentorOnboardingRedirectPath } from "@/lib/mentor-onboarding";
 import { prisma } from "@/lib/prisma";
 
 export const metadata: Metadata = {
   title: { absolute: "Set availability" },
-  description: "Configure when students can book sessions with you.",
+  description: "Configure when you are generally available for sessions (Commonsia coordinates actual bookings).",
 };
 
 export default async function MentorAvailabilityPage() {
@@ -48,13 +47,10 @@ export default async function MentorAvailabilityPage() {
     redirect(next);
   }
 
-  const googleCalendarConnected = !!(await getGoogleCalendarRefreshTokenForUser(session.user.id));
-
   return (
     <Suspense fallback={<div className="p-10 text-center text-[13px] text-[#6b7280]">Loading…</div>}>
       <MentorAvailabilityForm
         initialJson={user.mentorAvailabilityJson ?? null}
-        googleCalendarConnected={googleCalendarConnected}
         mentorOnboardingComplete={user.mentorOnboardingComplete}
       />
     </Suspense>

@@ -5,9 +5,9 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState, type ReactNode } from "react";
 
 const CONFETTI_COLORS = [
-  "#ff571f",
-  "#f16422",
-  "#ea580c",
+  "#ff6600",
+  "#ff8533",
+  "#e65c00",
   "#f97316",
   "#fb923c",
   "#a855f7",

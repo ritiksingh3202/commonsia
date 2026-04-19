@@ -37,6 +37,7 @@ export function mentorSearchHaystack(m: Mentor): string {
     ...m.tags,
     ...m.experienceLines,
     m.certifications ?? "",
+    m.availabilityPattern,
     m.slot,
     m.linkedinUrl ?? "",
   ]

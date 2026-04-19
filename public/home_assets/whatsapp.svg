@@ -2,7 +2,7 @@
   <!-- Solid theme fill + white logo mark (reference: filled bubble + phone) -->
   <path
     d="M12 2C6.48 2 2 6.48 2 12c0 1.85.5 3.58 1.38 5.06L2 22l5.11-1.34A9.96 9.96 0 0012 22c5.52 0 10-4.48 10-10S17.52 2 12 2z"
-    fill="#ff571f"
+    fill="#ff6600"
   />
   <path
     fill-rule="evenodd"

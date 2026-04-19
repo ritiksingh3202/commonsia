@@ -1,33 +1,39 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import {
   defaultMentorAvailability,
   defaultSessionTemplates,
   emptyWeeklySlots,
-  MENTEE_CAPACITY_BAND_OPTIONS,
   type AvailabilityWindowKind,
   type BlockedDateEntry,
-  type MenteeCapacityBand,
   type MentorAvailabilityJson,
   type SessionTemplateRow,
   maxStudentsToMenteeBand,
   menteeBandToMaxStudents,
+  type MenteeCapacityBand,
+  normalizeAvailabilityWindowKind,
   type WeekdayKey,
   WEEKDAY_KEYS,
 } from "@/components/mentor/mentor-setup-constants";
 import { MentorSchedulePanel } from "@/components/mentor/MentorSchedulePanel";
 import { MandatorySetupReminderModal } from "@/components/setup/MandatorySetupReminderModal";
 import {
+  defaultBiweeklyAnchorFromTodayIso,
+  presetIdsFromSlotLabels,
+  slotLabelsForPresetRange,
+  slotLabelsForPresetsSelected,
+  WEEKEND_TIME_PRESETS,
+} from "@/lib/mentor-availability-patterns";
+import { todayIsoInBookingTz } from "@/lib/booking-availability-slots";
+import {
   compactRangesFromLabels,
-  isoFromCalendarYmd,
   jsWeekdayFromIsoLocal,
   labelsFromCompactRanges,
   type DayIntervalRow,
-  scheduleGridSlotLabels,
   sortSlotLabels,
   weeklyRowsFromSlotMap,
   weeklySlotsFromRows,
@@ -118,28 +124,44 @@ function mergeAvailability(raw: unknown): MentorAvailabilityJson {
     }
   }
   if (typeof o.acceptingNewMentees === "boolean") d.acceptingNewMentees = o.acceptingNewMentees;
-  const kinds: AvailabilityWindowKind[] = ["weekly", "fifteen_days", "monthly", "custom"];
-  if (o.availabilityWindowKind && kinds.includes(o.availabilityWindowKind)) {
-    d.availabilityWindowKind = o.availabilityWindowKind;
+  if (d.availabilityType === "specific") {
+    d.availabilityWindowKind = "custom";
+  } else {
+    d.availabilityWindowKind = normalizeAvailabilityWindowKind(
+      typeof o.availabilityWindowKind === "string" ? o.availabilityWindowKind : undefined,
+    );
+  }
+  if (typeof o.recurringWeekdayJs === "number" && o.recurringWeekdayJs >= 0 && o.recurringWeekdayJs <= 6) {
+    d.recurringWeekdayJs = o.recurringWeekdayJs;
+  }
+  if ("biweeklyAnchorIso" in o) {
+    if (o.biweeklyAnchorIso === null) d.biweeklyAnchorIso = null;
+    else if (typeof o.biweeklyAnchorIso === "string" && /^\d{4}-\d{2}-\d{2}$/.test(o.biweeklyAnchorIso)) {
+      d.biweeklyAnchorIso = o.biweeklyAnchorIso;
+    }
+  }
+  if (Array.isArray(o.patternSlotLabels)) {
+    d.patternSlotLabels = o.patternSlotLabels.filter((x): x is string => typeof x === "string");
   }
   const bands: MenteeCapacityBand[] = ["0-5", "5-10", "10+"];
   if (o.menteeCapacityBand && bands.includes(o.menteeCapacityBand)) {
     d.menteeCapacityBand = o.menteeCapacityBand;
   }
-  if (typeof o.planningHorizonDays === "number" && o.planningHorizonDays >= 1 && o.planningHorizonDays <= 90) {
+  if (typeof o.planningHorizonDays === "number" && o.planningHorizonDays >= 1 && o.planningHorizonDays <= 180) {
     d.planningHorizonDays = o.planningHorizonDays;
   }
   if (!d.menteeCapacityBand) {
     d.menteeCapacityBand = maxStudentsToMenteeBand(d.maxStudents);
-  }
-  if (!d.availabilityWindowKind) {
-    d.availabilityWindowKind = d.availabilityType === "specific" ? "custom" : "weekly";
   }
   return d;
 }
 
 function totalWeeklySlots(weeklySlots: Record<WeekdayKey, string[]>): number {
   return WEEKDAY_KEYS.reduce((acc, k) => acc + weeklySlots[k].length, 0);
+}
+
+function totalWeekendSlots(weeklySlots: Record<WeekdayKey, string[]>): number {
+  return (weeklySlots.sat?.length ?? 0) + (weeklySlots.sun?.length ?? 0);
 }
 
 function primarySessionDuration(templates: SessionTemplateRow[]): 15 | 30 | 45 | 60 | 90 {
@@ -191,7 +213,7 @@ function newOverrideRow(kind: OverrideRow["kind"]): OverrideRow {
 }
 
 function isCalendarScheduleMode(kind: AvailabilityWindowKind): boolean {
-  return kind === "fifteen_days" || kind === "monthly" || kind === "custom";
+  return kind === "custom";
 }
 
 function initSpecificDatesSlots(av: MentorAvailabilityJson): Record<string, string[]> {
@@ -205,17 +227,11 @@ function initSpecificDatesSlots(av: MentorAvailabilityJson): Record<string, stri
 
 type Props = {
   initialJson: unknown;
-  googleCalendarConnected: boolean;
   mentorOnboardingComplete: boolean;
 };
 
-export function MentorAvailabilityForm({
-  initialJson,
-  googleCalendarConnected,
-  mentorOnboardingComplete,
-}: Props) {
+export function MentorAvailabilityForm({ initialJson, mentorOnboardingComplete }: Props) {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const base = useMemo(() => mergeAvailability(initialJson), [initialJson]);
 
   const [tab, setTab] = useState<TabId>("weekly");
@@ -228,14 +244,14 @@ export function MentorAvailabilityForm({
     return r.length ? r : [];
   });
 
-  const [maxSessionsPerWeek, setMaxSessionsPerWeek] = useState(
-    () => String(base.maxSessionsPerWeek ?? 2),
+  const [availabilityWindowKind, setAvailabilityWindowKind] = useState<AvailabilityWindowKind>(() =>
+    base.availabilityType === "specific" ? "custom" : normalizeAvailabilityWindowKind(base.availabilityWindowKind),
   );
-  const [availabilityWindowKind, setAvailabilityWindowKind] = useState<AvailabilityWindowKind>(
-    () => base.availabilityWindowKind ?? (base.availabilityType === "specific" ? "custom" : "weekly"),
+  const [recurringWeekdayJs, setRecurringWeekdayJs] = useState(() =>
+    typeof base.recurringWeekdayJs === "number" ? base.recurringWeekdayJs : 5,
   );
-  const [menteeCapacityBand, setMenteeCapacityBand] = useState<MenteeCapacityBand>(
-    () => base.menteeCapacityBand ?? maxStudentsToMenteeBand(base.maxStudents),
+  const [patternSlotLabels, setPatternSlotLabels] = useState<string[]>(() =>
+    sortSlotLabels(base.patternSlotLabels ?? []),
   );
   const [specificDatesSlots, setSpecificDatesSlots] = useState<Record<string, string[]>>(() =>
     initSpecificDatesSlots(base),
@@ -244,12 +260,7 @@ export function MentorAvailabilityForm({
     const n = new Date();
     return { year: n.getFullYear(), month: n.getMonth() };
   });
-  const [acceptingNewMentees, setAcceptingNewMentees] = useState(
-    () => base.acceptingNewMentees ?? true,
-  );
-
   const [saving, setSaving] = useState(false);
-  const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [savedBanner, setSavedBanner] = useState(false);
   const [autoSaveState, setAutoSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
@@ -262,10 +273,13 @@ export function MentorAvailabilityForm({
     setSessionTemplates(merged.sessionTemplates?.length ? merged.sessionTemplates : defaultSessionTemplates());
     const ov = overridesFromAv(merged);
     setOverrideRows(ov.length ? ov : []);
-    setMaxSessionsPerWeek(String(merged.maxSessionsPerWeek ?? 2));
-    setAcceptingNewMentees(merged.acceptingNewMentees ?? true);
-    setAvailabilityWindowKind(merged.availabilityWindowKind ?? (merged.availabilityType === "specific" ? "custom" : "weekly"));
-    setMenteeCapacityBand(merged.menteeCapacityBand ?? maxStudentsToMenteeBand(merged.maxStudents));
+    setAvailabilityWindowKind(
+      merged.availabilityType === "specific"
+        ? "custom"
+        : normalizeAvailabilityWindowKind(merged.availabilityWindowKind),
+    );
+    setRecurringWeekdayJs(typeof merged.recurringWeekdayJs === "number" ? merged.recurringWeekdayJs : 5);
+    setPatternSlotLabels(sortSlotLabels(merged.patternSlotLabels ?? []));
     setSpecificDatesSlots(initSpecificDatesSlots(merged));
     const dates = (merged.specificDates ?? []).filter(Boolean).sort();
     if (dates.length > 0) {
@@ -277,16 +291,50 @@ export function MentorAvailabilityForm({
     }
   }, [initialJson]);
 
-  useEffect(() => {
-    const c = searchParams.get("calendar");
-    if (c === "connected") window.alert("Google Calendar connected. You can sync your slots after saving.");
-    if (c === "error")
-      window.alert("Could not connect Google Calendar. Try again or check GOOGLE_CLIENT_* and redirect URI in Google Cloud.");
-  }, [searchParams]);
-
   const weeklySlotsPreview = useMemo(() => weeklySlotsFromRows(weeklyRows), [weeklyRows]);
   const weeklyCount = useMemo(() => totalWeeklySlots(weeklySlotsPreview), [weeklySlotsPreview]);
-  const gridLabels = useMemo(() => scheduleGridSlotLabels(), []);
+  const scheduleSlotCount = useMemo(() => {
+    if (availabilityWindowKind === "fifteen_days" || availabilityWindowKind === "monthly") {
+      return presetIdsFromSlotLabels(patternSlotLabels).size;
+    }
+    if (availabilityWindowKind === "weekends") {
+      return presetIdsFromSlotLabels([...(weeklySlotsPreview.sat ?? []), ...(weeklySlotsPreview.sun ?? [])]).size;
+    }
+    if (availabilityWindowKind === "custom") {
+      let n = 0;
+      for (const slots of Object.values(specificDatesSlots)) {
+        n += presetIdsFromSlotLabels(slots).size;
+      }
+      return n;
+    }
+    return weeklyCount;
+  }, [availabilityWindowKind, patternSlotLabels, weeklySlotsPreview, weeklyCount, specificDatesSlots]);
+
+  const togglePatternPreset = useCallback((id: string) => {
+    setPatternSlotLabels((prev) => {
+      const selected = presetIdsFromSlotLabels(prev);
+      if (selected.has(id)) selected.delete(id);
+      else selected.add(id);
+      const presetUnion = new Set<string>();
+      for (const p of WEEKEND_TIME_PRESETS) {
+        for (const lab of slotLabelsForPresetRange(p.range[0], p.range[1])) {
+          presetUnion.add(lab);
+        }
+      }
+      const custom = prev.filter((l) => !presetUnion.has(l));
+      return sortSlotLabels([...slotLabelsForPresetsSelected(selected, custom)]);
+    });
+  }, []);
+
+  const togglePatternGridSlot = useCallback((label: string) => {
+    setPatternSlotLabels((prev) => {
+      const i = prev.indexOf(label);
+      if (i >= 0) return prev.filter((_, idx) => idx !== i);
+      return sortSlotLabels([...prev, label]);
+    });
+  }, []);
+
+  const clearPatternSlots = useCallback(() => setPatternSlotLabels([]), []);
 
   const toggleWeeklySlot = (day: WeekdayKey, label: string) => {
     setWeeklyRows((prev) => {
@@ -306,22 +354,65 @@ export function MentorAvailabilityForm({
     setError(null);
   };
 
+  const clearWeeklyDay = useCallback((day: WeekdayKey) => {
+    setWeeklyRows((prev) => {
+      const m = weeklySlotsFromRows(prev);
+      m[day] = [];
+      return weeklyRowsFromSlotMap(m);
+    });
+    setError(null);
+  }, []);
+
+  const toggleCustomDatePreset = useCallback((iso: string, presetId: string) => {
+    const p = WEEKEND_TIME_PRESETS.find((x) => x.id === presetId);
+    if (!p) return;
+    const labs = slotLabelsForPresetRange(p.range[0], p.range[1]);
+    setSpecificDatesSlots((prev) => {
+      const cur = [...(prev[iso] ?? [])];
+      const allOn = labs.length > 0 && labs.every((lab) => cur.includes(lab));
+      let next: string[];
+      if (allOn) {
+        next = cur.filter((lab) => !labs.includes(lab));
+      } else {
+        next = sortSlotLabels([...new Set([...cur, ...labs])]);
+      }
+      return { ...prev, [iso]: next };
+    });
+    setError(null);
+  }, []);
+
+  const toggleSharedCustomDatePreset = useCallback((presetId: string) => {
+    const p = WEEKEND_TIME_PRESETS.find((x) => x.id === presetId);
+    if (!p) return;
+    const labs = slotLabelsForPresetRange(p.range[0], p.range[1]);
+    setSpecificDatesSlots((prev) => {
+      const dates = Object.keys(prev).sort();
+      if (dates.length < 2) return prev;
+      const w0 = jsWeekdayFromIsoLocal(dates[0]!);
+      if (!dates.every((d) => jsWeekdayFromIsoLocal(d) === w0)) return prev;
+      const allOn = dates.every((iso) => labs.length > 0 && labs.every((lab) => (prev[iso] ?? []).includes(lab)));
+      const next = { ...prev };
+      for (const iso of dates) {
+        const cur = [...(next[iso] ?? [])];
+        let updated: string[];
+        if (allOn) {
+          updated = cur.filter((lab) => !labs.includes(lab));
+        } else {
+          updated = sortSlotLabels([...new Set([...cur, ...labs])]);
+        }
+        next[iso] = updated;
+      }
+      return next;
+    });
+    setError(null);
+  }, []);
+
   const toggleCalendarDate = (iso: string) => {
     setSpecificDatesSlots((prev) => {
       const next = { ...prev };
       if (iso in next) delete next[iso];
       else next[iso] = [];
       return next;
-    });
-    setError(null);
-  };
-
-  const toggleSpecificSlot = (iso: string, label: string) => {
-    setSpecificDatesSlots((prev) => {
-      const cur = prev[iso];
-      if (!cur) return prev;
-      const toggled = cur.includes(label) ? cur.filter((x) => x !== label) : [...cur, label];
-      return { ...prev, [iso]: sortSlotLabels(toggled) };
     });
     setError(null);
   };
@@ -355,96 +446,10 @@ export function MentorAvailabilityForm({
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       cell.setHours(0, 0, 0, 0);
-      const kind = availabilityWindowKind;
-      if (kind === "custom") {
-        return cell >= today;
-      }
-      if (kind === "monthly") {
-        if (cell.getFullYear() !== calendarView.year || cell.getMonth() !== calendarView.month) return false;
-        return cell >= today;
-      }
-      if (kind === "fifteen_days") {
-        const end = new Date(today);
-        end.setDate(end.getDate() + 14);
-        return cell >= today && cell <= end;
-      }
-      return false;
+      return cell >= today;
     },
-    [availabilityWindowKind, calendarView.year, calendarView.month],
+    [],
   );
-
-  const monthWeekdayCandidates = useCallback(
-    (js: number) => {
-      const y = calendarView.year;
-      const mo = calendarView.month;
-      const dim = new Date(y, mo + 1, 0).getDate();
-      const out: string[] = [];
-      for (let d = 1; d <= dim; d++) {
-        const dt = new Date(y, mo, d);
-        if (dt.getDay() !== js) continue;
-        const iso = isoFromCalendarYmd(y, mo, d);
-        if (calendarSelectable(iso)) out.push(iso);
-      }
-      return out;
-    },
-    [calendarView.year, calendarView.month, calendarSelectable],
-  );
-
-  const bulkWeekdayFill = useCallback(
-    (js: number): "none" | "partial" | "full" => {
-      const c = monthWeekdayCandidates(js);
-      if (c.length === 0) return "none";
-      const n = c.filter((iso) => iso in specificDatesSlots).length;
-      if (n === 0) return "none";
-      if (n === c.length) return "full";
-      return "partial";
-    },
-    [monthWeekdayCandidates, specificDatesSlots],
-  );
-
-  const onBulkWeekdayInMonth = useCallback(
-    (js: number) => {
-      setSpecificDatesSlots((prev) => {
-        const candidates = monthWeekdayCandidates(js);
-        if (candidates.length === 0) return prev;
-        const allSelected = candidates.every((iso) => iso in prev);
-        const next = { ...prev };
-        if (allSelected) {
-          for (const iso of candidates) delete next[iso];
-        } else {
-          for (const iso of candidates) {
-            if (!(iso in next)) next[iso] = [];
-          }
-        }
-        return next;
-      });
-      setError(null);
-    },
-    [monthWeekdayCandidates],
-  );
-
-  const toggleSharedCalendarSlot = useCallback((label: string) => {
-    setSpecificDatesSlots((prev) => {
-      const dates = Object.keys(prev).sort();
-      if (dates.length < 2) return prev;
-      const w0 = jsWeekdayFromIsoLocal(dates[0]!);
-      if (!dates.every((d) => jsWeekdayFromIsoLocal(d) === w0)) return prev;
-      const allHave = dates.every((d) => (prev[d] ?? []).includes(label));
-      const next = { ...prev };
-      for (const iso of dates) {
-        const cur = [...(next[iso] ?? [])];
-        const idx = cur.indexOf(label);
-        if (allHave) {
-          if (idx >= 0) cur.splice(idx, 1);
-        } else if (idx < 0) {
-          cur.push(label);
-        }
-        next[iso] = sortSlotLabels(cur);
-      }
-      return next;
-    });
-    setError(null);
-  }, []);
 
   const autosavePayloadKey = useMemo(
     () =>
@@ -452,46 +457,40 @@ export function MentorAvailabilityForm({
         weeklyRows,
         sessionTemplates,
         overrideRows,
-        maxSessionsPerWeek,
         availabilityWindowKind,
-        menteeCapacityBand,
         specificDatesSlots,
         calendarView,
-        acceptingNewMentees,
+        recurringWeekdayJs,
+        patternSlotLabels,
       }),
     [
       weeklyRows,
       sessionTemplates,
       overrideRows,
-      maxSessionsPerWeek,
       availabilityWindowKind,
-      menteeCapacityBand,
       specificDatesSlots,
       calendarView,
-      acceptingNewMentees,
+      recurringWeekdayJs,
+      patternSlotLabels,
     ],
   );
 
   const validate = (): boolean => {
-    const maxS = Number(maxSessionsPerWeek);
-    if (!Number.isFinite(maxS) || maxS < 1 || maxS > 50) {
-      setError("Enter max sessions per week between 1 and 50.");
-      setTab("weekly");
-      return false;
-    }
-    if (isCalendarScheduleMode(availabilityWindowKind)) {
+    if (availabilityWindowKind === "custom") {
       const ok = Object.entries(specificDatesSlots).some(([, slots]) => slots.length > 0);
       if (!ok) {
-        setError(
-          "Pick one of weekly / 15 days / monthly / custom, select at least one date, and add at least one time slot (IST).",
-        );
+        setError("For custom availability, pick at least one future date and add at least one two-hour range (IST).");
         setTab("weekly");
         return false;
       }
-    } else if (totalWeeklySlots(weeklySlotsFromRows(weeklyRows)) === 0) {
-      setError(
-        "Add at least one time slot (10:00 AM–8:00 PM IST on the grid, or “Add another time” for more).",
-      );
+    } else if (availabilityWindowKind === "fifteen_days" || availabilityWindowKind === "monthly") {
+      if (presetIdsFromSlotLabels(patternSlotLabels).size === 0) {
+        setError("Choose at least one time range for your rhythm weekday.");
+        setTab("weekly");
+        return false;
+      }
+    } else if (totalWeekendSlots(weeklySlotsFromRows(weeklyRows)) === 0) {
+      setError("Add at least one weekend time range (Saturday and/or Sunday, IST).");
       setTab("weekly");
       return false;
     }
@@ -514,11 +513,14 @@ export function MentorAvailabilityForm({
       }
     }
     const buf = 0;
-    const maxSess = Math.max(1, Math.min(50, Number(maxSessionsPerWeek) || 2));
-    const bandMax = menteeBandToMaxStudents(menteeCapacityBand);
+    const snap = mergeAvailability(initialJson);
+    const maxSess = Math.max(1, Math.min(50, snap.maxSessionsPerWeek ?? 2));
+    const bandMax = menteeBandToMaxStudents(snap.menteeCapacityBand ?? maxStudentsToMenteeBand(snap.maxStudents));
+    const menteeCapacityBand = snap.menteeCapacityBand ?? maxStudentsToMenteeBand(snap.maxStudents);
+    const acceptingNewMentees = snap.acceptingNewMentees ?? true;
     const kind = availabilityWindowKind;
     const planningHorizonDays =
-      kind === "fifteen_days" ? 15 : kind === "monthly" ? 31 : kind === "weekly" ? 14 : base.planningHorizonDays ?? 30;
+      kind === "fifteen_days" ? 15 : kind === "monthly" ? 120 : kind === "weekends" ? 21 : base.planningHorizonDays ?? 30;
 
     if (isCalendarScheduleMode(kind)) {
       const specificDates: string[] = [];
@@ -558,15 +560,32 @@ export function MentorAvailabilityForm({
     }
 
     const weeklySlots = weeklySlotsFromRows(weeklyRows);
+    if (kind === "weekends") {
+      for (const k of WEEKDAY_KEYS) {
+        if (k !== "sat" && k !== "sun") weeklySlots[k] = [];
+      }
+    }
+    const stored = mergeAvailability(initialJson);
+    const anchorIsoFifteen =
+      kind === "fifteen_days"
+        ? stored.biweeklyAnchorIso &&
+          jsWeekdayFromIsoLocal(stored.biweeklyAnchorIso) === recurringWeekdayJs
+          ? stored.biweeklyAnchorIso
+          : defaultBiweeklyAnchorFromTodayIso(todayIsoInBookingTz(), recurringWeekdayJs)
+        : null;
     return {
       ...base,
       availabilityType: "weekly",
       availabilityWindowKind: kind,
       menteeCapacityBand,
       planningHorizonDays,
-      weeklySlots,
+      weeklySlots:
+        kind === "fifteen_days" || kind === "monthly" ? emptyWeeklySlots() : weeklySlots,
       specificDates: [],
       specificDateSlots: {},
+      recurringWeekdayJs: kind === "fifteen_days" || kind === "monthly" ? recurringWeekdayJs : null,
+      patternSlotLabels: kind === "fifteen_days" || kind === "monthly" ? sortSlotLabels(patternSlotLabels) : [],
+      biweeklyAnchorIso: anchorIsoFifteen,
       sessionDurationMinutes: primarySessionDuration(templatesOut),
       sessionTemplates: templatesOut,
       maxStudents: bandMax,
@@ -643,23 +662,6 @@ export function MentorAvailabilityForm({
     }
   };
 
-  const syncGoogle = async () => {
-    setSyncing(true);
-    try {
-      const res = await fetch("/api/calendar/sync", { method: "POST" });
-      const j = (await res.json().catch(() => ({}))) as { error?: string; created?: number };
-      if (!res.ok) {
-        window.alert(j.error ?? "Sync failed.");
-        return;
-      }
-      window.alert(`Synced ${j.created ?? 0} slot(s) to your Google Calendar.`);
-    } catch {
-      window.alert("Sync failed.");
-    } finally {
-      setSyncing(false);
-    }
-  };
-
   const saveLabel = mentorOnboardingComplete ? "Save Availability Settings" : "Complete Setup & View Profile";
 
   return (
@@ -669,7 +671,7 @@ export function MentorAvailabilityForm({
         variant="mentor"
         onDismiss={() => setMandatoryExitOpen(false)}
       />
-      <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-6xl px-3 py-6 sm:px-5 sm:py-8 md:px-6 lg:px-8">
         <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <h1 className="text-2xl font-bold tracking-tight text-[#0a0a0a] sm:text-3xl">
@@ -677,8 +679,8 @@ export function MentorAvailabilityForm({
             </h1>
             <p className="mt-1.5 text-sm text-neutral-600 sm:text-base">
               {mentorOnboardingComplete
-                ? "Set when you’re available, how many mentees you can take, and optional date overrides."
-                : "Last step: when students can book you. You can refine this anytime after setup."}
+                ? "Set when you’re available and optional date overrides."
+                : "Last step: share when you’re typically free. You can refine this anytime after setup."}
             </p>
             <p className="mt-2 text-xs text-neutral-500" aria-live="polite">
               {autoSaveState === "saving" ? (
@@ -752,80 +754,53 @@ export function MentorAvailabilityForm({
                 Schedule {REQ}
               </h2>
               <p className="mt-1 text-sm text-neutral-600">
-                Set how many students you can mentor, your weekly session limit, then your available times. Use Date
-                overrides for one-off changes.
+                Choose time ranges (preset bands). Use Date overrides for one-off changes.
               </p>
-            </div>
-            <div className="mb-6 space-y-4 rounded-xl border border-neutral-100 bg-neutral-50/70 p-4 sm:p-5">
-              <h3 className="text-sm font-semibold text-[#0a0a0a]">Capacity &amp; limits</h3>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <label htmlFor="menteeBand" className="text-sm font-semibold text-[#0a0a0a]">
-                    Maximum mentees {REQ}
-                  </label>
-                  <select
-                    id="menteeBand"
-                    value={menteeCapacityBand}
-                    onChange={(e) => setMenteeCapacityBand(e.target.value as MenteeCapacityBand)}
-                    className={`${field} appearance-none bg-white pr-10`}
-                  >
-                    {MENTEE_CAPACITY_BAND_OPTIONS.map((o) => (
-                      <option key={o.value} value={o.value}>
-                        {o.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="space-y-2">
-                  <label htmlFor="maxSessWeek" className="text-sm font-semibold text-[#0a0a0a]">
-                    Max sessions per week {REQ}
-                  </label>
-                  <input
-                    id="maxSessWeek"
-                    type="number"
-                    min={1}
-                    max={50}
-                    value={maxSessionsPerWeek}
-                    onChange={(e) => setMaxSessionsPerWeek(e.target.value)}
-                    className={field}
-                  />
-                </div>
-              </div>
-              <div className="flex flex-col gap-3 rounded-xl border border-neutral-200 bg-white p-4 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <p className="text-sm font-semibold text-[#0a0a0a]">Accepting new mentees {REQ}</p>
-                  <p className="mt-0.5 text-xs text-neutral-600">Turn off to pause new requests.</p>
-                </div>
-                <Toggle checked={acceptingNewMentees} onChange={setAcceptingNewMentees} />
-              </div>
             </div>
             <MentorSchedulePanel
               kind={availabilityWindowKind}
               onKindChange={(k) => {
                 setAvailabilityWindowKind(k);
                 setError(null);
+                if (k === "weekends") {
+                  setWeeklyRows((prev) => {
+                    const m = weeklySlotsFromRows(prev);
+                    for (const key of WEEKDAY_KEYS) {
+                      if (key !== "sat" && key !== "sun") m[key] = [];
+                    }
+                    return weeklyRowsFromSlotMap(m);
+                  });
+                }
+                if (k === "fifteen_days" || k === "monthly") {
+                  setWeeklyRows(weeklyRowsFromSlotMap(emptyWeeklySlots()));
+                }
               }}
-              gridLabels={gridLabels}
               weeklySlots={weeklySlotsPreview}
               onToggleWeeklySlot={toggleWeeklySlot}
               onClearWeekly={clearWeeklySlots}
-              weeklyTotal={weeklyCount}
+              onClearWeeklyDay={clearWeeklyDay}
+              weeklyTotal={scheduleSlotCount}
               calendarViewYear={calendarView.year}
               calendarViewMonth={calendarView.month}
               onCalendarPrev={onCalendarPrev}
               onCalendarNext={onCalendarNext}
               specificDatesSlots={specificDatesSlots}
               onToggleCalendarDate={toggleCalendarDate}
-              onToggleSpecificSlot={toggleSpecificSlot}
+              onToggleCustomDatePreset={
+                isCalendarScheduleMode(availabilityWindowKind) ? toggleCustomDatePreset : undefined
+              }
+              onToggleSharedCustomDatePreset={
+                isCalendarScheduleMode(availabilityWindowKind) ? toggleSharedCustomDatePreset : undefined
+              }
               onClearCalendarSelection={clearCalendarSelection}
               calendarSelectable={calendarSelectable}
-              onBulkWeekdayInMonth={isCalendarScheduleMode(availabilityWindowKind) ? onBulkWeekdayInMonth : undefined}
-              bulkWeekdayFill={isCalendarScheduleMode(availabilityWindowKind) ? bulkWeekdayFill : undefined}
-              onToggleSharedCalendarSlot={
-                isCalendarScheduleMode(availabilityWindowKind) ? toggleSharedCalendarSlot : undefined
-              }
+              recurringWeekdayJs={recurringWeekdayJs}
+              onRecurringWeekdayJs={setRecurringWeekdayJs}
+              patternSlotLabels={patternSlotLabels}
+              onTogglePatternPreset={togglePatternPreset}
+              onClearPatternSlots={clearPatternSlots}
             />
-            {availabilityWindowKind === "weekly" ? (
+            {availabilityWindowKind !== "custom" ? (
               <div className="mt-6 flex gap-3 rounded-xl border border-emerald-200 bg-emerald-50/80 p-4">
                 <span className="text-lg" aria-hidden>
                   💡
@@ -833,7 +808,7 @@ export function MentorAvailabilityForm({
                 <div>
                   <h4 className="text-sm font-semibold text-emerald-950">Tip</h4>
                   <p className="mt-1 text-sm text-emerald-900/90">
-                    {weeklyCount} half-hour slot{weeklyCount === 1 ? "" : "s"} in your repeating pattern. Use Date
+                    {scheduleSlotCount} two-hour range{scheduleSlotCount === 1 ? "" : "s"} in your live pattern. Use Date
                     overrides for one-off changes.
                   </p>
                 </div>
@@ -984,50 +959,6 @@ export function MentorAvailabilityForm({
           </div>
         ) : null}
 
-        <section className="mt-6 rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm">
-          <div className="mb-3 flex items-start gap-3">
-            <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
-              <IconCalendar className="size-5" />
-            </span>
-            <div>
-              <h2 className="text-sm font-bold text-[#0a0a0a]">Google Calendar</h2>
-              <p className="text-xs text-neutral-600">Sync saved slots and reduce double bookings</p>
-            </div>
-          </div>
-          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-stretch">
-            {googleCalendarConnected ? (
-              <>
-                <p className="flex min-h-[2.75rem] flex-1 items-center justify-center rounded-xl border border-emerald-200 bg-emerald-50/70 px-4 py-2.5 text-center text-sm font-semibold text-emerald-900 sm:min-w-[11rem]">
-                  Calendar connected
-                </p>
-                <button
-                  type="button"
-                  disabled={syncing}
-                  onClick={() => void syncGoogle()}
-                  className="rounded-xl bg-neutral-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-neutral-800 disabled:opacity-60"
-                >
-                  {syncing ? "Syncing…" : "Sync slots to Calendar"}
-                </button>
-                <Link
-                  href={`/api/calendar/google/authorize?returnTo=${encodeURIComponent("/mentor/availability")}`}
-                  className="inline-flex min-h-[2.75rem] flex-1 items-center justify-center gap-2 rounded-xl border border-neutral-200 bg-white py-2.5 text-center text-xs font-medium text-neutral-600 hover:bg-neutral-50 sm:max-w-[14rem]"
-                >
-                  <GoogleGlyph className="size-4 shrink-0" />
-                  Update Google connection
-                </Link>
-              </>
-            ) : (
-              <Link
-                href={`/api/calendar/google/authorize?returnTo=${encodeURIComponent("/mentor/availability")}`}
-                className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-neutral-200 bg-white py-2.5 text-sm font-medium hover:bg-neutral-50"
-              >
-                <GoogleGlyph className="size-5" />
-                Connect Google Calendar
-              </Link>
-            )}
-          </div>
-        </section>
-
         <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end sm:gap-4">
           <button
             type="button"
@@ -1051,22 +982,6 @@ export function MentorAvailabilityForm({
         {error ? <p className="mt-3 text-right text-sm text-red-600">{error}</p> : null}
       </div>
     </div>
-  );
-}
-
-function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
-  return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={checked}
-      onClick={() => onChange(!checked)}
-      className={`relative h-8 w-[3.25rem] shrink-0 rounded-full transition ${checked ? "bg-primary" : "bg-neutral-300"}`}
-    >
-      <span
-        className={`absolute top-1 size-6 rounded-full bg-white shadow transition ${checked ? "left-7" : "left-1"}`}
-      />
-    </button>
   );
 }
 
@@ -1142,29 +1057,6 @@ function IconSave({ className }: { className?: string }) {
         strokeLinejoin="round"
       />
       <path d="M8 4v4h8V7.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-function GoogleGlyph({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" aria-hidden>
-      <path
-        fill="#4285F4"
-        d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-      />
-      <path
-        fill="#34A853"
-        d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-      />
-      <path
-        fill="#FBBC05"
-        d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
-      />
-      <path
-        fill="#EA4335"
-        d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-      />
     </svg>
   );
 }

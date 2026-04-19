@@ -26,7 +26,6 @@ import {
   architecturePillBase,
 } from "@/components/shared/ArchitectureGroupedPills";
 import { MandatorySetupReminderModal } from "@/components/setup/MandatorySetupReminderModal";
-import { SetupGoogleCalendarConnect } from "@/components/setup/SetupGoogleCalendarConnect";
 
 type TabId = "personal" | "professional" | "mentorship" | "profile";
 
@@ -139,13 +138,7 @@ function mentorPayloadFromInitial(i: MentorEditProfileInitial): Record<string, u
   };
 }
 
-export function MentorEditProfileForm({
-  initial,
-  googleCalendarConnected,
-}: {
-  initial: MentorEditProfileInitial;
-  googleCalendarConnected: boolean;
-}) {
+export function MentorEditProfileForm({ initial }: { initial: MentorEditProfileInitial }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const fileRef = useRef<HTMLInputElement>(null);
@@ -820,13 +813,7 @@ export function MentorEditProfileForm({
                 <h2 className="text-lg font-bold text-[#0a0a0a]">Profile &amp; Professional Links</h2>
                 <p className="mt-1 text-sm text-neutral-500">Help students learn more about you</p>
               </div>
-              <SetupGoogleCalendarConnect
-                connected={googleCalendarConnected}
-                returnPath="/mentor/profile/edit?tab=profile"
-                required
-                description="Required for student booking and your availability. If you signed in with Google, this may already show as connected."
-              />
-              <div className="mt-6 space-y-5">
+              <div className="space-y-5">
                 <div className="space-y-2">
                   <label htmlFor="bio" className={label}>
                     Professional Bio

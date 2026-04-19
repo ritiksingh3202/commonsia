@@ -574,7 +574,7 @@ function MetricCard({
   icon?: ReactNode;
 }) {
   const left = {
-    primary: "border-l-4 border-l-[#ff571f]",
+    primary: "border-l-4 border-l-primary",
     blue: "border-l-4 border-l-[#2b7fff]",
     violet: "border-l-4 border-l-[#ad46ff]",
     green: "border-l-4 border-l-[#00c950]",

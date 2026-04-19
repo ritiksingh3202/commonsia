@@ -3,11 +3,15 @@
 :root {
   --background: #ffffff;
   --foreground: #0a0a0a;
+  /** Home marketing hero — cream wash (Figma / brand) */
+  --home-hero-cream: #ffefd7;
+  /** Sticky marketing header — approximate row height for `calc(100svh - …)` hero */
+  --marketing-header-offset: 4.25rem;
   --cream: #fff6e9;
   --cream-soft: #fff5e6;
   --mint: #f5ffe6;
-  --primary: #ff571f;
-  --hero-orange: #f16422;
+  --primary: #ff6600;
+  --hero-orange: #ff771a;
   --hero-chocolate: #301b14;
   --ink: #3e2723;
   --muted: #666666;
@@ -20,20 +24,21 @@
   --color-cream: var(--cream);
   --color-cream-soft: var(--cream-soft);
   --color-mint: var(--mint);
-  --color-primary: #ff571f;
+  --color-primary: #ff6600;
+  --color-home-hero-cream: var(--home-hero-cream);
   --color-ink: var(--ink);
   --font-sans: var(--font-poppins);
   --font-display: var(--font-abeezee);
 }
 
 /**
- * Brand-primary (#ff571f / --color-primary) tint for line-art icons (SVG/PNG via <img>).
+ * Brand-primary (#ff6600 / --color-primary) tint for line-art icons (SVG/PNG via <img>).
  * Use `.icon-brand-line` or legacy `.icon-orange-line` — same filter.
  */
 .icon-brand-line,
 .icon-orange-line {
-  filter: brightness(0) saturate(100%) invert(37%) sepia(93%) saturate(3264%)
-    hue-rotate(352deg) brightness(101%) contrast(101%);
+  filter: brightness(0) saturate(100%) invert(48%) sepia(99%) saturate(6774%) hue-rotate(1deg)
+    brightness(101%) contrast(101%);
 }
 
 /** Pure black line-art icons (footer, profile socials from `public/*.svg`). */
@@ -42,14 +47,15 @@
 }
 
 html {
-  overflow-x: hidden;
+  /* `clip` avoids horizontal scroll without breaking `position: sticky` / fixed stacking contexts like `hidden` can */
+  overflow-x: clip;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-poppins), ui-sans-serif, system-ui, sans-serif;
-  overflow-x: hidden;
+  overflow-x: clip;
 }
 
 /* Semantic headings — consistent semibold weight across pages/sections */
@@ -151,7 +157,7 @@ body {
 
 /* Hero accent words — black → brown → orange (Figma) */
 .text-hero-title-accent {
-  background: linear-gradient(90deg, #000000 0%, #913212 52%, #ff571f 100%);
+  background: linear-gradient(90deg, #000000 0%, #a34000 52%, #ff6600 100%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -189,5 +195,27 @@ body {
 
 .text-hero-solid-chocolate {
   color: var(--hero-chocolate);
+}
+
+/**
+ * Home hero — full viewport band: solid white upper area, soft wash into `#FFEFD7` toward
+ * the bottom with a subtle warm glow at the base (marketing reference).
+ */
+.home-hero-gradient {
+  background-color: #ffffff;
+  background-image:
+    radial-gradient(
+      ellipse 95% 48% at 50% 100%,
+      rgba(255, 102, 0, 0.07) 0%,
+      rgba(255, 239, 215, 0.65) 42%,
+      transparent 68%
+    ),
+    linear-gradient(180deg, #ffffff 0%, #ffffff 36%, #fffbf4 62%, var(--home-hero-cream) 100%);
+}
+
+/** Fills first screen under sticky marketing nav (`--marketing-header-offset`). */
+.home-hero-viewport {
+  min-height: calc(100dvh - var(--marketing-header-offset));
+  min-height: calc(100svh - var(--marketing-header-offset));
 }
 

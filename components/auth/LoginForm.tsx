@@ -22,6 +22,7 @@ type LoginFormProps = {
 
 export function LoginForm({ callbackUrl = "/auth/continue", authError }: LoginFormProps) {
   const [submitting, setSubmitting] = useState(false);
+  const [credsError, setCredsError] = useState<string | null>(null);
 
   return (
     <div className="mx-auto w-full max-w-[360px] px-4 py-6 sm:py-8">
@@ -36,6 +37,14 @@ export function LoginForm({ callbackUrl = "/auth/continue", authError }: LoginFo
             className="mb-4 rounded-md border border-amber-200 bg-amber-50 px-3 py-2.5 text-left text-[12px] leading-snug text-amber-950 sm:text-[13px]"
           >
             {authErrorMessage(authError)}
+          </div>
+        ) : null}
+        {credsError ? (
+          <div
+            role="alert"
+            className="mb-4 rounded-md border border-red-200 bg-red-50 px-3 py-2.5 text-left text-[12px] leading-snug text-red-950 sm:text-[13px]"
+          >
+            {credsError}
           </div>
         ) : null}
         <div className="mb-5 flex flex-col items-center text-center">
@@ -68,6 +77,7 @@ export function LoginForm({ callbackUrl = "/auth/continue", authError }: LoginFo
               window.alert("Enter your email and password.");
               return;
             }
+            setCredsError(null);
             setSubmitting(true);
             try {
               const res = await signIn("credentials", {
@@ -76,7 +86,9 @@ export function LoginForm({ callbackUrl = "/auth/continue", authError }: LoginFo
                 redirect: false,
               });
               if (!res?.ok) {
-                window.alert("Invalid email or password. If you signed up with Google or LinkedIn, use that button below.");
+                setCredsError(
+                  "Invalid email or password. If you have not signed up yet, create an account first. If you use Google or LinkedIn, sign in with that option below.",
+                );
                 return;
               }
               window.location.assign(callbackUrl);
@@ -97,6 +109,7 @@ export function LoginForm({ callbackUrl = "/auth/continue", authError }: LoginFo
               placeholder="you@example.com"
               className={field}
               required
+              onFocus={() => setCredsError(null)}
             />
           </div>
           <div className="space-y-1.5">
@@ -124,6 +137,7 @@ export function LoginForm({ callbackUrl = "/auth/continue", authError }: LoginFo
               placeholder="Enter your password"
               className={field}
               required
+              onFocus={() => setCredsError(null)}
             />
           </div>
           <button

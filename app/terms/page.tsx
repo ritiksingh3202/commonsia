@@ -152,8 +152,8 @@ export default function TermsOfServicePage() {
           <h2>13. Contact</h2>
           <p>
             For questions about these Terms, email{" "}
-            <a href="mailto:admin@commonsia.com" className="font-medium text-primary hover:underline">
-              admin@commonsia.com
+            <a href="mailto:hello@commonsia.com" className="font-medium text-primary hover:underline">
+              hello@commonsia.com
             </a>{" "}
             or visit our{" "}
             <Link href="/contact" className="font-medium text-primary hover:underline">

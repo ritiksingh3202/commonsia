@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
-import { SetupGoogleCalendarConnect } from "@/components/setup/SetupGoogleCalendarConnect";
+import { COUNTRY_OPTIONS, citiesForCountry } from "@/lib/country-city-options";
 import { SetupLinkedInNotice } from "@/components/setup/SetupLinkedInNotice";
 import {
   MENTOR_EXPERTISE_OTHER,
@@ -39,11 +39,9 @@ function expertiseFromSnapshot(raw: MentorSetupUserSnapshot["mentorExpertise"] |
 export function MentorSetupStep1({
   initial,
   linkedInConnected,
-  googleCalendarConnected = false,
 }: {
   initial?: MentorSetupUserSnapshot;
   linkedInConnected?: boolean;
-  googleCalendarConnected?: boolean;
 }) {
   const router = useRouter();
   const scheduleSave = useProfileAutosave();
@@ -53,11 +51,22 @@ export function MentorSetupStep1({
     [initial?.mentorExpertise],
   );
 
+  const [country, setCountry] = useState(initial?.country ?? "");
+  const [city, setCity] = useState(initial?.city ?? "");
   const [title, setTitle] = useState(initial?.mentorTitle ?? "");
   const [company, setCompany] = useState(initial?.mentorCompany ?? "");
   const [years, setYears] = useState(() => normalizeMentorYearsBand(initial?.mentorYearsExperience ?? ""));
   const [expertise, setExpertise] = useState<Set<string>>(() => new Set(expertiseDerived.sel));
   const [otherExpertise, setOtherExpertise] = useState(expertiseDerived.other);
+
+  const cityOptions = useMemo(() => (country ? citiesForCountry(country) : []), [country]);
+
+  useEffect(() => {
+    if (!country) return;
+    if (city && !cityOptions.includes(city)) {
+      setCity("");
+    }
+  }, [country, city, cityOptions]);
 
   useEffect(() => {
     const d = expertiseFromSnapshot(initial?.mentorExpertise);
@@ -90,13 +99,21 @@ export function MentorSetupStep1({
           </span>
         </h2>
         <p className="mb-3 text-[12px] leading-snug text-[#6b7280]">
-          Role, organization, experience, and areas of expertise are required (expertise counts as one section).
-          Changes save automatically.
+          Country, city, role, organization, experience, and areas of expertise are required (expertise counts as one
+          section). Changes save automatically.
         </p>
         <form
           className="space-y-3"
           onSubmit={async (e) => {
             e.preventDefault();
+            if (!country.trim()) {
+              window.alert("Please select your country.");
+              return;
+            }
+            if (!city.trim()) {
+              window.alert("Please select your city.");
+              return;
+            }
             if (!title.trim() || !company.trim() || !years.trim()) {
               window.alert("Please fill in your position, organization, and years of experience.");
               return;
@@ -119,6 +136,8 @@ export function MentorSetupStep1({
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
                 role: "mentor",
+                country: country.trim() || null,
+                city: city.trim() || null,
                 mentorTitle: title.trim(),
                 mentorCompany: company.trim(),
                 mentorYearsExperience: years.trim(),
@@ -132,6 +151,73 @@ export function MentorSetupStep1({
             router.push("/mentor/setup/2");
           }}
         >
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <label htmlFor="mentorCountry" className={setupLabel}>
+                Country <span className="text-primary">*</span>
+              </label>
+              <div className="relative">
+                <select
+                  id="mentorCountry"
+                  name="country"
+                  value={country}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setCountry(v);
+                    setCity("");
+                    scheduleSave({ role: "mentor", country: v.trim() || null, city: null });
+                  }}
+                  className={`${setupField} appearance-none pr-9`}
+                  required
+                >
+                  <option value="" disabled>
+                    Select country
+                  </option>
+                  {COUNTRY_OPTIONS.map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))}
+                </select>
+                <span className="pointer-events-none absolute right-2.5 top-1/2 size-4 -translate-y-1/2 text-[#717182]">
+                  <ChevronDown />
+                </span>
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <label htmlFor="mentorCity" className={setupLabel}>
+                City <span className="text-primary">*</span>
+              </label>
+              <div className="relative">
+                <select
+                  id="mentorCity"
+                  name="city"
+                  value={city}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setCity(v);
+                    scheduleSave({ role: "mentor", city: v.trim() || null });
+                  }}
+                  className={`${setupField} appearance-none pr-9`}
+                  required
+                  disabled={!country}
+                >
+                  <option value="" disabled>
+                    {country ? "Select city" : "Select country first"}
+                  </option>
+                  {cityOptions.map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))}
+                </select>
+                <span className="pointer-events-none absolute right-2.5 top-1/2 size-4 -translate-y-1/2 text-[#717182]">
+                  <ChevronDown />
+                </span>
+              </div>
+            </div>
+          </div>
+
           <div className="grid gap-4 sm:gap-5 lg:grid-cols-3">
             <div className="space-y-1.5">
               <label htmlFor="mentorTitle" className={setupLabel}>
@@ -263,13 +349,6 @@ export function MentorSetupStep1({
               ) : null}
             </div>
           </div>
-
-          <SetupGoogleCalendarConnect
-            connected={googleCalendarConnected}
-            returnPath="/mentor/setup/1"
-            required
-            description="Required before you can continue to availability after step 3. If you signed in with Google, this may already show as connected."
-          />
 
           <button type="submit" className={btnPrimary}>
             Next: Mentorship Details

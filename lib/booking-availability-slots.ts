@@ -1,10 +1,33 @@
 import {
   MENTOR_TIME_SLOTS_HALF,
+  normalizeAvailabilityWindowKind,
   type MentorAvailabilityJson,
   type WeekdayKey,
 } from "@/components/mentor/mentor-setup-constants";
+
+/** Custom mode: same calendar day-of-month repeats forward from the latest saved anchor on or before `iso`. */
+function customSeriesSlotLabelsForIso(av: MentorAvailabilityJson, iso: string): string[] {
+  const parts = iso.split("-").map(Number);
+  if (parts.length !== 3 || parts.some((n) => !Number.isFinite(n))) return [];
+  const targetDom = parts[2]!;
+  let bestAnchor: string | null = null;
+  for (const a of av.specificDates) {
+    const ap = a.split("-").map(Number);
+    if (ap.length !== 3 || ap.some((n) => !Number.isFinite(n))) continue;
+    if (ap[2] !== targetDom) continue;
+    if (a > iso) continue;
+    if (!bestAnchor || a > bestAnchor) bestAnchor = a;
+  }
+  if (!bestAnchor) return [];
+  return sortSlotLabels([...(av.specificDateSlots[bestAnchor] ?? [])]);
+}
+import {
+  biweeklyAllowsDate,
+  defaultBiweeklyAnchorFromTodayIso,
+  weekdayKeyFromJs,
+} from "@/lib/mentor-availability-patterns";
+import { mergeAvailabilityForSlot } from "@/lib/mentor-availability-merge";
 import { slotLabelToMinutes, sortSlotLabels } from "@/lib/mentor-availability-slots";
-import { mergeAvailabilityForSlot } from "@/lib/mentor-next-slot";
 import { istSlotRangeToISO } from "@/lib/schedule-slot-ist";
 
 const TZ = process.env.DEFAULT_CALENDAR_TIMEZONE ?? "Asia/Kolkata";
@@ -22,6 +45,11 @@ export function weekdayKeyForCalendarDate(year: number, monthIndex: number, day:
   const wd = new Date(Date.UTC(year, monthIndex, day, 12, 0, 0)).getUTCDay();
   const map: WeekdayKey[] = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
   return map[wd] ?? "mon";
+}
+
+function weekdayKeyToJs(key: WeekdayKey): number {
+  const m: Record<WeekdayKey, number> = { sun: 0, mon: 1, tue: 2, wed: 3, thu: 4, fri: 5, sat: 6 };
+  return m[key];
 }
 
 export function todayIsoInBookingTz(now: Date = new Date()): string {
@@ -66,6 +94,11 @@ export function requiredHalfHourStartsForDuration(
   return out;
 }
 
+export type SlotResolutionOptions = {
+  /** When set, mentor already used their recurring weekday in this IST month — hide monthly pattern slots. */
+  monthlyPatternConsumedThisIstMonth?: boolean;
+};
+
 /**
  * Sorted unique slot start labels (e.g. "10:00 AM") the mentor allows on this calendar date,
  * before filtering “already passed today”.
@@ -76,6 +109,7 @@ export function getAllowedSlotLabelsForDate(
   monthIndex: number,
   day: number,
   now: Date = new Date(),
+  opts?: SlotResolutionOptions,
 ): string[] {
   const iso = calendarDateToIso(year, monthIndex, day);
   const todayIso = todayIsoInBookingTz(now);
@@ -84,24 +118,60 @@ export function getAllowedSlotLabelsForDate(
   if (isBlocked(iso, av)) return [];
 
   if (av.availabilityType === "specific") {
+    const winKind = normalizeAvailabilityWindowKind(av.availabilityWindowKind);
+    if (winKind === "custom") {
+      const direct = av.specificDateSlots[iso];
+      if (direct?.length) return sortSlotLabels([...direct]);
+      const series = customSeriesSlotLabelsForIso(av, iso);
+      if (series.length) return series;
+      return [];
+    }
     if (!av.specificDates.includes(iso)) return [];
     return sortSlotLabels([...(av.specificDateSlots[iso] ?? [])]);
   }
 
-  const horizon =
-    av.planningHorizonDays ??
-    (av.availabilityWindowKind === "fifteen_days"
-      ? 15
-      : av.availabilityWindowKind === "monthly"
-        ? 31
-        : 21);
-  const maxH = Math.min(Math.max(horizon, 1), 90);
+  const winKind = normalizeAvailabilityWindowKind(av.availabilityWindowKind);
+  const defaultHorizon =
+    winKind === "fifteen_days" ? 15 : winKind === "monthly" ? 120 : winKind === "weekends" ? 21 : 21;
+  const horizon = Math.min(Math.max(av.planningHorizonDays ?? defaultHorizon, 1), 180);
   const diff = daysFromTodayTo(iso, todayIso);
-  if (diff > maxH) return [];
+  if (diff < 0 || diff >= horizon) return [];
 
   const key = weekdayKeyForCalendarDate(year, monthIndex, day);
-  const base = av.weeklySlots[key] ?? [];
   const extra = av.extraAvailabilitySlots?.[iso] ?? [];
+
+  if (winKind === "fifteen_days") {
+    const wdJs = av.recurringWeekdayJs;
+    if (typeof wdJs !== "number") return [];
+    if (weekdayKeyToJs(key) !== wdJs) return [];
+    const anchor = av.biweeklyAnchorIso?.trim() || defaultBiweeklyAnchorFromTodayIso(todayIso, wdJs);
+    if (!biweeklyAllowsDate(iso, wdJs, anchor)) return [];
+    const pattern =
+      av.patternSlotLabels && av.patternSlotLabels.length > 0
+        ? av.patternSlotLabels
+        : (av.weeklySlots[weekdayKeyFromJs(wdJs)] ?? []);
+    return sortSlotLabels([...new Set([...pattern, ...extra])]);
+  }
+
+  if (winKind === "monthly") {
+    const wdJs = av.recurringWeekdayJs;
+    if (typeof wdJs !== "number") return [];
+    if (weekdayKeyToJs(key) !== wdJs) return [];
+    if (opts?.monthlyPatternConsumedThisIstMonth) return [];
+    const pattern =
+      av.patternSlotLabels && av.patternSlotLabels.length > 0
+        ? av.patternSlotLabels
+        : (av.weeklySlots[weekdayKeyFromJs(wdJs)] ?? []);
+    return sortSlotLabels([...new Set([...pattern, ...extra])]);
+  }
+
+  if (winKind === "weekends") {
+    if (key !== "sat" && key !== "sun") return [];
+    const base = av.weeklySlots[key] ?? [];
+    return sortSlotLabels([...new Set([...base, ...extra])]);
+  }
+
+  const base = av.weeklySlots[key] ?? [];
   return sortSlotLabels([...new Set([...base, ...extra])]);
 }
 
@@ -140,9 +210,10 @@ export function getBookableSlotRangesForDate(
   monthIndex: number,
   day: number,
   now: Date = new Date(),
+  opts?: SlotResolutionOptions,
 ): string[] {
   const av = mergeAvailabilityForSlot(raw);
-  let labels = getAllowedSlotLabelsForDate(av, year, monthIndex, day, now);
+  let labels = getAllowedSlotLabelsForDate(av, year, monthIndex, day, now, opts);
   labels = filterPastSlotLabels(labels, year, monthIndex, day, now);
   return slotRangesFromLabels(labels);
 }
@@ -162,9 +233,10 @@ export function getBookableSlotSegmentsForDate(
   monthIndex: number,
   day: number,
   now: Date = new Date(),
+  opts?: SlotResolutionOptions,
 ): BookableSlotSegment[] {
   const av = mergeAvailabilityForSlot(raw);
-  let labels = getAllowedSlotLabelsForDate(av, year, monthIndex, day, now);
+  let labels = getAllowedSlotLabelsForDate(av, year, monthIndex, day, now, opts);
   labels = filterPastSlotLabels(labels, year, monthIndex, day, now);
   const out: BookableSlotSegment[] = [];
   for (const lab of labels) {
@@ -194,9 +266,10 @@ export function validateBookingInAvailability(
   startLabel: string,
   durationMinutes: number,
   now: Date = new Date(),
+  opts?: SlotResolutionOptions,
 ): { ok: true } | { ok: false; error: string } {
   const av = mergeAvailabilityForSlot(raw);
-  const allowed = new Set(getAllowedSlotLabelsForDate(av, year, monthIndex, day, now));
+  const allowed = new Set(getAllowedSlotLabelsForDate(av, year, monthIndex, day, now, opts));
   const needed = requiredHalfHourStartsForDuration(startLabel, durationMinutes);
   if (!needed?.length) return { ok: false, error: "Invalid start time." };
   for (const lab of needed) {

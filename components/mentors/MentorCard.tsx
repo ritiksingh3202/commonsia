@@ -87,6 +87,9 @@ export function MentorCard({
         </div>
 
         <div className="mt-auto space-y-2 border-t border-neutral-100/90 pt-3">
+          <p className="break-words text-[10px] font-medium leading-snug text-neutral-500 sm:text-[11px]">
+            {mentor.availabilityPattern}
+          </p>
           <p className="break-words text-[10px] font-semibold leading-snug text-neutral-800 sm:text-[11px]">{mentor.slot}</p>
           <Link
             href={scheduleHref}

@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 
 import { MentorChatPage } from "@/components/chat/MentorChatPage";
-import { formatNextAvailableSlotLine } from "@/lib/mentor-next-slot";
+import { buildMonthlyWeekdayConsumedMap } from "@/lib/mentor-monthly-booking";
+import { formatNextAvailableSlotLine, type NextSlotMonthlyConsumedLookup } from "@/lib/mentor-next-slot";
 import { prisma } from "@/lib/prisma";
 
 export const metadata: Metadata = {
@@ -38,7 +39,23 @@ export default async function ChatPage({ searchParams }: { searchParams: Promise
     });
     if (u?.role === "mentor") {
       mentorUserId = rawMentorId;
-      availabilitySummary = formatNextAvailableSlotLine(u.mentorAvailabilityJson ?? null);
+      const since = new Date();
+      since.setMonth(since.getMonth() - 6);
+      const bookings = await prisma.mentoringBooking.findMany({
+        where: { mentorId: rawMentorId, startAt: { gte: since } },
+        select: { mentorId: true, startAt: true },
+      });
+      const monthlyConsumed = buildMonthlyWeekdayConsumedMap(
+        [{ id: rawMentorId, mentorAvailabilityJson: u.mentorAvailabilityJson }],
+        bookings,
+      );
+      const monthlyLookup: NextSlotMonthlyConsumedLookup = (year, monthIndex0) =>
+        monthlyConsumed.get(`${rawMentorId}:${year}-${monthIndex0}`) ?? false;
+      availabilitySummary = formatNextAvailableSlotLine(
+        u.mentorAvailabilityJson ?? null,
+        new Date(),
+        monthlyLookup,
+      );
     }
   }
 
