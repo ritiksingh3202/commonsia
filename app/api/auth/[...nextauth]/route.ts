@@ -5,8 +5,14 @@ import { handlers } from "@/auth";
 /** Prisma adapter requires Node (not Edge). */
 export const runtime = "nodejs";
 
-function isSessionPath(url: string): boolean {
-  return /\/session\/?(\?.*)?$/.test(new URL(url).pathname);
+/**
+ * Detect `/api/auth/session` without `new URL(req.url)` — in some runtimes / proxies `req.url`
+ * can be relative or malformed, which throws and bypasses our JSON fallback (SessionProvider
+ * then parses HTML and throws ClientFetchError).
+ */
+function pathnameIsAuthSession(req: NextRequest): boolean {
+  const p = req.nextUrl.pathname.replace(/\/$/, "") || "/";
+  return p === "/api/auth/session";
 }
 
 function isJsonResponse(res: Response): boolean {
@@ -30,7 +36,7 @@ async function responseBodyLooksLikeHtml(res: Response): Promise<boolean> {
  * (“Unexpected token '<'”). Coerce session routes to JSON so the shell still loads.
  */
 async function safeGet(req: NextRequest): Promise<Response> {
-  const sessionRoute = isSessionPath(req.url);
+  const sessionRoute = pathnameIsAuthSession(req);
   try {
     const res = await handlers.GET(req);
     if (sessionRoute && (!isJsonResponse(res) || (await responseBodyLooksLikeHtml(res)))) {
@@ -46,7 +52,7 @@ async function safeGet(req: NextRequest): Promise<Response> {
     return res;
   } catch (err) {
     console.error("[api/auth] GET", err);
-    if (sessionRoute) {
+    if (sessionRoute || pathnameIsAuthSession(req)) {
       return Response.json(null, {
         status: 200,
         headers: {
@@ -60,7 +66,7 @@ async function safeGet(req: NextRequest): Promise<Response> {
 }
 
 async function safePost(req: NextRequest): Promise<Response> {
-  const sessionRoute = isSessionPath(req.url);
+  const sessionRoute = pathnameIsAuthSession(req);
   try {
     const res = await handlers.POST(req);
     if (sessionRoute && (!isJsonResponse(res) || (await responseBodyLooksLikeHtml(res)))) {
@@ -73,7 +79,7 @@ async function safePost(req: NextRequest): Promise<Response> {
     return res;
   } catch (err) {
     console.error("[api/auth] POST", err);
-    if (sessionRoute) {
+    if (sessionRoute || pathnameIsAuthSession(req)) {
       return Response.json(null, {
         status: 200,
         headers: { "Content-Type": "application/json" },
