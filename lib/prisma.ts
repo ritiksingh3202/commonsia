@@ -7,8 +7,13 @@ warnDatabaseUrlMisconfigDevOnce();
 
 const globalForPrisma = globalThis as unknown as { prisma: PrismaClient | undefined };
 
+/**
+ * Reuse one `PrismaClient` per runtime isolate (dev + Vercel serverless). Omitting the global in
+ * production caused extra client churn in some deployments; Prisma recommends a global singleton
+ * for connection pooling / fewer “too many connections” flakes during auth.
+ */
 export const prisma = globalForPrisma.prisma ?? new PrismaClient();
 
 initSoftDeleteRuntimeSupport(prisma);
 
-if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
+globalForPrisma.prisma = prisma;
