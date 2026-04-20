@@ -7,6 +7,7 @@ import { getPublicMentorById, getSimilarMentorsForProfile } from "@/lib/mentor-d
 import { getMentorBookingStats } from "@/lib/mentor-dashboard-stats";
 import { getPublicReviewsForMentor } from "@/lib/mentor-reviews";
 import { prisma } from "@/lib/prisma";
+import { getActiveUserWhere } from "@/lib/user-active";
 
 function initialsFromName(name: string): string {
   return name
@@ -38,8 +39,8 @@ export default async function PublicMentorPage({ params }: Props) {
 
   const viewerDb =
     session?.user?.id != null
-      ? await prisma.user.findUnique({
-          where: { id: session.user.id },
+      ? await prisma.user.findFirst({
+          where: { id: session.user.id, ...getActiveUserWhere() },
           select: { role: true },
         })
       : null;
@@ -88,7 +89,7 @@ export default async function PublicMentorPage({ params }: Props) {
 
   if (linked) {
     const u = await prisma.user.findFirst({
-      where: { id: linked, role: "mentor" },
+      where: { id: linked, ...getActiveUserWhere(), role: "mentor" },
       select: {
         id: true,
         portfolioUrl: true,

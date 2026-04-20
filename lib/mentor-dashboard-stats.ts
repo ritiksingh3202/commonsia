@@ -1,5 +1,6 @@
 import { CHAT_ACTIVE } from "@/lib/chat-thread-status";
 import { prisma } from "@/lib/prisma";
+import { prismaGeneratedClientHasAccountDeletedAt } from "@/lib/user-active";
 
 export type MentorBookingStats = {
   /** All completed sessions (ended in the past). */
@@ -242,6 +243,8 @@ export async function getMentorDashboardLiveData(mentorId: string): Promise<Ment
   type RawAct = { at: Date; sort: number; title: string; tone: string; icon: MentorActivityRow["icon"] };
   const raw: RawAct[] = [];
 
+  const userDelSelect = prismaGeneratedClientHasAccountDeletedAt() ? ({ accountDeletedAt: true } as const) : {};
+
   const [recentBookings, recentMsgs, recentReviews] = await Promise.all([
     prisma.mentoringBooking.findMany({
       where: { mentorId, endAt: { lte: now } },
@@ -250,7 +253,7 @@ export async function getMentorDashboardLiveData(mentorId: string): Promise<Ment
       select: {
         endAt: true,
         title: true,
-        student: { select: { name: true } },
+        student: { select: { name: true, ...userDelSelect } },
       },
     }),
     prisma.chatMessage.findMany({
@@ -260,8 +263,8 @@ export async function getMentorDashboardLiveData(mentorId: string): Promise<Ment
       select: {
         createdAt: true,
         body: true,
-        sender: { select: { name: true } },
-        thread: { select: { student: { select: { name: true } } } },
+        sender: { select: { name: true, ...userDelSelect } },
+        thread: { select: { student: { select: { name: true, ...userDelSelect } } } },
       },
     }),
     prisma.sessionReview.findMany({
@@ -271,13 +274,15 @@ export async function getMentorDashboardLiveData(mentorId: string): Promise<Ment
       select: {
         createdAt: true,
         rating: true,
-        student: { select: { name: true } },
+        student: { select: { name: true, ...userDelSelect } },
       },
     }),
   ]);
 
   for (const b of recentBookings) {
-    const who = b.student.name?.trim() || "A student";
+    const who = "accountDeletedAt" in b.student && b.student.accountDeletedAt
+      ? "Former member"
+      : b.student.name?.trim() || "A student";
     raw.push({
       at: b.endAt,
       sort: b.endAt.getTime(),
@@ -287,7 +292,9 @@ export async function getMentorDashboardLiveData(mentorId: string): Promise<Ment
     });
   }
   for (const m of recentMsgs) {
-    const who = m.sender.name?.trim() || "Someone";
+    const who = "accountDeletedAt" in m.sender && m.sender.accountDeletedAt
+      ? "Former member"
+      : m.sender.name?.trim() || "Someone";
     const preview = m.body.trim().slice(0, 72);
     raw.push({
       at: m.createdAt,
@@ -298,7 +305,9 @@ export async function getMentorDashboardLiveData(mentorId: string): Promise<Ment
     });
   }
   for (const r of recentReviews) {
-    const who = r.student.name?.trim() || "A student";
+    const who = "accountDeletedAt" in r.student && r.student.accountDeletedAt
+      ? "Former member"
+      : r.student.name?.trim() || "A student";
     raw.push({
       at: r.createdAt,
       sort: r.createdAt.getTime(),

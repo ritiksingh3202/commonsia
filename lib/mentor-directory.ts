@@ -5,6 +5,7 @@ import { buildMonthlyWeekdayConsumedMap } from "@/lib/mentor-monthly-booking";
 import { formatNextAvailableSlotLine, type NextSlotMonthlyConsumedLookup } from "@/lib/mentor-next-slot";
 import { CacheKeys, CacheTtl, delKeys, readJsonCache, withJsonCache } from "@/lib/redis-cache";
 import { prisma } from "@/lib/prisma";
+import { getActiveUserWhere } from "@/lib/user-active";
 
 /** Public mentor shape for directory cards + profile pages. */
 export type Mentor = {
@@ -226,7 +227,7 @@ function mapRowToMentor(
 
 async function fetchPublicMentorsFromDb(): Promise<Mentor[]> {
   const rows = await prisma.user.findMany({
-    where: { role: "mentor", mentorOnboardingComplete: true },
+    where: { ...getActiveUserWhere(), role: "mentor", mentorOnboardingComplete: true },
     orderBy: [{ name: "asc" }],
     select: mentorSelectDirectory,
   });
@@ -276,7 +277,7 @@ export async function getPublicMentors(): Promise<Mentor[]> {
 
 export async function getPublicMentorById(id: string): Promise<Mentor | null> {
   const u = await prisma.user.findFirst({
-    where: { id, role: "mentor", mentorOnboardingComplete: true },
+    where: { ...getActiveUserWhere(), id, role: "mentor", mentorOnboardingComplete: true },
     select: mentorSelectFull,
   });
   if (!u) return null;
@@ -304,7 +305,7 @@ export async function getSimilarMentorsForProfile(
   take = 8,
 ): Promise<Mentor[]> {
   const rows = await prisma.user.findMany({
-    where: { role: "mentor", mentorOnboardingComplete: true, NOT: { id: excludeId } },
+    where: { ...getActiveUserWhere(), role: "mentor", mentorOnboardingComplete: true, NOT: { id: excludeId } },
     orderBy: [{ name: "asc" }],
     select: mentorSelectDirectory,
   });
@@ -326,7 +327,7 @@ export async function getSimilarMentorsForProfile(
   const studentPhrases: string[] = [];
   if (studentUserId) {
     const s = await prisma.user.findFirst({
-      where: { id: studentUserId, role: "student" },
+      where: { ...getActiveUserWhere(), id: studentUserId, role: "student" },
       select: { interests: true, otherInterests: true, major: true, softwareSkills: true },
     });
     if (s) {
@@ -403,7 +404,7 @@ export async function getSimilarMentorsForPublic(excludeId: string, take = 6): P
   const anchor = (await getPublicMentorById(excludeId)) ?? null;
   if (!anchor) {
     const rows = await prisma.user.findMany({
-      where: { role: "mentor", mentorOnboardingComplete: true, NOT: { id: excludeId } },
+      where: { ...getActiveUserWhere(), role: "mentor", mentorOnboardingComplete: true, NOT: { id: excludeId } },
       orderBy: [{ name: "asc" }],
       take,
       select: mentorSelectDirectory,

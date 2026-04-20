@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 
 import { parseDataUrlToBuffer } from "@/lib/data-url-file";
 import { prisma } from "@/lib/prisma";
+import { getActiveUserWhere } from "@/lib/user-active";
 
 export const runtime = "nodejs";
 
@@ -20,7 +21,7 @@ export async function GET(req: Request, ctx: Ctx) {
   }
 
   const user = await prisma.user.findFirst({
-    where: { id, role: "mentor", mentorOnboardingComplete: true },
+    where: { ...getActiveUserWhere(), id, role: "mentor", mentorOnboardingComplete: true },
     select: { image: true },
   });
   const image = user?.image?.trim();

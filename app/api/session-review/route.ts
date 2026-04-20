@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
+import { getActiveUserWhere } from "@/lib/user-active";
 import { revalidatePath, revalidateTag } from "next/cache";
 
 import { CACHE_TAG_HOME_TESTIMONIALS, mentorReviewsTag } from "@/lib/cache-tags";
@@ -13,8 +14,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const reviewer = await prisma.user.findUnique({
-    where: { id: session.user.id },
+  const reviewer = await prisma.user.findFirst({
+    where: { id: session.user.id, ...getActiveUserWhere() },
     select: { role: true },
   });
   if (reviewer?.role !== "student") {
@@ -43,7 +44,7 @@ export async function POST(req: Request) {
     }
 
     const mentor = await prisma.user.findFirst({
-      where: { id: mentorUserId, role: "mentor" },
+      where: { id: mentorUserId, ...getActiveUserWhere(), role: "mentor" },
       select: { id: true },
     });
     if (!mentor) {

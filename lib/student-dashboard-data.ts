@@ -111,12 +111,13 @@ async function loadStudentDashboardPayload(userId: string): Promise<StudentDashb
   for (const b of upcomingBookings) {
     if (seenMentor.has(b.mentorId)) continue;
     seenMentor.add(b.mentorId);
+    const closed = Boolean(b.mentor.accountDeletedAt);
     mentorsWithUpcomingSessions.push({
       id: b.mentor.id,
-      name: b.mentor.name,
-      image: trimLargeDataUrlField(b.mentor.image),
-      mentorTitle: b.mentor.mentorTitle,
-      mentorCompany: b.mentor.mentorCompany,
+      name: closed ? "Former member" : b.mentor.name,
+      image: closed ? null : trimLargeDataUrlField(b.mentor.image),
+      mentorTitle: closed ? null : b.mentor.mentorTitle,
+      mentorCompany: closed ? null : b.mentor.mentorCompany,
       nextSessionStart: b.startAt.toISOString(),
       googleMeetLink: b.googleMeetLink ?? null,
     });
@@ -125,7 +126,7 @@ async function loadStudentDashboardPayload(userId: string): Promise<StudentDashb
   const upcomingSessions = upcomingBookings.slice(0, 8).map((b) => ({
     id: b.id,
     mentorId: b.mentorId,
-    mentorName: b.mentor.name?.trim() || "Mentor",
+    mentorName: b.mentor.accountDeletedAt ? "Former member" : b.mentor.name?.trim() || "Mentor",
     startAt: b.startAt.toISOString(),
     endAt: b.endAt.toISOString(),
     googleMeetLink: b.googleMeetLink ?? null,

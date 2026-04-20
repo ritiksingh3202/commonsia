@@ -19,7 +19,7 @@ export function ProfileSettingsMenu({ editProfileHref, compact }: Props) {
   async function handleDeleteAccount() {
     if (
       !window.confirm(
-        "Permanently delete your Commonsia account and all associated data? This cannot be undone.",
+        "Close your Commonsia account? Your profile will disappear from the site and you will be signed out. Some records may be kept for history, but they will not be shown publicly.",
       )
     ) {
       return;

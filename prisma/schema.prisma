@@ -86,6 +86,8 @@ model User {
   mentorOnboardingComplete Boolean   @default(false)
   /// Google Calendar OAuth refresh token (mentor “Connect Calendar” flow)
   googleCalendarRefreshToken String? @db.Text
+  /// Set when the user closes their account; row kept for history / FKs. Excluded from public UI and sign-in.
+  accountDeletedAt           DateTime?
   accounts         Account[]
   sessions         Session[]
   chatThreadsAsStudent ChatThread[] @relation("ChatStudent")

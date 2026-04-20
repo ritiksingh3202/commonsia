@@ -4,6 +4,7 @@ import { unstable_cache } from "next/cache";
 import { formatStudentSubtitle } from "@/components/student/student-profile-types";
 import { CACHE_TAG_HOME_TESTIMONIALS } from "@/lib/cache-tags";
 import { prisma } from "@/lib/prisma";
+import { prismaGeneratedClientHasAccountDeletedAt } from "@/lib/user-active";
 
 export type HomeTestimonialCard = {
   id: string;
@@ -76,6 +77,7 @@ async function fetchHomeTestimonialsUncached(limit: number): Promise<HomeTestimo
         u.major
       FROM "SessionReview" sr
       INNER JOIN "User" u ON u.id = sr."studentId"
+      ${prismaGeneratedClientHasAccountDeletedAt() ? Prisma.sql`WHERE u."accountDeletedAt" IS NULL` : Prisma.empty}
       ORDER BY sr."createdAt" DESC
       LIMIT ${limit}
     `);

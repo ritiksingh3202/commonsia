@@ -1,4 +1,5 @@
 import { auth } from "@/auth";
+import { getActiveUserWhere } from "@/lib/user-active";
 import {
   delKeys,
   invalidatePublicMentorsList,
@@ -46,6 +47,14 @@ export async function PATCH(req: Request) {
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const alive = await prisma.user.findFirst({
+    where: { id: session.user.id, ...getActiveUserWhere() },
+    select: { id: true },
+  });
+  if (!alive) {
+    return NextResponse.json({ error: "Account closed." }, { status: 403 });
   }
 
   const body = (await req.json()) as ProfilePayload;

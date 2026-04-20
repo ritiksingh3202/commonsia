@@ -9,6 +9,7 @@ import { resolveAuthSecret } from "@/lib/auth-secret";
 import { isDevRequestHost } from "@/lib/dev-request-host";
 import { getGoogleOAuthClient, getLinkedInOAuthClient } from "@/lib/oauth-credentials";
 import { prisma } from "@/lib/prisma";
+import { getActiveUserWhere, prismaGeneratedClientHasAccountDeletedAt } from "@/lib/user-active";
 
 /**
  * OAuth (Auth.js v5):
@@ -150,7 +151,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth((req) => {
           if (!email || !password) return null;
 
           try {
-            const user = await prisma.user.findUnique({ where: { email } });
+            const user = await prisma.user.findFirst({
+              where: { email, ...getActiveUserWhere() },
+            });
             if (!user?.passwordHash) return null;
 
             const ok = await bcrypt.compare(password, user.passwordHash);
@@ -183,11 +186,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth((req) => {
         const uid = (token.id as string | undefined) ?? (token.sub as string | undefined);
         if (uid && (user || trigger === "update")) {
           try {
+            const hasDel = prismaGeneratedClientHasAccountDeletedAt();
             const u = await prisma.user.findUnique({
               where: { id: uid },
-              select: { role: true },
+              select: hasDel ? { role: true, accountDeletedAt: true } : { role: true },
             });
-            token.role = u?.role ?? null;
+            const closed = hasDel && u && "accountDeletedAt" in u && Boolean(u.accountDeletedAt);
+            token.role = closed ? null : (u?.role ?? null);
           } catch {
             token.role = null;
           }
@@ -195,8 +200,32 @@ export const { handlers, auth, signIn, signOut } = NextAuth((req) => {
         return token;
       },
       async session({ session, token }) {
-        if (session.user) {
-          session.user.id = (token.id as string) ?? (token.sub as string);
+        if (!session.user) return session;
+        const uid = ((token.id as string | undefined) ?? (token.sub as string | undefined))?.trim();
+        if (!uid) {
+          session.user.id = "";
+          session.user.role = (token.role as string | null) ?? null;
+          return session;
+        }
+        try {
+          const hasDel = prismaGeneratedClientHasAccountDeletedAt();
+          const u = await prisma.user.findUnique({
+            where: { id: uid },
+            select: hasDel ? { accountDeletedAt: true, role: true } : { role: true },
+          });
+          const closed = hasDel && u && "accountDeletedAt" in u && Boolean(u.accountDeletedAt);
+          if (!u || closed) {
+            session.user.id = "";
+            session.user.email = null;
+            session.user.name = null;
+            session.user.image = null;
+            session.user.role = null;
+            return session;
+          }
+          session.user.id = uid;
+          session.user.role = u.role ?? null;
+        } catch {
+          session.user.id = uid;
           session.user.role = (token.role as string | null) ?? null;
         }
         return session;

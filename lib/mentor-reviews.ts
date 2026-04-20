@@ -4,6 +4,7 @@ import { unstable_cache } from "next/cache";
 import { formatStudentSubtitle } from "@/components/student/student-profile-types";
 import { mentorReviewsTag } from "@/lib/cache-tags";
 import { prisma } from "@/lib/prisma";
+import { prismaGeneratedClientHasAccountDeletedAt } from "@/lib/user-active";
 
 export type PublicMentorReview = {
   id: string;
@@ -72,6 +73,7 @@ async function fetchPublicReviewsUncached(mentorUserId: string, limit: number): 
       FROM "SessionReview" sr
       INNER JOIN "User" u ON u.id = sr."studentId"
       WHERE sr."mentorId" = ${mentorUserId}
+        ${prismaGeneratedClientHasAccountDeletedAt() ? Prisma.sql`AND u."accountDeletedAt" IS NULL` : Prisma.empty}
       ORDER BY sr."createdAt" DESC
       LIMIT ${limit}
     `);

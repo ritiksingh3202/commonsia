@@ -2,30 +2,35 @@ import { auth } from "@/auth";
 import { CHAT_ACTIVE, CHAT_DECLINED, CHAT_PENDING } from "@/lib/chat-thread-status";
 import { CacheKeys, CacheTtl, invalidateChatThreadsForParticipants, withJsonCache } from "@/lib/redis-cache";
 import { prisma } from "@/lib/prisma";
+import { getActiveUserWhere, prismaGeneratedClientHasAccountDeletedAt } from "@/lib/user-active";
 import { NextResponse } from "next/server";
 
-const peerSelect = {
-  id: true,
-  name: true,
-  email: true,
-  image: true,
-  role: true,
-  mentorTitle: true,
-  mentorCompany: true,
-  university: true,
-  yearOfStudy: true,
-  major: true,
-  linkedinUrl: true,
-  instagramUrl: true,
-  whatsappUrl: true,
-  portfolioUrl: true,
-} as const;
+function peerSelect() {
+  return {
+    id: true,
+    name: true,
+    email: true,
+    image: true,
+    ...(prismaGeneratedClientHasAccountDeletedAt() ? { accountDeletedAt: true as const } : {}),
+    role: true,
+    mentorTitle: true,
+    mentorCompany: true,
+    university: true,
+    yearOfStudy: true,
+    major: true,
+    linkedinUrl: true,
+    instagramUrl: true,
+    whatsappUrl: true,
+    portfolioUrl: true,
+  } as const;
+}
 
 type PeerRow = {
   id: string;
   name: string | null;
   email: string | null;
   image: string | null;
+  accountDeletedAt?: Date | null;
   role: string | null;
   mentorTitle: string | null;
   mentorCompany: string | null;
@@ -39,6 +44,21 @@ type PeerRow = {
 };
 
 function publicPeerPayload(peer: PeerRow) {
+  if (peer.accountDeletedAt != null) {
+    const r = peer.role;
+    return {
+      id: peer.id,
+      name: "Former member",
+      email: null,
+      image: null,
+      role: r === "mentor" || r === "student" ? r : null,
+      subtitle: "Account closed",
+      linkedinUrl: null,
+      instagramUrl: null,
+      whatsappUrl: null,
+      portfolioUrl: null,
+    };
+  }
   const r = peer.role;
   return {
     id: peer.id,
@@ -87,8 +107,8 @@ export async function GET() {
       where,
       orderBy: { updatedAt: "desc" },
       include: {
-        student: { select: peerSelect },
-        mentor: { select: peerSelect },
+        student: { select: peerSelect() },
+        mentor: { select: peerSelect() },
         messages: {
           orderBy: { createdAt: "desc" },
           take: 1,
@@ -139,8 +159,8 @@ export async function POST(req: Request) {
       where: { id: session.user.id },
       select: { id: true, role: true },
     }),
-    prisma.user.findUnique({
-      where: { id: peerUserId },
+    prisma.user.findFirst({
+      where: { id: peerUserId, ...getActiveUserWhere() },
       select: { id: true, role: true },
     }),
   ]);
@@ -193,8 +213,8 @@ export async function POST(req: Request) {
   const fresh = await prisma.chatThread.findUniqueOrThrow({
     where: { id: thread.id },
     include: {
-      student: { select: peerSelect },
-      mentor: { select: peerSelect },
+      student: { select: peerSelect() },
+      mentor: { select: peerSelect() },
       messages: {
         orderBy: { createdAt: "desc" },
         take: 1,

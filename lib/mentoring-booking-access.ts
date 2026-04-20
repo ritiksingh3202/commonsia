@@ -3,6 +3,8 @@ import { randomUUID } from "crypto";
 import type { PrismaClient } from "@prisma/client";
 import { Prisma } from "@prisma/client";
 
+import { prismaGeneratedClientHasAccountDeletedAt } from "@/lib/user-active";
+
 /** Shape used by student dashboard (matches Prisma `include: { mentor: ... }`). */
 export type MentoringBookingWithMentor = {
   id: string;
@@ -17,6 +19,7 @@ export type MentoringBookingWithMentor = {
     image: string | null;
     mentorTitle: string | null;
     mentorCompany: string | null;
+    accountDeletedAt?: Date | null;
   };
 };
 
@@ -42,23 +45,28 @@ export async function findUpcomingBookingsWithMentors(
   now: Date,
 ): Promise<MentoringBookingWithMentor[]> {
   const d = mbDelegate(prisma);
+  const mentorSelect = {
+    id: true,
+    name: true,
+    image: true,
+    mentorTitle: true,
+    mentorCompany: true,
+    ...(prismaGeneratedClientHasAccountDeletedAt() ? { accountDeletedAt: true as const } : {}),
+  } as const;
+
   if (d) {
     return d.findMany({
       where: { studentId, endAt: { gte: now } },
       orderBy: { startAt: "asc" },
       include: {
         mentor: {
-          select: {
-            id: true,
-            name: true,
-            image: true,
-            mentorTitle: true,
-            mentorCompany: true,
-          },
+          select: mentorSelect,
         },
       },
     });
   }
+
+  const hasDel = prismaGeneratedClientHasAccountDeletedAt();
 
   try {
     const rows = await prisma.$queryRaw<
@@ -74,6 +82,7 @@ export async function findUpcomingBookingsWithMentors(
         m_image: string | null;
         m_title: string | null;
         m_company: string | null;
+        m_deleted?: Date | null;
       }[]
     >(Prisma.sql`
       SELECT
@@ -88,6 +97,7 @@ export async function findUpcomingBookingsWithMentors(
         m.image AS "m_image",
         m."mentorTitle" AS "m_title",
         m."mentorCompany" AS "m_company"
+        ${hasDel ? Prisma.sql`, m."accountDeletedAt" AS "m_deleted"` : Prisma.empty}
       FROM "MentoringBooking" b
       INNER JOIN "User" m ON m.id = b."mentorId"
       WHERE b."studentId" = ${studentId} AND b."endAt" >= ${now}
@@ -106,6 +116,7 @@ export async function findUpcomingBookingsWithMentors(
         image: r.m_image,
         mentorTitle: r.m_title,
         mentorCompany: r.m_company,
+        accountDeletedAt: hasDel ? r.m_deleted ?? null : null,
       },
     }));
   } catch {
