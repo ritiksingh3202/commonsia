@@ -7,6 +7,11 @@ import { prisma } from "@/lib/prisma";
 import { invalidatePublicMentorsList, invalidateStudentDashboard } from "@/lib/redis-cache";
 import { prismaGeneratedClientHasAccountDeletedAt } from "@/lib/user-active";
 
+function isUnknownAccountDeletedArgError(e: unknown): boolean {
+  const m = String(e instanceof Error ? e.message : e);
+  return m.includes("Unknown argument") && m.includes("accountDeletedAt");
+}
+
 /**
  * Close the signed-in account: keep the `User` row for history / FKs, clear auth fields,
  * remove Auth.js `Session` / `Account` rows, and hide the user from the site.
@@ -30,15 +35,9 @@ export async function DELETE(req: Request) {
 
   const userId = session.user.id;
 
-  /** Prisma client must include `accountDeletedAt` or update/where throws (common if `prisma generate` failed). */
-  if (!prismaGeneratedClientHasAccountDeletedAt()) {
-    const u = await prisma.user.findUnique({ where: { id: userId }, select: { role: true } });
-    if (!u) {
-      return NextResponse.json({ error: "User not found." }, { status: 404 });
-    }
-    await prisma.user.delete({ where: { id: userId } });
+  const finishAfterClose = async (role: string | null | undefined) => {
     invalidateStudentDashboard(userId);
-    if (u.role === "mentor") {
+    if (role === "mentor") {
       invalidatePublicMentorsList();
     }
     try {
@@ -47,44 +46,50 @@ export async function DELETE(req: Request) {
     } catch {
       /* outside Next cache context */
     }
-    return NextResponse.json({ ok: true });
-  }
+  };
 
-  const existing = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { accountDeletedAt: true, role: true },
-  });
+  const existing = prismaGeneratedClientHasAccountDeletedAt()
+    ? await prisma.user.findUnique({
+        where: { id: userId },
+        select: { accountDeletedAt: true, role: true },
+      })
+    : await prisma.user.findUnique({
+        where: { id: userId },
+        select: { role: true },
+      });
   if (!existing) {
     return NextResponse.json({ error: "User not found." }, { status: 404 });
   }
-  if (existing.accountDeletedAt) {
+  if ("accountDeletedAt" in existing && existing.accountDeletedAt) {
     return NextResponse.json({ ok: true });
   }
 
-  await prisma.$transaction([
-    prisma.session.deleteMany({ where: { userId } }),
-    prisma.account.deleteMany({ where: { userId } }),
-    prisma.user.update({
-      where: { id: userId },
-      data: {
-        accountDeletedAt: new Date(),
-        email: null,
-        passwordHash: null,
-        googleCalendarRefreshToken: null,
-      },
-    }),
-  ]);
+  const role = existing.role;
 
-  invalidateStudentDashboard(userId);
-  if (existing.role === "mentor") {
-    invalidatePublicMentorsList();
-  }
   try {
-    revalidateTag(CACHE_TAG_HOME_TESTIMONIALS, "max");
-    revalidateTag(mentorReviewsTag(userId), "max");
-  } catch {
-    /* outside Next cache context */
+    await prisma.$transaction([
+      prisma.session.deleteMany({ where: { userId } }),
+      prisma.account.deleteMany({ where: { userId } }),
+      prisma.user.update({
+        where: { id: userId },
+        data: {
+          accountDeletedAt: new Date(),
+          email: null,
+          passwordHash: null,
+          googleCalendarRefreshToken: null,
+        },
+      }),
+    ]);
+  } catch (e) {
+    if (isUnknownAccountDeletedArgError(e)) {
+      await prisma.user.delete({ where: { id: userId } });
+      await finishAfterClose(role);
+      return NextResponse.json({ ok: true });
+    }
+    throw e;
   }
+
+  await finishAfterClose(role);
 
   return NextResponse.json({ ok: true });
 }
