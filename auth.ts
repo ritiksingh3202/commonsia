@@ -216,9 +216,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth((req) => {
           const closed = hasDel && u && "accountDeletedAt" in u && Boolean(u.accountDeletedAt);
           if (!u || closed) {
             session.user.id = "";
-            session.user.email = null;
-            session.user.name = null;
-            session.user.image = null;
+            /** Cleared profile — Auth.js types use `string` for these fields, not `null`. */
+            session.user.email = "";
+            session.user.name = "";
+            session.user.image = "";
             session.user.role = null;
             return session;
           }
