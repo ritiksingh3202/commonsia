@@ -82,9 +82,23 @@ export async function DELETE(req: Request) {
     ]);
   } catch (e) {
     if (isUnknownAccountDeletedArgError(e)) {
-      await prisma.user.delete({ where: { id: userId } });
-      await finishAfterClose(role);
-      return NextResponse.json({ ok: true });
+      /**
+       * Never hard-delete here: breaks FKs and is wrong for “soft close”. Previously we fell back to
+       * `user.delete` when the column was missing — that corrupts OAuth-linked history and causes
+       * opaque Prisma errors in production if migrations lag.
+       */
+      console.error(
+        "[api/account] User.accountDeletedAt is missing in the database. Run `npx prisma migrate deploy` " +
+          "(or `prisma db push` on a fresh dev DB) against this project's DATABASE_URL.",
+        e,
+      );
+      return NextResponse.json(
+        {
+          error:
+            "Account closure is unavailable until the database schema is updated. Ask the site owner to run Prisma migrations on production.",
+        },
+        { status: 503 },
+      );
     }
     throw e;
   }

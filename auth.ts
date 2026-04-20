@@ -215,6 +215,27 @@ export const { handlers, auth, signIn, signOut } = NextAuth((req) => {
     ],
     callbacks: {
       /**
+       * Block OAuth (and any flow that passes a DB user id) for soft-deleted accounts. Without this,
+       * edge cases around stale JWTs or adapter timing can surface confusing “half signed-in” states.
+       */
+      async signIn({ user }) {
+        const uid = typeof user?.id === "string" ? user.id.trim() : "";
+        if (!uid) return true;
+        if (!prismaGeneratedClientHasAccountDeletedAt()) return true;
+        try {
+          const row = await prisma.user.findUnique({
+            where: { id: uid },
+            select: { accountDeletedAt: true },
+          });
+          if (row?.accountDeletedAt) {
+            return "/auth/error?error=AccountClosed";
+          }
+        } catch {
+          /* allow sign-in if DB check fails — session/jwt callbacks still clear closed users */
+        }
+        return true;
+      },
+      /**
        * Default Auth.js behavior: only same-origin or relative URLs after sign-in.
        * Prevents open redirects if a forged `callbackUrl` slips through.
        */
