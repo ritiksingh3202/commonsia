@@ -43,7 +43,7 @@ export function MentorSetupStep2({
   linkedInConnected?: boolean;
 }) {
   const router = useRouter();
-  const scheduleSave = useProfileAutosave();
+  const { schedule: scheduleSave, flushNow } = useProfileAutosave();
 
   const initialSet = useMemo(
     () => selectionsFromStored(initial?.mentorMentorshipFocus),
@@ -85,6 +85,7 @@ export function MentorSetupStep2({
               return;
             }
             const serialized = serializeSelections(selected);
+            await flushNow();
             const res = await fetch("/api/profile", {
               method: "PATCH",
               headers: { "Content-Type": "application/json" },

@@ -27,7 +27,7 @@ export function StudentSetupStep3({
 }) {
   const router = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
-  const scheduleSave = useProfileAutosave();
+  const { schedule: scheduleSave, flushNow } = useProfileAutosave();
 
   const [bio, setBio] = useState(initial?.bio ?? "");
   const [linkedinUrl, setLinkedinUrl] = useState(initial?.linkedinUrl ?? "");
@@ -65,6 +65,7 @@ export function StudentSetupStep3({
               window.alert("Please connect Google Calendar before completing your profile.");
               return;
             }
+            await flushNow();
             const res = await fetch("/api/profile", {
               method: "PATCH",
               headers: { "Content-Type": "application/json" },

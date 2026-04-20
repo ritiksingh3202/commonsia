@@ -66,7 +66,7 @@ export function StudentSetupStep2({
   googleCalendarConnected?: boolean;
 }) {
   const router = useRouter();
-  const scheduleSave = useProfileAutosave();
+  const { schedule: scheduleSave, flushNow } = useProfileAutosave();
 
   const interestDerived = useMemo(
     () =>
@@ -181,6 +181,7 @@ export function StudentSetupStep2({
               softwareParts.push(extra ? `Other: ${extra}` : SOFTWARE_OTHER_LABEL);
             }
 
+            await flushNow();
             const res = await fetch("/api/profile", {
               method: "PATCH",
               headers: { "Content-Type": "application/json" },

@@ -52,7 +52,7 @@ export function MentorSetupStep3({
   linkedInConnected?: boolean;
 }) {
   const router = useRouter();
-  const scheduleSave = useProfileAutosave();
+  const { schedule: scheduleSave, flushNow } = useProfileAutosave();
 
   const [bio, setBio] = useState(initial?.bio ?? "");
   const [linkedinUrl, setLinkedinUrl] = useState(initial?.linkedinUrl ?? "");
@@ -132,6 +132,7 @@ export function MentorSetupStep3({
               window.alert("Enter a valid LinkedIn profile URL.");
               return;
             }
+            await flushNow();
             const res = await fetch("/api/profile", {
               method: "PATCH",
               headers: { "Content-Type": "application/json" },

@@ -44,7 +44,7 @@ export function MentorSetupStep1({
   linkedInConnected?: boolean;
 }) {
   const router = useRouter();
-  const scheduleSave = useProfileAutosave();
+  const { schedule: scheduleSave, flushNow } = useProfileAutosave();
 
   const expertiseDerived = useMemo(
     () => expertiseFromSnapshot(initial?.mentorExpertise),
@@ -131,6 +131,7 @@ export function MentorSetupStep1({
               otherExpertise,
               MENTOR_EXPERTISE_OTHER,
             );
+            await flushNow();
             const res = await fetch("/api/profile", {
               method: "PATCH",
               headers: { "Content-Type": "application/json" },

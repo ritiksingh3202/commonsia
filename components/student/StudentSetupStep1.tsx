@@ -36,7 +36,7 @@ export function StudentSetupStep1({
   googleCalendarConnected?: boolean;
 }) {
   const router = useRouter();
-  const scheduleSave = useProfileAutosave();
+  const { schedule: scheduleSave, flushNow } = useProfileAutosave();
 
   const { program: p0, majorOther: mo0 } = useMemo(
     () => programStateFromMajor(initial?.major ?? null),
@@ -107,6 +107,7 @@ export function StudentSetupStep1({
               window.alert("Please select your major / program.");
               return;
             }
+            await flushNow();
             const res = await fetch("/api/profile", {
               method: "PATCH",
               headers: { "Content-Type": "application/json" },
