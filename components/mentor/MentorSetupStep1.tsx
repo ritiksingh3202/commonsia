@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
-import { COUNTRY_OPTIONS, citiesForCountry } from "@/lib/country-city-options";
+import { CountryCityComboboxFields } from "@/components/shared/CountryCityComboboxFields";
 import { SetupLinkedInNotice } from "@/components/setup/SetupLinkedInNotice";
 import {
   MENTOR_EXPERTISE_OTHER,
@@ -59,15 +59,6 @@ export function MentorSetupStep1({
   const [expertise, setExpertise] = useState<Set<string>>(() => new Set(expertiseDerived.sel));
   const [otherExpertise, setOtherExpertise] = useState(expertiseDerived.other);
 
-  const cityOptions = useMemo(() => (country ? citiesForCountry(country) : []), [country]);
-
-  useEffect(() => {
-    if (!country) return;
-    if (city && !cityOptions.includes(city)) {
-      setCity("");
-    }
-  }, [country, city, cityOptions]);
-
   useEffect(() => {
     const d = expertiseFromSnapshot(initial?.mentorExpertise);
     /* eslint-disable react-hooks/set-state-in-effect -- reset local form when saved mentor snapshot changes */
@@ -107,11 +98,11 @@ export function MentorSetupStep1({
           onSubmit={async (e) => {
             e.preventDefault();
             if (!country.trim()) {
-              window.alert("Please select your country.");
+              window.alert("Please enter your country.");
               return;
             }
             if (!city.trim()) {
-              window.alert("Please select your city.");
+              window.alert("Please enter your city.");
               return;
             }
             if (!title.trim() || !company.trim() || !years.trim()) {
@@ -152,72 +143,15 @@ export function MentorSetupStep1({
             router.push("/mentor/setup/2");
           }}
         >
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-1.5">
-              <label htmlFor="mentorCountry" className={setupLabel}>
-                Country <span className="text-primary">*</span>
-              </label>
-              <div className="relative">
-                <select
-                  id="mentorCountry"
-                  name="country"
-                  value={country}
-                  onChange={(e) => {
-                    const v = e.target.value;
-                    setCountry(v);
-                    setCity("");
-                    scheduleSave({ role: "mentor", country: v.trim() || null, city: null });
-                  }}
-                  className={`${setupField} appearance-none pr-9`}
-                  required
-                >
-                  <option value="" disabled>
-                    Select country
-                  </option>
-                  {COUNTRY_OPTIONS.map((c) => (
-                    <option key={c} value={c}>
-                      {c}
-                    </option>
-                  ))}
-                </select>
-                <span className="pointer-events-none absolute right-2.5 top-1/2 size-4 -translate-y-1/2 text-[#717182]">
-                  <ChevronDown />
-                </span>
-              </div>
-            </div>
-            <div className="space-y-1.5">
-              <label htmlFor="mentorCity" className={setupLabel}>
-                City <span className="text-primary">*</span>
-              </label>
-              <div className="relative">
-                <select
-                  id="mentorCity"
-                  name="city"
-                  value={city}
-                  onChange={(e) => {
-                    const v = e.target.value;
-                    setCity(v);
-                    scheduleSave({ role: "mentor", city: v.trim() || null });
-                  }}
-                  className={`${setupField} appearance-none pr-9`}
-                  required
-                  disabled={!country}
-                >
-                  <option value="" disabled>
-                    {country ? "Select city" : "Select country first"}
-                  </option>
-                  {cityOptions.map((c) => (
-                    <option key={c} value={c}>
-                      {c}
-                    </option>
-                  ))}
-                </select>
-                <span className="pointer-events-none absolute right-2.5 top-1/2 size-4 -translate-y-1/2 text-[#717182]">
-                  <ChevronDown />
-                </span>
-              </div>
-            </div>
-          </div>
+          <CountryCityComboboxFields
+            countryInputId="mentorCountry"
+            cityInputId="mentorCity"
+            country={country}
+            city={city}
+            setCountry={setCountry}
+            setCity={setCity}
+            scheduleProfilePatch={(patch) => scheduleSave({ role: "mentor", ...patch })}
+          />
 
           <div className="grid gap-4 sm:gap-5 lg:grid-cols-3">
             <div className="space-y-1.5">

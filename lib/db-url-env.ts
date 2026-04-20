@@ -42,6 +42,28 @@ export function deriveMissingDirectUrlFromDatabaseUrl(databaseUrl: string): stri
 }
 
 /**
+ * `schema.prisma` uses `directUrl = env("DIRECT_URL")`. Local `.env` often only sets `DATABASE_URL`;
+ * Vercel fills `DIRECT_URL` in `next.config.ts`. Mirror that here so Prisma + PrismaAdapter behave the same.
+ */
+export function ensureDirectUrlForPrismaRuntime(): void {
+  normalizePostgresUrlEnvVar("DATABASE_URL");
+  normalizePostgresUrlEnvVar("DIRECT_URL");
+  const existing = (process.env.DIRECT_URL ?? "").trim();
+  if (existing) return;
+  const dbUrl = (process.env.DATABASE_URL ?? "").trim();
+  if (!dbUrl) return;
+  const derived = deriveMissingDirectUrlFromDatabaseUrl(dbUrl);
+  process.env.DIRECT_URL = derived ?? dbUrl;
+  if (process.env.NODE_ENV !== "production") {
+    console.warn(
+      "[commonsia] DIRECT_URL was empty; set from DATABASE_URL" +
+        (derived ? " (6543 → 5432 session pooler)" : "") +
+        ". Prefer defining both in .env (see .env.example).",
+    );
+  }
+}
+
+/**
  * Call from `next.config.ts` on Vercel so misconfigured env fails immediately with a clear message.
  */
 export function assertValidDatabaseUrlForVercelBuild(): void {

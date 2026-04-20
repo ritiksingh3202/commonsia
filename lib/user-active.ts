@@ -50,12 +50,27 @@ export function initSoftDeleteRuntimeSupport(client: PrismaClient): void {
       },
       (e: unknown) => {
         const m = String(e instanceof Error ? e.message : e);
+        const code =
+          typeof e === "object" && e !== null && "code" in e ? String((e as { code?: string }).code) : "";
         if (m.includes("Unknown argument") && m.includes("accountDeletedAt")) {
           softDeleteSupport = "no";
-        } else {
-          /** DB / network errors — assume field exists so we do not silently drop soft-delete rules. */
-          softDeleteSupport = "yes";
+          return;
         }
+        /** Schema not migrated — Prisma P2022 / "column … does not exist" (Auth adapter then fails as Configuration). */
+        if (
+          code === "P2022" ||
+          (m.includes("accountDeletedAt") &&
+            (m.includes("does not exist in the current database") || m.includes("does not exist")))
+        ) {
+          softDeleteSupport = "no";
+          console.warn(
+            "[commonsia] User.accountDeletedAt is missing in the database. Run `npx prisma db push` or " +
+              "`npx prisma migrate deploy` so Prisma schema matches Postgres. OAuth sign-in will fail until then.",
+          );
+          return;
+        }
+        /** Other DB / network errors — assume field exists so we do not silently drop soft-delete rules. */
+        softDeleteSupport = "yes";
       },
     );
 }

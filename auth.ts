@@ -104,10 +104,17 @@ export const { handlers, auth, signIn, signOut } = NextAuth((req) => {
   const host = req?.headers.get("x-forwarded-host") ?? req?.headers.get("host");
   const proto = req?.headers.get("x-forwarded-proto") ?? "http";
   const isLocal = isDevRequestHost(host);
+  const isNonProduction = process.env.NODE_ENV !== "production";
+  const hostname = (host ?? "").split(":")[0]?.toLowerCase() ?? "";
+  /** Avoid overwriting `AUTH_URL` on real Vercel preview/prod hosts when `NODE_ENV` is development (rare). */
+  const isVercelAppHost = hostname.endsWith(".vercel.app");
 
-  // On localhost / LAN (dev or `next start`), force canonical URL to the current origin so Auth.js
-  // callbacks / CSRF match the browser — even when `.env` still has a production AUTH_URL.
-  if (isLocal && host) {
+  // Pin Auth.js public URL to the **current request** origin in dev (localhost, LAN, ngrok, etc.) so
+  // OAuth callbacks and CSRF match the browser even when `.env` still has a production AUTH_URL.
+  const shouldPinAuthOriginToRequest =
+    Boolean(host) && (isLocal || (isNonProduction && !isVercelAppHost));
+
+  if (shouldPinAuthOriginToRequest) {
     const origin = `${proto === "https" ? "https" : "http"}://${host}`;
     process.env.AUTH_URL = origin;
     process.env.NEXTAUTH_URL = origin;
@@ -120,10 +127,18 @@ export const { handlers, auth, signIn, signOut } = NextAuth((req) => {
    */
   const useSecureCookies = proto === "https";
 
+  const secret = resolveAuthSecret(host);
+  if (!secret) {
+    console.error(
+      "[auth] Missing AUTH_SECRET / NEXTAUTH_SECRET in production (non-local host). " +
+        "Sign-in will fail with error=Configuration until this is set (e.g. `npx auth secret`).",
+    );
+  }
+
   return {
     adapter: PrismaAdapter(prisma),
     trustHost: true,
-    secret: resolveAuthSecret(host),
+    secret,
     basePath: "/api/auth",
     cookies: cookieConfig(useSecureCookies),
     pages: {

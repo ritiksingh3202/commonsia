@@ -6,7 +6,7 @@ export function authErrorMessage(code: string | undefined): string {
     case "MissingCSRF":
       return "Your session token expired. Refresh this page and try signing in again.";
     case "Configuration":
-      return "Sign-in could not finish because the app server could not use your database (invalid Postgres password or wrong pooler username). Google and LinkedIn sign-in need a working database connection. Fix DATABASE_URL in .env, then run npm run db:ping to verify. Email/password sign-in needs the same fix.";
+      return "Sign-in could not finish due to server configuration. Check the terminal running next dev for the real error. Common causes: database schema out of date (run npx prisma db push after pulling code — missing User columns break OAuth), Postgres rejected the connection (wrong DATABASE_URL or pooler user postgres.<project-ref>), PrismaAdapter errors, missing AUTH_SECRET in production, or AUTH_URL not matching the site you opened. Run npm run db:ping to verify DB credentials.";
     case "CredentialsSignin":
       return "Invalid email or password. If you have not signed up yet, create an account first. If you use Google or LinkedIn, sign in with that option below.";
     case "AccessDenied":

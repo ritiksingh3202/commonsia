@@ -51,8 +51,46 @@ function loadEnv() {
   }
 }
 
+/** Keep in sync with `deriveMissingDirectUrlFromDatabaseUrl` in `lib/db-url-env.ts`. */
+function deriveMissingDirectUrlFromDatabaseUrl(databaseUrl) {
+  const u = databaseUrl.trim();
+  if (!u) return null;
+  const isPooler = /pooler\.supabase\.(com|co)/i.test(u);
+  if (!isPooler || !u.includes(":6543")) return null;
+  try {
+    const asHttp = u.replace(/^postgresql:\/\//i, "http://").replace(/^postgres:\/\//i, "http://");
+    const parsed = new URL(asHttp);
+    if (parsed.port !== "6543") return null;
+    parsed.port = "5432";
+    const sp = new URLSearchParams(parsed.search);
+    sp.delete("pgbouncer");
+    const q = sp.toString();
+    parsed.search = q ? `?${q}` : "";
+    const scheme = u.startsWith("postgres://") ? "postgres:" : "postgresql:";
+    return parsed.toString().replace(/^http:\/\//i, `${scheme}//`);
+  } catch {
+    return null;
+  }
+}
+
+function ensureDirectUrlLikeApp() {
+  const db = (process.env.DATABASE_URL ?? "").trim();
+  let d = (process.env.DIRECT_URL ?? "").trim();
+  if (d || !db) return;
+  const derived = deriveMissingDirectUrlFromDatabaseUrl(db);
+  process.env.DIRECT_URL = derived ?? db;
+  if (derived) {
+    console.warn(
+      "[db-ping] DIRECT_URL was unset; derived session pooler URL from DATABASE_URL (same as Next.js runtime).",
+    );
+  } else {
+    console.warn("[db-ping] DIRECT_URL was unset; defaulted to DATABASE_URL.");
+  }
+}
+
 async function main() {
   loadEnv();
+  ensureDirectUrlLikeApp();
   if (!process.env.DATABASE_URL) {
     console.error("Missing DATABASE_URL after loading .env / .env.local");
     process.exit(1);

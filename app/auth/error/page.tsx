@@ -30,14 +30,16 @@ export default async function AuthErrorPage({
               <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-3 text-left text-[12px] leading-relaxed text-amber-950">
                 <p className="font-medium">Most common fix (your server log usually shows this)</p>
                 <p className="mt-1 text-amber-900/90">
-                  Prisma <span className="font-mono">P1000</span> / &quot;Authentication failed&quot; means Postgres rejected
-                  the <strong>database password</strong> in <span className="font-mono">DATABASE_URL</span> (not your
-                  Supabase <span className="font-mono">sb_publishable_…</span> key). In Supabase: Settings → Database →
-                  <strong> Reset database password</strong> → copy the new <strong>Connection pooling</strong> URIs from the
-                  dashboard (do not hand-edit an old password). User must be{" "}
-                  <span className="font-mono">postgres.&lt;project-ref&gt;</span> on the pooler host. If you use{" "}
-                  <span className="font-mono">.env.local</span>, it overrides <span className="font-mono">.env</span>. Then run{" "}
-                  <span className="font-mono">npm run db:ping</span> until it prints OK, and restart{" "}
+                  <span className="font-mono">Configuration</span> is a generic Auth.js code — check the terminal running{" "}
+                  <span className="font-mono">next dev</span> for the real error. Common causes: Prisma{" "}
+                  <span className="font-mono">P1000</span> / &quot;Authentication failed&quot; (wrong DB password in{" "}
+                  <span className="font-mono">DATABASE_URL</span>, not the Supabase <span className="font-mono">sb_publishable_…</span>{" "}
+                  key; pooler user must be <span className="font-mono">postgres.&lt;project-ref&gt;</span>), missing{" "}
+                  <span className="font-mono">DIRECT_URL</span> for Supabase (see <span className="font-mono">.env.example</span>), missing{" "}
+                  <span className="font-mono">AUTH_SECRET</span> on a non-local production host, or <span className="font-mono">AUTH_URL</span>{" "}
+                  not matching the site you opened (OAuth). In Supabase: Settings → Database → reset password → paste new{" "}
+                  <strong>Connection pooling</strong> URIs. If you use <span className="font-mono">.env.local</span>, it overrides{" "}
+                  <span className="font-mono">.env</span>. Run <span className="font-mono">npm run db:ping</span> until OK, then restart{" "}
                   <span className="font-mono">npm run dev</span>.
                 </p>
               </div>
@@ -52,7 +54,9 @@ export default async function AuthErrorPage({
                     <span className="font-mono text-[11px]">6543</span>, <span className="font-mono text-[11px]">pgbouncer=true</span>) and{" "}
                     <span className="font-mono text-[11px]">DIRECT_URL</span> (session pooler, port{" "}
                     <span className="font-mono text-[11px]">5432</span>). See <span className="font-mono text-[11px]">.env.example</span>.
-                    New DB: <span className="font-mono text-[11px]">npx prisma db push</span>.
+                    New DB: <span className="font-mono text-[11px]">npx prisma db push</span>. After code updates, if logs show{" "}
+                    <span className="font-mono text-[11px]">AdapterError</span> or a missing <span className="font-mono text-[11px]">User.*</span> column, run{" "}
+                    <span className="font-mono text-[11px]">db push</span> against the same DB your app uses (including production Supabase).
                   </li>
                   <li>
                     Set <span className="font-mono text-[11px]">AUTH_SECRET</span> (or{" "}
