@@ -5,8 +5,10 @@ import { useRouter } from "next/navigation";
 
 import {
   MENTORSHIP_PREFERENCE_OPTIONS,
-  MENTORSHIP_PREFERENCE_ORDER,
+  mentorMentorshipSelectionsFromStored,
+  mentorMentorshipSerializeSelections,
 } from "@/components/mentor/mentor-setup-constants";
+import { MentorMentorshipPreferenceCard } from "@/components/mentor/MentorMentorshipPreferenceCard";
 import { MentorSetupShell } from "@/components/mentor/MentorSetupShell";
 import { SetupLinkedInNotice } from "@/components/setup/SetupLinkedInNotice";
 import { setupRequiredStar } from "@/components/student/student-ui";
@@ -22,19 +24,6 @@ const btnPrimary =
 const cardClass =
   "flex cursor-pointer gap-3 rounded-xl border border-neutral-200 bg-white p-3.5 shadow-sm transition hover:border-neutral-300 hover:bg-neutral-50/50 sm:p-4";
 
-function selectionsFromStored(raw: string | null | undefined): Set<string> {
-  const set = new Set<string>();
-  if (!raw?.trim()) return set;
-  for (const title of MENTORSHIP_PREFERENCE_ORDER) {
-    if (raw.includes(title)) set.add(title);
-  }
-  return set;
-}
-
-function serializeSelections(sel: Set<string>): string {
-  return MENTORSHIP_PREFERENCE_ORDER.filter((t) => sel.has(t)).join(",");
-}
-
 export function MentorSetupStep2({
   initial,
   linkedInConnected,
@@ -46,7 +35,7 @@ export function MentorSetupStep2({
   const { schedule: scheduleSave, flushNow } = useProfileAutosave();
 
   const initialSet = useMemo(
-    () => selectionsFromStored(initial?.mentorMentorshipFocus),
+    () => mentorMentorshipSelectionsFromStored(initial?.mentorMentorshipFocus),
     [initial?.mentorMentorshipFocus],
   );
   const [selected, setSelected] = useState(() => initialSet);
@@ -56,7 +45,7 @@ export function MentorSetupStep2({
       const next = new Set(prev);
       if (next.has(title)) next.delete(title);
       else next.add(title);
-      const serialized = serializeSelections(next);
+      const serialized = mentorMentorshipSerializeSelections(next);
       scheduleSave({ mentorMentorshipFocus: serialized || null });
       return next;
     });
@@ -84,7 +73,7 @@ export function MentorSetupStep2({
               window.alert("Please select at least one mentorship preference.");
               return;
             }
-            const serialized = serializeSelections(selected);
+            const serialized = mentorMentorshipSerializeSelections(selected);
             await flushNow();
             const res = await fetch("/api/profile", {
               method: "PATCH",
@@ -105,18 +94,15 @@ export function MentorSetupStep2({
               {MENTORSHIP_PREFERENCE_OPTIONS.map((opt) => {
                 const isOn = selected.has(opt.title);
                 return (
-                  <label key={opt.id} className={cardClass}>
-                    <input
-                      type="checkbox"
-                      checked={isOn}
-                      onChange={() => toggle(opt.title)}
-                      className="mt-0.5 size-4 shrink-0 rounded border-neutral-300 text-primary accent-primary focus:ring-2 focus:ring-primary/25"
-                    />
-                    <span className="min-w-0 text-left">
-                      <span className="block text-[13px] font-semibold text-[#0a0a0a] sm:text-sm">{opt.title}</span>
-                      <span className="mt-0.5 block text-[12px] leading-snug text-[#6b7280]">{opt.description}</span>
-                    </span>
-                  </label>
+                  <MentorMentorshipPreferenceCard
+                    key={opt.id}
+                    fieldId={`mentor-setup-mentorship-${opt.id}`}
+                    title={opt.title}
+                    description={opt.description}
+                    checked={isOn}
+                    onCheckedChange={() => toggle(opt.title)}
+                    cardClassName={cardClass}
+                  />
                 );
               })}
             </div>

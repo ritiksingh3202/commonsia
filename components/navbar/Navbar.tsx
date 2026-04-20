@@ -71,18 +71,29 @@ export function Navbar() {
     });
   }, [pathname]);
 
+  /** Defer prefetches so first paint / hydration are not competing with background RSC fetches. */
   useEffect(() => {
-    router.prefetch("/mentors");
-    router.prefetch("/contact");
-    router.prefetch("/auth");
+    const id = window.setTimeout(() => {
+      startTransition(() => {
+        router.prefetch("/mentors");
+        router.prefetch("/contact");
+        router.prefetch("/auth");
+      });
+    }, 1200);
+    return () => window.clearTimeout(id);
   }, [router]);
 
   useEffect(() => {
     if (status !== "authenticated" || !session?.user) return;
-    void router.prefetch(dashboardHref);
-    if (role === "student") void router.prefetch("/student/profile/edit");
-    if (role === "mentor") void router.prefetch("/mentor/profile/edit");
-    if (role == null) void router.prefetch("/auth/continue");
+    const id = window.setTimeout(() => {
+      startTransition(() => {
+        void router.prefetch(dashboardHref);
+        if (role === "student") void router.prefetch("/student/profile/edit");
+        if (role === "mentor") void router.prefetch("/mentor/profile/edit");
+        if (role == null) void router.prefetch("/auth/continue");
+      });
+    }, 1200);
+    return () => window.clearTimeout(id);
   }, [router, session?.user, status, dashboardHref, role]);
 
   return (

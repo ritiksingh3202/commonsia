@@ -7,6 +7,7 @@ import { MentorSetupShell } from "@/components/mentor/MentorSetupShell";
 import { SetupLinkedInNotice } from "@/components/setup/SetupLinkedInNotice";
 import { setupField, setupLabel, setupRequiredStar } from "@/components/student/student-ui";
 import { useProfileAutosave } from "@/hooks/useProfileAutosave";
+import { normalizeLinkedInUrl, normalizeWhatsappUrl } from "@/lib/mentor-contact-urls";
 import type { MentorSetupUserSnapshot } from "@/lib/setup-load-user";
 
 const btnGhost =
@@ -14,35 +15,6 @@ const btnGhost =
 
 const btnPrimary =
   "flex flex-1 items-center justify-center gap-1.5 rounded-md bg-primary py-2.5 text-[13px] font-semibold text-white shadow-sm transition-colors hover:bg-primary/90 sm:text-sm";
-
-function normalizeLinkedInUrl(raw: string): string | null {
-  const t = raw.trim();
-  if (!t) return null;
-  try {
-    const u = new URL(t.includes("://") ? t : `https://${t}`);
-    if (u.protocol !== "http:" && u.protocol !== "https:") return null;
-    return u.href;
-  } catch {
-    return null;
-  }
-}
-
-function normalizeWhatsappUrl(raw: string): string | null {
-  const t = raw.trim();
-  if (!t) return null;
-  if (/^https?:\/\//i.test(t)) {
-    try {
-      const u = new URL(t);
-      if (u.protocol === "http:" || u.protocol === "https:") return u.href;
-    } catch {
-      return null;
-    }
-    return null;
-  }
-  const digits = t.replace(/\D/g, "");
-  if (digits.length < 8) return null;
-  return `https://wa.me/${digits}`;
-}
 
 export function MentorSetupStep3({
   initial,

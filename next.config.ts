@@ -42,6 +42,10 @@ if (process.env.VERCEL === "1") {
 }
 
 const nextConfig: NextConfig = {
+  /** Tree-shake `framer-motion` so each route only ships the motion primitives it uses. */
+  experimental: {
+    optimizePackageImports: ["framer-motion"],
+  },
   poweredByHeader: false,
   /** In dev, default cover is replaced often — avoid long-lived browser / optimizer caches on this file. */
   ...(process.env.NODE_ENV === "development"

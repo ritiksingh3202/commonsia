@@ -14,7 +14,8 @@ type NotificationItem = {
   canDecline?: boolean;
 };
 
-const POLL_MS = 25_000;
+/** Slightly longer interval reduces background work on tab-heavy sessions. */
+const POLL_MS = 45_000;
 
 export function NavNotificationsBell() {
   const [open, setOpen] = useState(false);

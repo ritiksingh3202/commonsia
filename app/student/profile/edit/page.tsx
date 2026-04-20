@@ -1,11 +1,22 @@
 import type { Metadata } from "next";
+import dynamic from "next/dynamic";
 import { redirect } from "next/navigation";
-import { Suspense } from "react";
 
 import { auth } from "@/auth";
-import { EditProfileForm } from "@/components/student/edit-profile/EditProfileForm";
 import { getGoogleCalendarRefreshTokenForUser } from "@/lib/google-calendar-oauth-client";
 import { prisma } from "@/lib/prisma";
+
+const EditProfileForm = dynamic(
+  () => import("@/components/student/edit-profile/EditProfileForm").then((m) => m.EditProfileForm),
+  {
+    loading: () => (
+      <div className="mx-auto max-w-5xl px-4 py-10 sm:px-6 lg:px-8">
+        <div className="h-10 w-56 max-w-full animate-pulse rounded-lg bg-neutral-200" />
+        <div className="mt-6 h-[32rem] max-w-full animate-pulse rounded-2xl bg-neutral-100" />
+      </div>
+    ),
+  },
+);
 
 export const metadata: Metadata = {
   title: { absolute: "Edit profile" },
@@ -48,9 +59,5 @@ export default async function StudentEditProfilePage() {
 
   const googleCalendarConnected = !!(await getGoogleCalendarRefreshTokenForUser(session.user.id));
 
-  return (
-    <Suspense fallback={<div className="p-10 text-center text-[13px] text-[#6b7280]">Loading…</div>}>
-      <EditProfileForm user={user} googleCalendarConnected={googleCalendarConnected} />
-    </Suspense>
-  );
+  return <EditProfileForm user={user} googleCalendarConnected={googleCalendarConnected} />;
 }

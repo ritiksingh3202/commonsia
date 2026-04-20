@@ -25,7 +25,8 @@ export function AuthSessionProvider({
     <SessionProvider
       session={session === undefined ? undefined : session}
       basePath="/api/auth"
-      refetchOnWindowFocus
+      /** Avoids a `/api/auth/session` round-trip on every tab focus (major cause of “sluggish” UI). */
+      refetchOnWindowFocus={false}
     >
       <MergeSignupDraft />
       {children}

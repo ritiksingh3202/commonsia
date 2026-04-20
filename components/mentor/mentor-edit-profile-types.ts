@@ -4,6 +4,8 @@ export type MentorEditProfileInitial = {
   email: string | null;
   phone: string | null;
   image: string | null;
+  country: string | null;
+  city: string | null;
   mentorTitle: string | null;
   mentorCompany: string | null;
   mentorYearsExperience: string | null;
@@ -13,6 +15,7 @@ export type MentorEditProfileInitial = {
   mentorMaxMenteesPref: string | null;
   bio: string | null;
   linkedinUrl: string | null;
+  whatsappUrl: string | null;
   portfolioUrl: string | null;
   portfolioFileName: string | null;
   portfolioVisibleToOthers: boolean;

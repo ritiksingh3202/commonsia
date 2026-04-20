@@ -7,8 +7,11 @@ import type { MentorEditProfileInitial } from "@/components/mentor/mentor-edit-p
 import {
   MENTOR_EXPERTISE_OTHER,
   MENTOR_MENTEE_CAPACITY_OPTIONS,
+  MENTORSHIP_PREFERENCE_OPTIONS,
   MENTOR_SESSION_PREFS,
   MENTOR_YEARS_OPTIONS,
+  mentorMentorshipSelectionsFromStored,
+  mentorMentorshipSerializeSelections,
   normalizeMentorYearsBand,
 } from "@/components/mentor/mentor-setup-constants";
 import {
@@ -25,7 +28,9 @@ import {
   architectureOthersSectionTitle,
   architecturePillBase,
 } from "@/components/shared/ArchitectureGroupedPills";
-import { MandatorySetupReminderModal } from "@/components/setup/MandatorySetupReminderModal";
+import { CountryCityComboboxFields } from "@/components/shared/CountryCityComboboxFields";
+import { MentorMentorshipPreferenceCard } from "@/components/mentor/MentorMentorshipPreferenceCard";
+import { normalizeLinkedInUrl, normalizeWhatsappUrl } from "@/lib/mentor-contact-urls";
 
 type TabId = "personal" | "professional" | "mentorship" | "profile";
 
@@ -34,11 +39,12 @@ const field =
 
 const label = "text-sm font-semibold text-[#0a0a0a]";
 
-const chipBase =
-  "rounded-xl border-2 px-3 py-2.5 text-center text-[13px] font-medium leading-snug transition sm:text-sm";
+/** Match mentor setup step 1 expertise pill styling. */
+const chipOn = "border-primary bg-primary/5 text-[#0a0a0a] ring-1 ring-primary/25";
+const chipOff = "border-[#e5e7eb] bg-white text-[#0a0a0a] hover:border-neutral-300";
 
-const chipOn = "border-primary bg-primary/[0.06] text-primary";
-const chipOff = "border-neutral-200 bg-white text-[#0a0a0a] hover:border-neutral-300";
+const mentorshipCardClass =
+  "flex cursor-pointer gap-3 rounded-xl border border-neutral-200 bg-white p-3.5 shadow-sm transition hover:border-neutral-300 hover:bg-neutral-50/50 sm:p-4";
 
 const tabs: { id: TabId; label: string }[] = [
   { id: "personal", label: "Personal Info" },
@@ -93,6 +99,25 @@ function normalizeYear(y: string | null | undefined): string {
   return normalizeMentorYearsBand(y);
 }
 
+function availabilityFromInitial(i: MentorEditProfileInitial): string {
+  const availRaw = i.mentorAvailabilityPref?.trim();
+  if (availRaw && MENTOR_SESSION_PREFS.includes(availRaw as (typeof MENTOR_SESSION_PREFS)[number])) {
+    return availRaw;
+  }
+  return MENTOR_SESSION_PREFS[0];
+}
+
+function maxMenteesFromInitial(i: MentorEditProfileInitial): string {
+  const maxRaw = i.mentorMaxMenteesPref?.trim();
+  if (
+    maxRaw &&
+    MENTOR_MENTEE_CAPACITY_OPTIONS.includes(maxRaw as (typeof MENTOR_MENTEE_CAPACITY_OPTIONS)[number])
+  ) {
+    return maxRaw;
+  }
+  return MENTOR_MENTEE_CAPACITY_OPTIONS[1];
+}
+
 function initials(name: string | null): string {
   if (!name?.trim()) return "?";
   return name
@@ -108,35 +133,36 @@ function mentorPayloadFromInitial(i: MentorEditProfileInitial): Record<string, u
   const expertiseList = mentorExpertiseListFromSelection(exp, other, MENTOR_EXPERTISE_OTHER);
   const sw = parseSoftwareFromDb(i.softwareSkills);
   const years = normalizeYear(i.mentorYearsExperience);
-  const availRaw = i.mentorAvailabilityPref?.trim();
-  const availability =
-    availRaw && MENTOR_SESSION_PREFS.includes(availRaw as (typeof MENTOR_SESSION_PREFS)[number])
-      ? availRaw
-      : MENTOR_SESSION_PREFS[0];
-  const maxRaw = i.mentorMaxMenteesPref?.trim();
-  const maxMentees =
-    maxRaw && MENTOR_MENTEE_CAPACITY_OPTIONS.includes(maxRaw as (typeof MENTOR_MENTEE_CAPACITY_OPTIONS)[number])
-      ? maxRaw
-      : MENTOR_MENTEE_CAPACITY_OPTIONS[1];
+
+  const mentorshipSerialized = mentorMentorshipSerializeSelections(
+    mentorMentorshipSelectionsFromStored(i.mentorMentorshipFocus),
+  );
 
   return {
     name: (i.name ?? "").trim(),
     phone: (i.phone ?? "").trim() || null,
+    country: (i.country ?? "").trim() || null,
+    city: (i.city ?? "").trim() || null,
     mentorTitle: (i.mentorTitle ?? "").trim() || null,
     mentorCompany: (i.mentorCompany ?? "").trim() || null,
     mentorYearsExperience: years.trim() || null,
     mentorExpertise: expertiseList,
     softwareSkills: serializeSoftware(sw.set, sw.other),
-    mentorMentorshipFocus: (i.mentorMentorshipFocus ?? "").trim(),
-    mentorAvailabilityPref: availability,
-    mentorMaxMenteesPref: maxMentees,
+    mentorMentorshipFocus: mentorshipSerialized,
+    mentorAvailabilityPref: availabilityFromInitial(i),
+    mentorMaxMenteesPref: maxMenteesFromInitial(i),
     bio: (i.bio ?? "").trim(),
-    linkedinUrl: (i.linkedinUrl ?? "").trim() || null,
+    linkedinUrl: normalizeLinkedInUrl(i.linkedinUrl ?? "") ?? ((i.linkedinUrl ?? "").trim() || null),
+    whatsappUrl: i.whatsappUrl ?? null,
     portfolioUrl: (i.portfolioUrl ?? "").trim() || null,
     portfolioVisibleToOthers: i.portfolioVisibleToOthers ?? true,
     mentorCertifications: (i.mentorCertifications ?? "").trim() || null,
   };
 }
+
+const noopScheduleProfilePatch = (_patch: Record<string, unknown>) => {
+  /* Country/city state drives autosave via `buildMentorPayload`; combobox only calls this for parity with setup. */
+};
 
 export function MentorEditProfileForm({ initial }: { initial: MentorEditProfileInitial }) {
   const router = useRouter();
@@ -146,10 +172,8 @@ export function MentorEditProfileForm({ initial }: { initial: MentorEditProfileI
   const [tab, setTab] = useState<TabId>("personal");
   const [saving, setSaving] = useState(false);
   const [banner, setBanner] = useState<"ok" | "err" | null>(null);
-  const [mandatoryExitOpen, setMandatoryExitOpen] = useState(false);
 
   const [fullName, setFullName] = useState(initial.name ?? "");
-  const [phone, setPhone] = useState(initial.phone ?? "");
   const [imageDataUrl, setImageDataUrl] = useState<string | null>(null);
   const [previewObjectUrl, setPreviewObjectUrl] = useState<string | null>(null);
 
@@ -163,24 +187,17 @@ export function MentorEditProfileForm({ initial }: { initial: MentorEditProfileI
   const [expertise, setExpertise] = useState<Set<string>>(() => new Set(expertiseInit.set));
   const [otherExpertise, setOtherExpertise] = useState(expertiseInit.other);
 
-  const softwareInit = useMemo(() => parseSoftwareFromDb(initial.softwareSkills), [initial.softwareSkills]);
-  const [software, setSoftware] = useState<Set<string>>(() => new Set(softwareInit.set));
-  const [softwareOther, setSoftwareOther] = useState(softwareInit.other);
+  const [country, setCountry] = useState(initial.country ?? "");
+  const [city, setCity] = useState(initial.city ?? "");
 
-  const [mentoringAreas, setMentoringAreas] = useState(initial.mentorMentorshipFocus ?? "");
-  const [availability, setAvailability] = useState(() => {
-    const v = initial.mentorAvailabilityPref?.trim();
-    if (v && MENTOR_SESSION_PREFS.includes(v as (typeof MENTOR_SESSION_PREFS)[number])) return v;
-    return MENTOR_SESSION_PREFS[0];
-  });
-  const [maxMentees, setMaxMentees] = useState(() => {
-    const v = initial.mentorMaxMenteesPref?.trim();
-    if (v && MENTOR_MENTEE_CAPACITY_OPTIONS.includes(v as (typeof MENTOR_MENTEE_CAPACITY_OPTIONS)[number]))
-      return v;
-    return MENTOR_MENTEE_CAPACITY_OPTIONS[1];
-  });
+  const mentorshipInit = useMemo(
+    () => mentorMentorshipSelectionsFromStored(initial.mentorMentorshipFocus),
+    [initial.mentorMentorshipFocus],
+  );
+  const [mentorshipSelected, setMentorshipSelected] = useState(() => new Set(mentorshipInit));
 
   const [bio, setBio] = useState(initial.bio ?? "");
+  const [whatsapp, setWhatsapp] = useState(initial.whatsappUrl ?? "");
   const [linkedinUrl, setLinkedinUrl] = useState(initial.linkedinUrl ?? "");
   const [portfolioUrl, setPortfolioUrl] = useState(initial.portfolioUrl ?? "");
   const [portfolioFileLabel, setPortfolioFileLabel] = useState(initial.portfolioFileName ?? "");
@@ -189,6 +206,19 @@ export function MentorEditProfileForm({ initial }: { initial: MentorEditProfileI
   );
   const [certifications, setCertifications] = useState(initial.mentorCertifications ?? "");
   const portfolioFileRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    setCountry(initial.country ?? "");
+    setCity(initial.city ?? "");
+  }, [initial.country, initial.city]);
+
+  useEffect(() => {
+    setMentorshipSelected(new Set(mentorshipInit));
+  }, [mentorshipInit]);
+
+  useEffect(() => {
+    setWhatsapp(initial.whatsappUrl ?? "");
+  }, [initial.whatsappUrl]);
 
   useEffect(() => {
     if (searchParams.get("addPhoto") !== "1") return;
@@ -276,11 +306,11 @@ export function MentorEditProfileForm({ initial }: { initial: MentorEditProfileI
     });
   };
 
-  const toggleSoftware = (opt: string) => {
-    setSoftware((prev) => {
+  const toggleMentorshipPreference = (title: string) => {
+    setMentorshipSelected((prev) => {
       const next = new Set(prev);
-      if (next.has(opt)) next.delete(opt);
-      else next.add(opt);
+      if (next.has(title)) next.delete(title);
+      else next.add(title);
       return next;
     });
   };
@@ -300,38 +330,53 @@ export function MentorEditProfileForm({ initial }: { initial: MentorEditProfileI
       otherExpertise,
       MENTOR_EXPERTISE_OTHER,
     );
+    const liNorm = normalizeLinkedInUrl(linkedinUrl);
+    const linkedinUrlOut =
+      liNorm ?? (!linkedinUrl.trim() ? null : (initial.linkedinUrl ?? null));
+    const tWa = whatsapp.trim();
+    const waNorm = normalizeWhatsappUrl(whatsapp);
+    const whatsappUrlOut = waNorm ?? (!tWa ? null : (initial.whatsappUrl ?? null));
+    const sw = parseSoftwareFromDb(initial.softwareSkills);
+
     return {
       name: fullName.trim(),
-      phone: phone.trim() || null,
+      phone: (initial.phone ?? "").trim() || null,
+      country: country.trim() || null,
+      city: city.trim() || null,
       mentorTitle: currentPosition.trim() || null,
       mentorCompany: company.trim() || null,
       mentorYearsExperience: yearsOfExperience.trim() || null,
       mentorExpertise: expertiseList,
-      softwareSkills: serializeSoftware(software, softwareOther),
-      mentorMentorshipFocus: mentoringAreas.trim(),
-      mentorAvailabilityPref: availability,
-      mentorMaxMenteesPref: maxMentees,
+      softwareSkills: serializeSoftware(sw.set, sw.other),
+      mentorMentorshipFocus: mentorMentorshipSerializeSelections(mentorshipSelected),
+      mentorAvailabilityPref: availabilityFromInitial(initial),
+      mentorMaxMenteesPref: maxMenteesFromInitial(initial),
       bio: bio.trim(),
-      linkedinUrl: linkedinUrl.trim() || null,
+      linkedinUrl: linkedinUrlOut,
+      whatsappUrl: whatsappUrlOut,
       portfolioUrl: portfolioUrl.trim() || null,
       portfolioVisibleToOthers,
       mentorCertifications: certifications.trim() || null,
     };
   }, [
     fullName,
-    phone,
+    initial.phone,
+    country,
+    city,
     currentPosition,
     company,
     yearsOfExperience,
     expertise,
     otherExpertise,
-    software,
-    softwareOther,
-    mentoringAreas,
-    availability,
-    maxMentees,
+    mentorshipSelected,
     bio,
     linkedinUrl,
+    whatsapp,
+    initial.softwareSkills,
+    initial.mentorAvailabilityPref,
+    initial.mentorMaxMenteesPref,
+    initial.linkedinUrl,
+    initial.whatsappUrl,
     portfolioUrl,
     portfolioVisibleToOthers,
     certifications,
@@ -401,8 +446,23 @@ export function MentorEditProfileForm({ initial }: { initial: MentorEditProfileI
       setTab("professional");
       return;
     }
-    if (!mentoringAreas.trim()) {
-      window.alert("Please describe what you would like to mentor students on.");
+    if (!country.trim()) {
+      window.alert("Please enter your country.");
+      setTab("professional");
+      return;
+    }
+    if (!city.trim()) {
+      window.alert("Please enter your city.");
+      setTab("professional");
+      return;
+    }
+    if (!currentPosition.trim() || !company.trim() || !yearsOfExperience.trim()) {
+      window.alert("Please fill in your position, organization, and years of experience.");
+      setTab("professional");
+      return;
+    }
+    if (mentorshipSelected.size === 0) {
+      window.alert("Please select at least one mentorship preference.");
       setTab("mentorship");
       return;
     }
@@ -411,8 +471,22 @@ export function MentorEditProfileForm({ initial }: { initial: MentorEditProfileI
       setTab("profile");
       return;
     }
+    const wa = normalizeWhatsappUrl(whatsapp);
+    if (!wa) {
+      window.alert(
+        "Enter a valid WhatsApp number (with country code) or a WhatsApp link (https://wa.me/…).",
+      );
+      setTab("profile");
+      return;
+    }
+    const li = normalizeLinkedInUrl(linkedinUrl);
+    if (!li) {
+      window.alert("Enter a valid LinkedIn profile URL.");
+      setTab("profile");
+      return;
+    }
 
-    const payload: Record<string, unknown> = { ...buildMentorPayload() };
+    const payload: Record<string, unknown> = { ...buildMentorPayload(), whatsappUrl: wa, linkedinUrl: li };
     if (imageDataUrl) payload.image = imageDataUrl;
 
     setSaving(true);
@@ -437,11 +511,6 @@ export function MentorEditProfileForm({ initial }: { initial: MentorEditProfileI
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-white via-orange-50/25 to-white pb-16">
-      <MandatorySetupReminderModal
-        open={mandatoryExitOpen}
-        variant="mentor"
-        onDismiss={() => setMandatoryExitOpen(false)}
-      />
       <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
         <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
@@ -465,7 +534,8 @@ export function MentorEditProfileForm({ initial }: { initial: MentorEditProfileI
           </div>
           <button
             type="button"
-            onClick={() => setMandatoryExitOpen(true)}
+            suppressHydrationWarning
+            onClick={() => router.push("/mentor")}
             className="inline-flex shrink-0 items-center gap-1.5 self-start text-sm font-medium text-neutral-700 transition hover:text-primary"
           >
             <IconArrowLeft className="size-4" />
@@ -489,6 +559,7 @@ export function MentorEditProfileForm({ initial }: { initial: MentorEditProfileI
               key={t.id}
               type="button"
               role="tab"
+              suppressHydrationWarning
               aria-selected={tab === t.id}
               onClick={() => setTab(t.id)}
               className={`rounded-lg px-2 py-2.5 text-center text-[12px] font-medium transition sm:text-[13px] ${
@@ -507,7 +578,10 @@ export function MentorEditProfileForm({ initial }: { initial: MentorEditProfileI
             <div role="tabpanel">
               <div className="mb-6 border-b border-neutral-100 pb-5">
                 <h2 className="text-lg font-bold text-[#0a0a0a]">Personal Information</h2>
-                <p className="mt-1 text-sm text-neutral-500">Update your basic personal details</p>
+                <p className="mt-1 text-sm text-neutral-500">
+                  Country and city match what you entered during mentor setup. WhatsApp for mentoring is on the
+                  Profile and Links tab.
+                </p>
               </div>
               <div className="space-y-6">
                 <div>
@@ -535,6 +609,7 @@ export function MentorEditProfileForm({ initial }: { initial: MentorEditProfileI
                       />
                       <button
                         type="button"
+                        suppressHydrationWarning
                         onClick={() => fileRef.current?.click()}
                         className="inline-flex items-center gap-2 rounded-xl border border-neutral-200 bg-white px-4 py-2 text-sm font-medium text-[#0a0a0a] shadow-sm transition hover:bg-neutral-50"
                       >
@@ -570,19 +645,16 @@ export function MentorEditProfileForm({ initial }: { initial: MentorEditProfileI
                     />
                   </div>
                 </div>
-                <div className="space-y-2">
-                  <label htmlFor="phone" className={label}>
-                    Phone Number <span className="font-normal text-neutral-500">(Optional)</span>
-                  </label>
-                  <input
-                    id="phone"
-                    type="tel"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    className={field}
-                    autoComplete="tel"
-                  />
-                </div>
+
+                <CountryCityComboboxFields
+                  countryInputId="mentor-edit-country"
+                  cityInputId="mentor-edit-city"
+                  country={country}
+                  city={city}
+                  setCountry={setCountry}
+                  setCity={setCity}
+                  scheduleProfilePatch={noopScheduleProfilePatch}
+                />
               </div>
             </div>
           ) : null}
@@ -592,11 +664,11 @@ export function MentorEditProfileForm({ initial }: { initial: MentorEditProfileI
               <div className="mb-6 border-b border-neutral-100 pb-5">
                 <h2 className="text-lg font-bold text-[#0a0a0a]">Professional Information</h2>
                 <p className="mt-1 text-sm text-neutral-500">
-                  Share your professional background and expertise
+                  Role, organization, experience, and expertise — country and city are under Personal Info.
                 </p>
               </div>
               <div className="space-y-5">
-                <div className="grid gap-4 md:grid-cols-2">
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                   <div className="space-y-2">
                     <label htmlFor="position" className={label}>
                       Current Position / Title
@@ -606,6 +678,9 @@ export function MentorEditProfileForm({ initial }: { initial: MentorEditProfileI
                       value={currentPosition}
                       onChange={(e) => setCurrentPosition(e.target.value)}
                       className={field}
+                      required
+                      autoComplete="organization-title"
+                      placeholder="e.g., Senior Architect, Design Director"
                     />
                   </div>
                   <div className="space-y-2">
@@ -617,21 +692,26 @@ export function MentorEditProfileForm({ initial }: { initial: MentorEditProfileI
                       value={company}
                       onChange={(e) => setCompany(e.target.value)}
                       className={field}
+                      required
+                      autoComplete="organization"
+                      placeholder="e.g., ABC Architects, XYZ Design Studio"
                     />
                   </div>
-                </div>
-                <div className="space-y-2">
-                  <label htmlFor="years" className={label}>
-                    Years of Experience
-                  </label>
-                  <div className="relative">
-                    <select
-                      id="years"
-                      value={yearsOfExperience}
-                      onChange={(e) => setYearsOfExperience(e.target.value)}
-                      className={`${field} appearance-none pr-10`}
-                    >
-                      <option value="">Select experience level</option>
+                  <div className="space-y-2">
+                    <label htmlFor="years" className={label}>
+                      Years of Experience
+                    </label>
+                    <div className="relative">
+                      <select
+                        id="years"
+                        value={yearsOfExperience}
+                        onChange={(e) => setYearsOfExperience(e.target.value)}
+                        className={`${field} appearance-none pr-10`}
+                        required
+                      >
+                        <option value="" disabled>
+                          Select experience level
+                        </option>
                       {MENTOR_YEARS_OPTIONS.map((y) => (
                         <option key={y} value={y}>
                           {y}
@@ -641,9 +721,13 @@ export function MentorEditProfileForm({ initial }: { initial: MentorEditProfileI
                     <ChevronDownIcon className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-neutral-500" />
                   </div>
                 </div>
+                </div>
+
                 <div>
                   <p className={label}>Areas of Expertise</p>
-                  <p className="mb-2 mt-1 text-xs text-neutral-500">Select all that apply</p>
+                  <p className="mb-2 mt-1 text-xs text-neutral-500">
+                    Select all that apply — one or more, including Other if needed
+                  </p>
                   <ArchitectureGroupedPills
                     selected={expertise}
                     onToggle={toggleExpertise}
@@ -656,6 +740,7 @@ export function MentorEditProfileForm({ initial }: { initial: MentorEditProfileI
                     <div className="mt-4 flex flex-wrap gap-3">
                       <button
                         type="button"
+                        suppressHydrationWarning
                         onClick={() => toggleExpertise(MENTOR_EXPERTISE_OTHER)}
                         className={`${architecturePillBase} ${expertise.has(MENTOR_EXPERTISE_OTHER) ? chipOn : chipOff}`}
                       >
@@ -678,46 +763,6 @@ export function MentorEditProfileForm({ initial }: { initial: MentorEditProfileI
                     ) : null}
                   </div>
                 </div>
-
-                <div className="border-t border-neutral-100 pt-5">
-                  <p className={label}>Software &amp; tools</p>
-                  <p className="mb-2 mt-1 text-xs text-neutral-500">
-                    Same options as student onboarding — what you can help mentees with
-                  </p>
-                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                    {SOFTWARE_OPTIONS.map((opt) => (
-                      <button
-                        key={opt}
-                        type="button"
-                        onClick={() => toggleSoftware(opt)}
-                        className={`${chipBase} ${software.has(opt) ? chipOn : chipOff}`}
-                      >
-                        {opt}
-                      </button>
-                    ))}
-                    <button
-                      type="button"
-                      onClick={() => toggleSoftware(SOFTWARE_OTHER_LABEL)}
-                      className={`${chipBase} ${software.has(SOFTWARE_OTHER_LABEL) ? chipOn : chipOff}`}
-                    >
-                      {SOFTWARE_OTHER_LABEL}
-                    </button>
-                  </div>
-                  {software.has(SOFTWARE_OTHER_LABEL) ? (
-                    <div className="mt-3 space-y-2">
-                      <label htmlFor="softwareOther" className={label}>
-                        Other software
-                      </label>
-                      <input
-                        id="softwareOther"
-                        value={softwareOther}
-                        onChange={(e) => setSoftwareOther(e.target.value)}
-                        placeholder="e.g., Blender, Vectorworks"
-                        className={field}
-                      />
-                    </div>
-                  ) : null}
-                </div>
               </div>
             </div>
           ) : null}
@@ -726,64 +771,29 @@ export function MentorEditProfileForm({ initial }: { initial: MentorEditProfileI
             <div role="tabpanel">
               <div className="mb-6 border-b border-neutral-100 pb-5">
                 <h2 className="text-lg font-bold text-[#0a0a0a]">Mentorship Preferences</h2>
-                <p className="mt-1 text-sm text-neutral-500">Define how you&apos;d like to mentor students</p>
+                <p className="mt-1 text-sm text-neutral-500">
+                  Choose the areas you want to mentor on (same options as mentor setup).
+                </p>
               </div>
               <div className="space-y-5">
-                <div className="space-y-2">
-                  <label htmlFor="mentoringAreas" className={label}>
-                    What would you like to mentor students on?
-                  </label>
-                  <textarea
-                    id="mentoringAreas"
-                    value={mentoringAreas}
-                    onChange={(e) => setMentoringAreas(e.target.value)}
-                    rows={5}
-                    className={`${field} min-h-[120px] resize-y`}
-                  />
-                  <p className="text-xs text-neutral-500">
-                    Examples: portfolio development, career guidance, software skills, design critique
-                  </p>
-                </div>
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="space-y-2">
-                    <label htmlFor="availability" className={label}>
-                      Availability
-                    </label>
-                    <div className="relative">
-                      <select
-                        id="availability"
-                        value={availability}
-                        onChange={(e) => setAvailability(e.target.value)}
-                        className={`${field} appearance-none pr-10`}
-                      >
-                        {MENTOR_SESSION_PREFS.map((opt) => (
-                          <option key={opt} value={opt}>
-                            {opt}
-                          </option>
-                        ))}
-                      </select>
-                      <ChevronDownIcon className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-neutral-500" />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <label htmlFor="maxMentees" className={label}>
-                      Maximum Number of Mentees
-                    </label>
-                    <div className="relative">
-                      <select
-                        id="maxMentees"
-                        value={maxMentees}
-                        onChange={(e) => setMaxMentees(e.target.value)}
-                        className={`${field} appearance-none pr-10`}
-                      >
-                        {MENTOR_MENTEE_CAPACITY_OPTIONS.map((opt) => (
-                          <option key={opt} value={opt}>
-                            {opt}
-                          </option>
-                        ))}
-                      </select>
-                      <ChevronDownIcon className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-neutral-500" />
-                    </div>
+                <div className="space-y-2.5">
+                  <p className={label}>What would you like to mentor students on?</p>
+                  <p className="text-xs text-neutral-500">Select all that apply.</p>
+                  <div className="flex flex-col gap-2.5" role="group" aria-label="Mentorship focus areas">
+                    {MENTORSHIP_PREFERENCE_OPTIONS.map((opt) => {
+                      const isOn = mentorshipSelected.has(opt.title);
+                      return (
+                        <MentorMentorshipPreferenceCard
+                          key={opt.id}
+                          fieldId={`mentor-edit-mentorship-${opt.id}`}
+                          title={opt.title}
+                          description={opt.description}
+                          checked={isOn}
+                          onCheckedChange={() => toggleMentorshipPreference(opt.title)}
+                          cardClassName={mentorshipCardClass}
+                        />
+                      );
+                    })}
                   </div>
                 </div>
                 <div className="rounded-xl border border-sky-200 bg-sky-50/90 p-4">
@@ -795,11 +805,7 @@ export function MentorEditProfileForm({ initial }: { initial: MentorEditProfileI
                     </li>
                     <li className="flex gap-2">
                       <span className="text-sky-600">•</span>
-                      Set realistic availability that matches your schedule
-                    </li>
-                    <li className="flex gap-2">
-                      <span className="text-sky-600">•</span>
-                      Start with fewer mentees and scale up as you get comfortable
+                      Pick every area you are genuinely comfortable supporting
                     </li>
                   </ul>
                 </div>
@@ -811,7 +817,9 @@ export function MentorEditProfileForm({ initial }: { initial: MentorEditProfileI
             <div role="tabpanel">
               <div className="mb-6 border-b border-neutral-100 pb-5">
                 <h2 className="text-lg font-bold text-[#0a0a0a]">Profile &amp; Professional Links</h2>
-                <p className="mt-1 text-sm text-neutral-500">Help students learn more about you</p>
+                <p className="mt-1 text-sm text-neutral-500">
+                  Bio, WhatsApp, and LinkedIn match mentor setup — portfolio and certifications are optional.
+                </p>
               </div>
               <div className="space-y-5">
                 <div className="space-y-2">
@@ -830,18 +838,38 @@ export function MentorEditProfileForm({ initial }: { initial: MentorEditProfileI
                     This will be visible on your mentor profile. Make it engaging and personal!
                   </p>
                 </div>
-                <div className="space-y-2">
-                  <label htmlFor="linkedinUrl" className={label}>
-                    LinkedIn Profile
-                  </label>
-                  <input
-                    id="linkedinUrl"
-                    type="url"
-                    value={linkedinUrl}
-                    onChange={(e) => setLinkedinUrl(e.target.value)}
-                    placeholder="https://linkedin.com/in/yourprofile"
-                    className={field}
-                  />
+
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5">
+                  <div className="min-w-0 space-y-2">
+                    <label htmlFor="mentorEditWhatsapp" className={label}>
+                      WhatsApp number
+                    </label>
+                    <input
+                      id="mentorEditWhatsapp"
+                      type="text"
+                      value={whatsapp}
+                      onChange={(e) => setWhatsapp(e.target.value)}
+                      placeholder="Country code + number, e.g. 91 98765 43210, or paste https://wa.me/…"
+                      className={field}
+                      autoComplete="tel"
+                    />
+                    <p className="text-[11px] leading-snug text-neutral-500">
+                      We store a WhatsApp chat link. Include your country code if you type digits only.
+                    </p>
+                  </div>
+                  <div className="min-w-0 space-y-2">
+                    <label htmlFor="linkedinUrl" className={label}>
+                      LinkedIn profile
+                    </label>
+                    <input
+                      id="linkedinUrl"
+                      type="url"
+                      value={linkedinUrl}
+                      onChange={(e) => setLinkedinUrl(e.target.value)}
+                      placeholder="https://linkedin.com/in/yourprofile"
+                      className={field}
+                    />
+                  </div>
                 </div>
                 <div className="space-y-2">
                   <label htmlFor="portfolioUrl" className={label}>
@@ -867,6 +895,7 @@ export function MentorEditProfileForm({ initial }: { initial: MentorEditProfileI
                   />
                   <button
                     type="button"
+                    suppressHydrationWarning
                     onClick={() => portfolioFileRef.current?.click()}
                     className="flex w-full flex-col items-center justify-center rounded-xl border-2 border-dashed border-neutral-200 bg-white px-3 py-6 text-center transition-colors hover:border-primary/35 hover:bg-neutral-50/80"
                   >
@@ -881,6 +910,7 @@ export function MentorEditProfileForm({ initial }: { initial: MentorEditProfileI
                       </span>
                       <button
                         type="button"
+                        suppressHydrationWarning
                         onClick={() => void clearPortfolioFile()}
                         className="shrink-0 text-[12px] font-medium text-red-600 hover:text-red-700"
                       >
@@ -926,13 +956,15 @@ export function MentorEditProfileForm({ initial }: { initial: MentorEditProfileI
         <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end sm:gap-4">
           <button
             type="button"
-            onClick={() => setMandatoryExitOpen(true)}
+            suppressHydrationWarning
+            onClick={() => router.push("/mentor")}
             className="inline-flex items-center justify-center rounded-xl border border-neutral-200 bg-white px-6 py-2.5 text-sm font-semibold text-[#0a0a0a] shadow-sm transition hover:bg-neutral-50"
           >
             Cancel
           </button>
           <button
             type="button"
+            suppressHydrationWarning
             disabled={saving}
             onClick={handleSave}
             className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-6 py-2.5 text-sm font-semibold text-white shadow-md transition hover:bg-primary/90 disabled:opacity-60"

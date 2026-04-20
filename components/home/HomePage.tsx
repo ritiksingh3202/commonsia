@@ -1,18 +1,31 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
+import dynamic from "next/dynamic";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useRef, useState } from "react";
 import { SectionReveal } from "@/components/motion/SectionReveal";
-import { FaqAccordion } from "@/components/ui/FaqAccordion";
 import { defaultFaqItems } from "@/lib/faq-content";
 import type { HomeTestimonialCard } from "@/lib/testimonials";
 import { MARKETING_SECTION_TITLE_CLASS } from "@/lib/marketing-section-title";
 import { highResProfileImageUrl } from "@/lib/profile-image-url";
 import { MentorCarouselArrows } from "@/components/mentors/MentorCarouselArrows";
+
+const FaqAccordion = dynamic(
+  () => import("@/components/ui/FaqAccordion").then((m) => m.FaqAccordion),
+  {
+    loading: () => (
+      <div className="mx-auto max-w-2xl space-y-3 py-8">
+        <div className="h-12 animate-pulse rounded-xl bg-neutral-200/90" />
+        <div className="h-12 animate-pulse rounded-xl bg-neutral-200/90" />
+        <div className="h-12 animate-pulse rounded-xl bg-neutral-200/90" />
+      </div>
+    ),
+  },
+);
 
 const steps = [
   {

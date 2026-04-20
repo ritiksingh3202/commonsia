@@ -8,12 +8,16 @@ const poppins = Poppins({
   variable: "--font-poppins",
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
+  display: "swap",
+  adjustFontFallback: true,
 });
 
 const abeeZee = ABeeZee({
   variable: "--font-abeezee",
   subsets: ["latin"],
   weight: ["400"],
+  display: "swap",
+  adjustFontFallback: true,
 });
 
 /** Canonical origin for metadata (Open Graph, `icons` absolutization). Match production `AUTH_URL` / live host. */

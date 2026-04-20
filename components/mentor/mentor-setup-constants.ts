@@ -53,6 +53,21 @@ export const MENTORSHIP_PREFERENCE_OPTIONS = [
 
 export const MENTORSHIP_PREFERENCE_ORDER = MENTORSHIP_PREFERENCE_OPTIONS.map((o) => o.title);
 
+/** Parse stored `mentorMentorshipFocus` (comma-separated titles) into a selection set. */
+export function mentorMentorshipSelectionsFromStored(raw: string | null | undefined): Set<string> {
+  const set = new Set<string>();
+  if (!raw?.trim()) return set;
+  for (const title of MENTORSHIP_PREFERENCE_ORDER) {
+    if (raw.includes(title)) set.add(title);
+  }
+  return set;
+}
+
+/** Serialize mentorship checkboxes to the string stored in `mentorMentorshipFocus`. */
+export function mentorMentorshipSerializeSelections(sel: Set<string>): string {
+  return MENTORSHIP_PREFERENCE_ORDER.filter((t) => sel.has(t)).join(",");
+}
+
 export const MENTOR_SESSION_PREFS = [
   "Weekly session",
   "Bi-weekly",
