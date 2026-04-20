@@ -83,5 +83,11 @@ async function safePost(req: NextRequest): Promise<Response> {
   }
 }
 
-export const GET = safeGet;
-export const POST = safePost;
+/** Explicit `NextRequest` so `next build` matches Auth.js `handlers` (avoids `Request` inference on `export const`). */
+export async function GET(req: NextRequest) {
+  return safeGet(req);
+}
+
+export async function POST(req: NextRequest) {
+  return safePost(req);
+}
