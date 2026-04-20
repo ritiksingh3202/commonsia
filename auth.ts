@@ -7,6 +7,7 @@ import LinkedInProvider from "next-auth/providers/linkedin";
 
 import { warnDevLoopbackAuthUrlEnvMismatchOnce } from "@/lib/auth-oauth-host-warn";
 import { profileImageSafeForAuthCookie } from "@/lib/auth-session-cookie-profile";
+import { rewriteUrlToCanonicalOrigin, sameWwwApexUrl, trimTrailingSlash } from "@/lib/auth-url-canonical";
 import { resolveAuthSecret, warnIfUsingEphemeralDevAuthSecret } from "@/lib/auth-secret";
 import { isDevRequestHost } from "@/lib/dev-request-host";
 import { getGoogleOAuthClient, getLinkedInOAuthClient } from "@/lib/oauth-credentials";
@@ -16,7 +17,7 @@ import { getActiveUserWhere, prismaGeneratedClientHasAccountDeletedAt } from "@/
 /**
  * OAuth (Auth.js v5):
  * - AUTH_SECRET — required in production (or NEXTAUTH_SECRET). Generate: `npx auth secret`
- * - AUTH_URL — e.g. https://www.yoursite.com (no trailing slash). Set on Vercel.
+ * - AUTH_URL — e.g. https://www.commonsia.com (no trailing slash). Must match the hostname in the browser (www vs apex).
  * - GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET (fallback: AUTH_GOOGLE_ID / AUTH_GOOGLE_SECRET)
  * - LINKEDIN_CLIENT_ID / LINKEDIN_CLIENT_SECRET (fallback: AUTH_LINKEDIN_*)
  * - DATABASE_URL — Postgres (e.g. Supabase; see `.env.example`)
@@ -122,7 +123,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth((req) => {
     Boolean(host) && (isLocal || (isNonProduction && !isVercelAppHost));
 
   if (shouldPinAuthOriginToRequest) {
-    const origin = `${proto === "https" ? "https" : "http"}://${host}`;
+    const origin = trimTrailingSlash(`${proto === "https" ? "https" : "http"}://${host}`);
     process.env.AUTH_URL = origin;
     process.env.NEXTAUTH_URL = origin;
   }
@@ -218,17 +219,30 @@ export const { handlers, auth, signIn, signOut } = NextAuth((req) => {
        * Prevents open redirects if a forged `callbackUrl` slips through.
        */
       redirect({ url, baseUrl }) {
+        const canonicalRaw = (process.env.AUTH_URL ?? process.env.NEXTAUTH_URL ?? "").trim();
+        const canonicalBase = canonicalRaw ? trimTrailingSlash(canonicalRaw) : "";
+        const baseTrimmed = trimTrailingSlash(baseUrl);
+
         if (url.startsWith("/")) {
-          return `${baseUrl}${url}`;
+          return `${baseTrimmed}${url}`;
         }
         try {
-          if (new URL(url).origin === new URL(baseUrl).origin) {
+          const target = new URL(url);
+          const baseParsed = new URL(baseUrl);
+          if (target.origin === baseParsed.origin) {
             return url;
+          }
+          if (canonicalBase) {
+            const fixed = rewriteUrlToCanonicalOrigin(url, canonicalBase);
+            if (fixed) return fixed;
+          }
+          if (sameWwwApexUrl(url, baseUrl)) {
+            return `${baseParsed.origin}${target.pathname}${target.search}${target.hash}`;
           }
         } catch {
           /* ignore */
         }
-        return baseUrl;
+        return baseTrimmed;
       },
       async jwt({ token, user }) {
         if (user?.id) {

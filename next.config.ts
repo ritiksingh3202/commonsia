@@ -7,10 +7,20 @@ import { assertValidDatabaseUrlForVercelBuild } from "./lib/db-url-env";
  * `AUTH_URL`, copy it here so `/api/auth/*` and CSRF calls target the same origin as the server.
  */
 (() => {
+  const trim = (s: string) => s.replace(/\/+$/, "");
   const authUrl = process.env.AUTH_URL?.trim();
   const nextAuthUrl = process.env.NEXTAUTH_URL?.trim();
-  if (authUrl && !nextAuthUrl) {
-    process.env.NEXTAUTH_URL = authUrl;
+  if (authUrl) {
+    const normalized = trim(authUrl);
+    process.env.AUTH_URL = normalized;
+    if (nextAuthUrl && trim(nextAuthUrl) !== normalized) {
+      console.warn(
+        `[next.config] NEXTAUTH_URL and AUTH_URL differed; using AUTH_URL (${normalized}) for both so Auth.js client and server use one canonical origin.`,
+      );
+    }
+    process.env.NEXTAUTH_URL = normalized;
+  } else if (nextAuthUrl) {
+    process.env.NEXTAUTH_URL = trim(nextAuthUrl);
   }
   const n = process.env.NEXTAUTH_URL?.trim();
   if (n && process.env.NODE_ENV !== "production") {
