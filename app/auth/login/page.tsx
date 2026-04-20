@@ -32,7 +32,7 @@ export default async function LoginPage({
         : "/auth/continue";
 
   const session = await auth();
-  if (session?.user?.id) {
+  if (session?.user?.id?.trim()) {
     redirect(callbackUrl);
   }
 

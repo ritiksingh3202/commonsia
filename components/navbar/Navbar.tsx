@@ -35,8 +35,24 @@ export function Navbar() {
   const { data: session, status } = useSession();
   const authed = status === "authenticated";
   const loading = status === "loading";
-  const dashboardHref = session?.user?.role === "mentor" ? "/mentor" : "/student";
-  const studentOnDashboard = pathname === "/student" && session?.user?.role === "student";
+  const role = session?.user?.role ?? null;
+  /** OAuth users may have `role: null` until MergeSignupDraft — never default them to `/student`. */
+  const dashboardHref =
+    role === "mentor" ? "/mentor" : role === "student" ? "/student" : "/auth/continue";
+  /**
+   * "My profile" must not point at the URL you are already on (feels broken). On role home, go to edit profile.
+   * Unknown role → `/auth/continue` so the server routes to setup or dashboard.
+   */
+  const myProfileHref =
+    role === "mentor"
+      ? pathname === "/mentor"
+        ? "/mentor/profile/edit"
+        : "/mentor"
+      : role === "student"
+        ? pathname === "/student"
+          ? "/student/profile/edit"
+          : "/student"
+        : "/auth/continue";
 
   useEffect(() => {
     if (menuOpen) {
@@ -63,9 +79,11 @@ export function Navbar() {
 
   useEffect(() => {
     if (status !== "authenticated" || !session?.user) return;
-    const href = session.user.role === "mentor" ? "/mentor" : "/student";
-    router.prefetch(href);
-  }, [router, session?.user, status]);
+    void router.prefetch(dashboardHref);
+    if (role === "student") void router.prefetch("/student/profile/edit");
+    if (role === "mentor") void router.prefetch("/mentor/profile/edit");
+    if (role == null) void router.prefetch("/auth/continue");
+  }, [router, session?.user, status, dashboardHref, role]);
 
   return (
     <header className="fixed inset-x-0 top-0 z-50 border-b border-black/[0.06] bg-[#ffffff]">
@@ -109,7 +127,7 @@ export function Navbar() {
               <NavNotificationsBell />
               <div className="group relative hidden sm:inline-block">
                 <Link
-                  href={studentOnDashboard ? "/student" : dashboardHref}
+                  href={myProfileHref}
                   prefetch
                   className="inline-flex rounded-full bg-primary px-4 py-2 text-xs font-semibold text-white shadow-sm transition-transform hover:scale-[1.02] active:scale-[0.98] sm:px-8 sm:py-2.5 sm:text-sm"
                 >
@@ -206,7 +224,7 @@ export function Navbar() {
                 ))}
                 {!loading && (
                   <Link
-                    href={authed ? dashboardHref : "/auth"}
+                    href={authed ? myProfileHref : "/auth"}
                     prefetch
                     className="mt-2 rounded-xl bg-primary px-3 py-3.5 text-center text-[15px] font-semibold text-white shadow-sm"
                     onClick={() => setMenuOpen(false)}

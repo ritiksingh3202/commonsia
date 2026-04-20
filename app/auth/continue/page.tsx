@@ -27,7 +27,7 @@ export default async function AuthContinuePage({
     next != null ? `/auth/continue?next=${encodeURIComponent(next)}` : "/auth/continue";
 
   const session = await auth();
-  if (!session?.user?.id) {
+  if (!session?.user?.id?.trim()) {
     redirect(`/auth/login?callbackUrl=${encodeURIComponent(resumeContinue)}`);
   }
 
