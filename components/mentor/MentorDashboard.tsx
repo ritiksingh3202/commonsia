@@ -17,17 +17,6 @@ type Props = { user: MentorDashboardUser };
 const card =
   "rounded-[14px] border border-black/10 bg-white p-4 shadow-sm sm:p-5";
 
-function getMaxMentees(json: unknown): number {
-  if (!json || typeof json !== "object") return 10;
-  const o = json as { maxStudents?: unknown; menteeCapacityBand?: string };
-  const band = o.menteeCapacityBand;
-  if (band === "0-5") return 5;
-  if (band === "10+") return 25;
-  if (band === "5-10") return 10;
-  const m = o.maxStudents;
-  return typeof m === "number" && m >= 1 && m <= 50 ? m : 10;
-}
-
 function buildExperienceBullets(user: MentorDashboardUser): string[] {
   const bullets: string[] = [];
   const title = user.mentorTitle?.trim();
@@ -67,9 +56,7 @@ export function MentorDashboard({ user }: Props) {
     ? (user.mentorExpertise as string[]).filter(Boolean)
     : [];
   const experienceBullets = buildExperienceBullets(user);
-  const maxSlots = getMaxMentees(user.mentorAvailabilityJson);
   const currentMentees = live?.activeMenteeCount ?? 0;
-  const capacityPct = Math.min(100, Math.round((currentMentees / Math.max(1, maxSlots)) * 100));
 
   const completedSessions = live?.completedSessionCount ?? 0;
   const totalMentoringMinutes = live?.totalMentoringMinutes ?? 0;
@@ -431,33 +418,6 @@ export function MentorDashboard({ user }: Props) {
                 No upcoming sessions. Bookings will appear here when students schedule with you.
               </p>
             )}
-          </section>
-
-          <section className={card}>
-            <h3 className="text-base font-medium text-[#0a0a0a]">
-              Mentoring Capacity
-            </h3>
-            <div className="mt-4 flex items-center justify-between text-sm text-[#0a0a0a]">
-              <span className="text-[#4a5565]">Current Mentees</span>
-              <span className="font-medium tabular-nums text-primary">
-                {currentMentees}/{maxSlots}
-              </span>
-            </div>
-            <div className="mt-2 h-2 overflow-hidden rounded-full bg-neutral-200">
-              <div
-                className="h-full rounded-full bg-primary transition-all"
-                style={{ width: `${capacityPct}%` }}
-              />
-            </div>
-            <p className="mt-2 text-xs text-[#6a7282]">
-              {Math.max(0, maxSlots - currentMentees)} slots available
-            </p>
-            <Link
-              href="/mentor/availability"
-              className="mt-4 flex h-8 w-full items-center justify-center rounded-lg border border-black/10 text-[14px] font-medium text-[#0a0a0a] hover:bg-neutral-50"
-            >
-              Update Capacity
-            </Link>
           </section>
 
           <section className={card}>
