@@ -41,7 +41,11 @@ function RoleCard({
   role,
 }: RoleCardProps) {
   const signupHref = role === "student" ? "/auth/register/student" : "/auth/register/mentor";
-  const loginHref = "/auth/login";
+  /** After OAuth, `/auth/continue` needs `next` so users without `role` yet reach the right onboarding shell. */
+  const loginHref =
+    role === "student"
+      ? `/auth/login?callbackUrl=${encodeURIComponent("/auth/continue?next=/student")}`
+      : `/auth/login?callbackUrl=${encodeURIComponent("/auth/continue?next=/mentor")}`;
   return (
     <div className="flex h-full flex-col rounded-xl border border-black/10 bg-white p-5 shadow-sm sm:p-6">
       <div className="flex flex-col items-center text-center">

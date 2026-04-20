@@ -5,12 +5,12 @@ import { prisma } from "@/lib/prisma";
 
 /**
  * If onboarding is finished, skip setup screens (users will use edit profile later).
- * Unauthenticated visitors are handled by each `setup/[step]/page.tsx` (correct callbackUrl per step).
+ * Unauthenticated visitors are sent to login with `callbackUrl=/mentor` so post-OAuth `/auth/continue` can resume.
  */
 export default async function MentorSetupLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
   if (!session?.user?.id) {
-    return <>{children}</>;
+    redirect(`/auth/login?callbackUrl=${encodeURIComponent("/mentor")}`);
   }
 
   const user = await prisma.user.findUnique({
@@ -19,7 +19,7 @@ export default async function MentorSetupLayout({ children }: { children: React.
   });
 
   if (!user) {
-    return <>{children}</>;
+    redirect(`/auth/login?callbackUrl=${encodeURIComponent("/mentor")}`);
   }
   if (user.role === "student") {
     redirect("/student");

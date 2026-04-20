@@ -235,7 +235,10 @@ export function SignupForm({ role, oauthCallbackUrl }: SignupFormProps) {
 
         <p className="mt-4 text-center text-[13px] text-[#717182]">
           Already have an account?{" "}
-          <Link href={c.loginHref} className="font-medium text-primary hover:underline">
+          <Link
+            href={`/auth/login?callbackUrl=${encodeURIComponent(afterAuth)}`}
+            className="font-medium text-primary hover:underline"
+          >
             Sign in
           </Link>
         </p>

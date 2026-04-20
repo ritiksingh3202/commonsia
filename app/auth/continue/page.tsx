@@ -55,7 +55,7 @@ export default async function AuthContinuePage({
     redirect("/auth/login?callbackUrl=/auth/continue");
   }
 
-  // OAuth users have no role until setup — send them to the app route they asked for so onboarding can run.
+  // OAuth users have no role until setup / MergeSignupDraft — honor `next` when present so onboarding runs.
   if (!user.role) {
     if (next?.startsWith("/student")) {
       redirect(next);

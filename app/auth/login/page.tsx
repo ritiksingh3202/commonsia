@@ -1,4 +1,7 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
+
+import { auth } from "@/auth";
 import { LoginForm } from "@/components/auth/LoginForm";
 import { MarketingShell } from "@/components/layout/MarketingShell";
 
@@ -14,12 +17,24 @@ export default async function LoginPage({
 }) {
   const sp = await searchParams;
   const raw = sp.callbackUrl;
-  const safeNext =
+  const safe =
     raw && typeof raw === "string" && raw.startsWith("/") && !raw.startsWith("//") ? raw : null;
-  /** Onboarding-aware landing; optional `next` preserved for completed profiles */
-  const callbackUrl = safeNext
-    ? `/auth/continue?next=${encodeURIComponent(safeNext)}`
-    : "/auth/continue";
+  /**
+   * Auth.js `callbackUrl` after sign-in.
+   * - Plain paths like `/student` → wrap as `/auth/continue?next=…` (server resolves onboarding).
+   * - Already `/auth/continue?…` (e.g. from Choose Role) → use as-is to avoid double-wrapping.
+   */
+  const callbackUrl =
+    safe && safe.startsWith("/auth/continue")
+      ? safe
+      : safe
+        ? `/auth/continue?next=${encodeURIComponent(safe)}`
+        : "/auth/continue";
+
+  const session = await auth();
+  if (session?.user?.id) {
+    redirect(callbackUrl);
+  }
 
   return (
     <MarketingShell>

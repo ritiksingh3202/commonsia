@@ -36,7 +36,7 @@ export default async function MentorSetupPage({
   if (!Number.isInteger(step) || step < 1 || step > 3) notFound();
 
   if (!session?.user?.id) {
-    redirect(`/auth/register/mentor?callbackUrl=${encodeURIComponent(`/mentor/setup/${step}`)}`);
+    redirect(`/auth/login?callbackUrl=${encodeURIComponent("/mentor")}`);
   }
 
   const [user, linkedInAccount] = await Promise.all([

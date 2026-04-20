@@ -37,7 +37,7 @@ export default async function StudentSetupPage({
   if (!Number.isInteger(step) || step < 1 || step > 3) notFound();
 
   if (!session?.user?.id) {
-    redirect(`/auth/register/student?callbackUrl=${encodeURIComponent(`/student/setup/${step}`)}`);
+    redirect(`/auth/login?callbackUrl=${encodeURIComponent("/student")}`);
   }
 
   const [user, linkedInAccount] = await Promise.all([

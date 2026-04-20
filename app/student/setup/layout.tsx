@@ -9,7 +9,7 @@ import { prisma } from "@/lib/prisma";
 export default async function StudentSetupLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
   if (!session?.user?.id) {
-    return <>{children}</>;
+    redirect(`/auth/login?callbackUrl=${encodeURIComponent("/student")}`);
   }
 
   const user = await prisma.user.findUnique({
@@ -17,11 +17,15 @@ export default async function StudentSetupLayout({ children }: { children: React
     select: { role: true, profileComplete: true },
   });
 
-  if (user?.role === "mentor") {
+  if (!user) {
+    redirect(`/auth/login?callbackUrl=${encodeURIComponent("/student")}`);
+  }
+
+  if (user.role === "mentor") {
     redirect("/mentor/setup/1");
   }
 
-  if (user?.profileComplete) {
+  if (user.profileComplete) {
     redirect("/student");
   }
 

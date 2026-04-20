@@ -1,17 +1,9 @@
 "use client";
 
-import { MergeSignupDraft } from "@/components/auth/MergeSignupDraft";
-
 /**
- * OAuth signup merge runs in the marketing shell. `SessionProvider` lives once in the root
- * `AuthSessionProvider` — a nested provider here duplicated context and could confuse session
- * refresh after `signIn`.
+ * Marketing layout chrome. OAuth signup draft merge runs in root `AuthSessionProvider` so it also
+ * applies on `/student/setup/*` and `/mentor/setup/*` after Google/LinkedIn redirect.
  */
 export function MarketingChrome({ children }: { children: React.ReactNode }) {
-  return (
-    <>
-      <MergeSignupDraft />
-      {children}
-    </>
-  );
+  return <>{children}</>;
 }

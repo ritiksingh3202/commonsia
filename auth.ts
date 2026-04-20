@@ -192,23 +192,31 @@ export const { handlers, auth, signIn, signOut } = NextAuth((req) => {
       }),
     ],
     callbacks: {
-      async jwt({ token, user, trigger }) {
+      async jwt({ token, user }) {
         if (user?.id) {
           token.id = user.id;
           /** Keep `sub` aligned with DB id so `session.user.id` is stable for credentials + OAuth. */
           token.sub = user.id;
         }
-        const uid = (token.id as string | undefined) ?? (token.sub as string | undefined);
-        if (uid && (user || trigger === "update")) {
-          try {
-            const hasDel = prismaGeneratedClientHasAccountDeletedAt();
-            const u = await prisma.user.findUnique({
-              where: { id: uid },
-              select: hasDel ? { role: true, accountDeletedAt: true } : { role: true },
-            });
-            const closed = hasDel && u && "accountDeletedAt" in u && Boolean(u.accountDeletedAt);
-            token.role = closed ? null : (u?.role ?? null);
-          } catch {
+        const uid = ((token.id as string | undefined) ?? (token.sub as string | undefined))?.trim();
+        if (!uid) {
+          return token;
+        }
+        /**
+         * Always load `role` from the DB on each JWT refresh (not only when `user` or `update` fires).
+         * Otherwise OAuth users who finish onboarding (role null → student/mentor) keep a stale JWT
+         * until `update()`, and `/auth/continue` can mis-route.
+         */
+        try {
+          const hasDel = prismaGeneratedClientHasAccountDeletedAt();
+          const u = await prisma.user.findUnique({
+            where: { id: uid },
+            select: hasDel ? { role: true, accountDeletedAt: true } : { role: true },
+          });
+          const closed = hasDel && u && "accountDeletedAt" in u && Boolean(u.accountDeletedAt);
+          token.role = closed ? null : (u?.role ?? null);
+        } catch {
+          if (user?.id) {
             token.role = null;
           }
         }
