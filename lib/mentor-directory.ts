@@ -3,7 +3,7 @@ import { formatMentorAvailabilityPatternLabel } from "@/lib/mentor-availability-
 import { MENTOR_PAGE_HERO_ASSETS } from "@/lib/mentor-page-assets";
 import { buildMonthlyWeekdayConsumedMap } from "@/lib/mentor-monthly-booking";
 import { formatNextAvailableSlotLine, type NextSlotMonthlyConsumedLookup } from "@/lib/mentor-next-slot";
-import { CacheKeys, CacheTtl, withJsonCache } from "@/lib/redis-cache";
+import { CacheKeys, CacheTtl, delKeys, readJsonCache, withJsonCache } from "@/lib/redis-cache";
 import { prisma } from "@/lib/prisma";
 
 /** Public mentor shape for directory cards + profile pages. */
@@ -248,7 +248,26 @@ async function fetchPublicMentorsFromDb(): Promise<Mentor[]> {
 export async function getPublicMentors(): Promise<Mentor[]> {
   const key = CacheKeys.publicMentorsList();
   const t0 = Date.now();
-  const list = await withJsonCache(key, CacheTtl.publicMentorsList, fetchPublicMentorsFromDb);
+  let list: Mentor[];
+  try {
+    list = await withJsonCache(key, CacheTtl.publicMentorsList, fetchPublicMentorsFromDb);
+  } catch (err) {
+    /** DB unreachable, quota, cold start, etc. — avoid hard 500 when Redis still has a recent list. */
+    console.warn("[getPublicMentors] DB load failed; trying stale Redis cache.", err);
+    const stale = await readJsonCache<Mentor[]>(key);
+    list = Array.isArray(stale) ? stale : [];
+  }
+  /** Stale/wrong Redis payloads (or manual edits) must not take down `/mentors` SSR (`mentors.filter`). */
+  if (!Array.isArray(list)) {
+    await delKeys([key]);
+    try {
+      list = await fetchPublicMentorsFromDb();
+    } catch (err) {
+      console.warn("[getPublicMentors] retry after bad cache shape failed.", err);
+      const stale = await readJsonCache<Mentor[]>(key);
+      list = Array.isArray(stale) ? stale : [];
+    }
+  }
   if (process.env.NODE_ENV === "development") {
     console.info(`[perf] getPublicMentors ${Date.now() - t0}ms (${list.length} mentors)`);
   }

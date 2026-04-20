@@ -8,8 +8,8 @@ import { SessionProvider } from "next-auth/react";
  * loads `/api/auth/session` once (usually fast). Pass `session` from a page/layout when you want
  * to skip that round-trip (e.g. sensitive server-rendered UI).
  *
- * OAuth signup merge (`MergeSignupDraft`) lives under `MarketingChrome` so it shares the same
- * `SessionProvider` instance as `Navbar` and other marketing client UI.
+ * `MergeSignupDraft` in `MarketingChrome` calls `useSession` / `update` on the same provider tree
+ * as the rest of the app (single `SessionProvider` here — do not nest another in feature shells).
  */
 export function AuthSessionProvider({
   children,

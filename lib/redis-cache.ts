@@ -1,4 +1,8 @@
+import { revalidateTag } from "next/cache";
 import { Redis } from "@upstash/redis";
+
+/** Next.js Data Cache tag — pair with `unstable_cache` on `/mentors` and `revalidateTag` on list bust. */
+export const PUBLIC_MENTORS_REVALIDATE_TAG = "public-mentors-list";
 
 /**
  * Optional Upstash Redis (HTTP) for short-lived JSON caching on hot API routes.
@@ -55,9 +59,6 @@ export const CacheTtl = {
 /** CDN / browser hint for schedule JSON (pairs with removing `cache: "no-store"` on the client). */
 export const SCHEDULE_API_CACHE_CONTROL = "public, s-maxage=60, stale-while-revalidate=120";
 
-/** Avoid hanging navigations if Upstash is slow or unreachable. */
-const REDIS_GET_TIMEOUT_MS = 2200;
-
 async function readJson<T>(key: string): Promise<T | undefined> {
   const r = getRedis();
   if (!r) return undefined;
@@ -78,6 +79,11 @@ async function readJson<T>(key: string): Promise<T | undefined> {
   }
 }
 
+/** Same as internal read, without the GET race timeout — for stale fallbacks after DB errors. */
+export async function readJsonCache<T>(key: string): Promise<T | undefined> {
+  return readJson<T>(key);
+}
+
 async function writeJson(key: string, value: unknown, ttlSeconds: number): Promise<void> {
   const r = getRedis();
   if (!r) return;
@@ -91,16 +97,18 @@ async function writeJson(key: string, value: unknown, ttlSeconds: number): Promi
 /**
  * Read-through cache: returns cached JSON or runs `fetcher` and stores the result.
  * Does not cache `null` / `undefined` (avoids persisting error or forbidden-shaped responses).
+ *
+ * Redis GET is awaited directly (no artificial timeout race): a slow-but-successful hit
+ * must not be mistaken for a miss — the old `Promise.race` pattern could wait 2.2s then
+ * still hit the DB and ignore a late cache response, which made `/mentors` feel very slow.
+ * Writes are fire-and-forget so a large SET does not delay the HTTP response after the DB read.
  */
 export async function withJsonCache<T>(key: string, ttlSeconds: number, fetcher: () => Promise<T>): Promise<T> {
-  const hit = await Promise.race([
-    readJson<T>(key),
-    new Promise<undefined>((resolve) => setTimeout(() => resolve(undefined), REDIS_GET_TIMEOUT_MS)),
-  ]);
+  const hit = await readJson<T>(key);
   if (hit !== undefined) return hit;
   const fresh = await fetcher();
   if (fresh != null) {
-    await writeJson(key, fresh, ttlSeconds);
+    void writeJson(key, fresh, ttlSeconds);
   }
   return fresh;
 }
@@ -138,6 +146,11 @@ export function invalidateStudentDashboard(userId: string): void {
 
 export function invalidatePublicMentorsList(): void {
   void delKeys([CacheKeys.publicMentorsList()]);
+  try {
+    revalidateTag(PUBLIC_MENTORS_REVALIDATE_TAG);
+  } catch {
+    /* e.g. called outside a Next server context */
+  }
 }
 
 export async function invalidateChatThreadsForParticipants(

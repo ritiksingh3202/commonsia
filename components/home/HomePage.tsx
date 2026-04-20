@@ -212,11 +212,12 @@ export function HomePage({ testimonials }: { testimonials: HomeTestimonialCard[]
                 <div className="flex flex-col gap-3 sm:gap-4">
                   <div className="flex shrink-0 items-center justify-start">
               <Image
-                      src={w.icon}
+                src={w.icon}
                 alt=""
-                      width={64}
-                      height={64}
-                      className="h-14 w-auto max-w-full object-contain object-left sm:h-16"
+                width={64}
+                height={64}
+                className="h-14 w-auto max-w-full object-contain object-left sm:h-16"
+                style={{ width: "auto" }}
               />
             </div>
                   <h3 className="text-heading-card text-ink">{w.title}</h3>

@@ -6,7 +6,7 @@ export function authErrorMessage(code: string | undefined): string {
     case "MissingCSRF":
       return "Your session token expired. Refresh this page and try signing in again.";
     case "Configuration":
-      return "We could not start a secure sign-in session. Please try again in a moment. You can also open the sign-in page and use email and password if you registered that way.";
+      return "Sign-in could not finish because the app server could not use your database (invalid Postgres password or wrong pooler username). Google and LinkedIn sign-in need a working database connection. Fix DATABASE_URL in .env, then run npm run db:ping to verify. Email/password sign-in needs the same fix.";
     case "CredentialsSignin":
       return "Invalid email or password. If you have not signed up yet, create an account first. If you use Google or LinkedIn, sign in with that option below.";
     case "AccessDenied":

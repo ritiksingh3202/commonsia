@@ -5,8 +5,9 @@ import Credentials from "next-auth/providers/credentials";
 import GoogleProvider from "next-auth/providers/google";
 import LinkedInProvider from "next-auth/providers/linkedin";
 
-import { getGoogleOAuthClient, getLinkedInOAuthClient } from "@/lib/oauth-credentials";
 import { resolveAuthSecret } from "@/lib/auth-secret";
+import { isDevRequestHost } from "@/lib/dev-request-host";
+import { getGoogleOAuthClient, getLinkedInOAuthClient } from "@/lib/oauth-credentials";
 import { prisma } from "@/lib/prisma";
 
 /**
@@ -15,7 +16,7 @@ import { prisma } from "@/lib/prisma";
  * - AUTH_URL — e.g. https://www.yoursite.com (no trailing slash). Set on Vercel.
  * - GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET (fallback: AUTH_GOOGLE_ID / AUTH_GOOGLE_SECRET)
  * - LINKEDIN_CLIENT_ID / LINKEDIN_CLIENT_SECRET (fallback: AUTH_LINKEDIN_*)
- * - DATABASE_URL — Neon Postgres (see `.env.example`)
+ * - DATABASE_URL — Postgres (e.g. Supabase; see `.env.example`)
  *
  * LinkedIn app must include the "Sign in with LinkedIn using OpenID Connect" product.
  * That product only returns lite OpenID claims (name, picture, email, locale) — not headline, employer, cover, or phone.
@@ -28,12 +29,6 @@ import { prisma } from "@/lib/prisma";
  * `/api/calendar/google/authorize` flow so Google “Sign in” stays on basic scopes (`openid email profile`)
  * and works without Google’s sensitive-scope verification for the main OAuth client.
  */
-function isLocalDevHost(host: string | null | undefined) {
-  if (!host) return false;
-  const hostname = host.split(":")[0]?.toLowerCase();
-  return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1";
-}
-
 function cookieConfig(useSecureCookies: boolean) {
   const cookiePrefix = useSecureCookies ? "__Secure-" : "";
   const csrfPrefix = useSecureCookies ? "__Host-" : "";
@@ -107,9 +102,9 @@ const oauthProviders = [
 export const { handlers, auth, signIn, signOut } = NextAuth((req) => {
   const host = req?.headers.get("x-forwarded-host") ?? req?.headers.get("host");
   const proto = req?.headers.get("x-forwarded-proto") ?? "http";
-  const isLocal = isLocalDevHost(host);
+  const isLocal = isDevRequestHost(host);
 
-  // On localhost (dev or `next start`), force canonical URL to the current origin so Auth.js
+  // On localhost / LAN (dev or `next start`), force canonical URL to the current origin so Auth.js
   // callbacks / CSRF match the browser — even when `.env` still has a production AUTH_URL.
   if (isLocal && host) {
     const origin = `${proto === "https" ? "https" : "http"}://${host}`;
@@ -117,7 +112,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth((req) => {
     process.env.NEXTAUTH_URL = origin;
   }
 
-  const useSecureCookies = !isLocal && (proto === "https" || process.env.NODE_ENV === "production");
+  /**
+   * Only mark cookies `Secure` when the request is HTTPS. Do not infer from `NODE_ENV`:
+   * `next start` on `http://192.168.x.x` would otherwise set Secure cookies that the browser
+   * never sends over HTTP — sign-in looks broken (session never sticks).
+   */
+  const useSecureCookies = proto === "https";
 
   return {
     adapter: PrismaAdapter(prisma),
@@ -149,18 +149,27 @@ export const { handlers, auth, signIn, signOut } = NextAuth((req) => {
           const password = typeof credentials?.password === "string" ? credentials.password : "";
           if (!email || !password) return null;
 
-          const user = await prisma.user.findUnique({ where: { email } });
-          if (!user?.passwordHash) return null;
+          try {
+            const user = await prisma.user.findUnique({ where: { email } });
+            if (!user?.passwordHash) return null;
 
-          const ok = await bcrypt.compare(password, user.passwordHash);
-          if (!ok) return null;
+            const ok = await bcrypt.compare(password, user.passwordHash);
+            if (!ok) return null;
 
-          return {
-            id: user.id,
-            name: user.name,
-            email: user.email,
-            image: user.image,
-          };
+            return {
+              id: user.id,
+              name: user.name,
+              email: user.email,
+              image: user.image,
+            };
+          } catch (e) {
+            /**
+             * Uncaught errors in `authorize` are surfaced as `error=Configuration` (opaque).
+             * Log here so the real cause (DB URL, pooler, missing tables) shows in the terminal.
+             */
+            console.error("[auth][credentials] authorize failed:", e);
+            return null;
+          }
         },
       }),
     ],
@@ -168,6 +177,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth((req) => {
       async jwt({ token, user, trigger }) {
         if (user?.id) {
           token.id = user.id;
+          /** Keep `sub` aligned with DB id so `session.user.id` is stable for credentials + OAuth. */
+          token.sub = user.id;
         }
         const uid = (token.id as string | undefined) ?? (token.sub as string | undefined);
         if (uid && (user || trigger === "update")) {

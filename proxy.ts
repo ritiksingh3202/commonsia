@@ -33,6 +33,10 @@ export function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
+    /**
+     * Skip `/api/*` — especially `/api/auth/session`. Redirecting those through www/apex can break
+     * Auth.js `SessionProvider` (client `fetch` + `res.json()` → ClientFetchError: Unexpected token '<').
+     */
+    "/((?!api/|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
   ],
 };

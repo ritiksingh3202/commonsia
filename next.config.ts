@@ -1,5 +1,7 @@
 import type { NextConfig } from "next";
 
+import { assertValidDatabaseUrlForVercelBuild } from "./lib/db-url-env";
+
 /**
  * The bundled Auth.js client reads `NEXTAUTH_URL` before `AUTH_URL`. If production only sets
  * `AUTH_URL`, copy it here so `/api/auth/*` and CSRF calls target the same origin as the server.
@@ -9,6 +11,21 @@ import type { NextConfig } from "next";
   const nextAuthUrl = process.env.NEXTAUTH_URL?.trim();
   if (authUrl && !nextAuthUrl) {
     process.env.NEXTAUTH_URL = authUrl;
+  }
+  const n = process.env.NEXTAUTH_URL?.trim();
+  if (n && process.env.NODE_ENV !== "production") {
+    try {
+      const p = new URL(n).pathname.replace(/\/$/, "") || "/";
+      if (p !== "/" && p !== "/api/auth") {
+        console.warn(
+          `[next.config] NEXTAUTH_URL has pathname "${p}". next-auth/react uses this for client session ` +
+            `fetch paths; it should be the site origin only (e.g. http://localhost:3000) or end with /api/auth. ` +
+            `Wrong paths cause HTML 404 responses and ClientFetchError ("Unexpected token '<'").`,
+        );
+      }
+    } catch {
+      /* ignore */
+    }
   }
 })();
 
@@ -21,6 +38,7 @@ if (process.env.VERCEL === "1") {
       "Missing AUTH_SECRET (or NEXTAUTH_SECRET). Add it in Vercel → Project → Settings → Environment Variables. Generate a value locally with: npx auth secret",
     );
   }
+  assertValidDatabaseUrlForVercelBuild();
 }
 
 const nextConfig: NextConfig = {

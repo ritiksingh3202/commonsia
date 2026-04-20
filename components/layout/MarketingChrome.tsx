@@ -1,19 +1,17 @@
 "use client";
 
-import { SessionProvider } from "next-auth/react";
-
 import { MergeSignupDraft } from "@/components/auth/MergeSignupDraft";
 
 /**
- * Keeps `SessionProvider` in the same client subtree as `Navbar` and other marketing UI.
- * Some App Router + Turbopack combinations fail to thread next-auth context from the root
- * layout through a server `MarketingShell` fragment to `Navbar`.
+ * OAuth signup merge runs in the marketing shell. `SessionProvider` lives once in the root
+ * `AuthSessionProvider` — a nested provider here duplicated context and could confuse session
+ * refresh after `signIn`.
  */
 export function MarketingChrome({ children }: { children: React.ReactNode }) {
   return (
-    <SessionProvider basePath="/api/auth" refetchOnWindowFocus>
+    <>
       <MergeSignupDraft />
       {children}
-    </SessionProvider>
+    </>
   );
 }
