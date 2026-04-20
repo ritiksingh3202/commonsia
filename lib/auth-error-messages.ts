@@ -11,8 +11,6 @@ export function authErrorMessage(code: string | undefined): string {
       return "Invalid email or password. If you have not signed up yet, create an account first. If you use Google or LinkedIn, sign in with that option below.";
     case "AccessDenied":
       return "Sign-in was denied.";
-    case "AccountClosed":
-      return "This Commonsia account was closed. If you meant to come back, create a new account with the same email after signing out everywhere, or contact support.";
     case "Verification":
       return "The sign-in link could not be verified. Request a new one.";
     case "CallbackRouteError":

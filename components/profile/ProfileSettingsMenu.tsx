@@ -13,41 +13,7 @@ type Props = {
 /** Gear menu on own profile: edit profile + log out */
 export function ProfileSettingsMenu({ editProfileHref, compact }: Props) {
   const [open, setOpen] = useState(false);
-  const [deleting, setDeleting] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
-
-  async function handleDeleteAccount() {
-    if (
-      !window.confirm(
-        "Close your Commonsia account? Your profile will disappear from the site and you will be signed out. Some records may be kept for history, but they will not be shown publicly.",
-      )
-    ) {
-      return;
-    }
-    const typed = window.prompt('Type DELETE_MY_ACCOUNT to confirm.');
-    if (typed !== "DELETE_MY_ACCOUNT") {
-      return;
-    }
-    setDeleting(true);
-    try {
-      const res = await fetch("/api/account", {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ confirm: "DELETE_MY_ACCOUNT" }),
-      });
-      if (!res.ok) {
-        const j = (await res.json().catch(() => ({}))) as { error?: string };
-        window.alert(j.error ?? "Could not delete account. Try again.");
-        return;
-      }
-      setOpen(false);
-      await signOut({ callbackUrl: "/" });
-    } catch {
-      window.alert("Could not delete account. Try again.");
-    } finally {
-      setDeleting(false);
-    }
-  }
 
   useEffect(() => {
     if (!open) return;
@@ -117,15 +83,6 @@ export function ProfileSettingsMenu({ editProfileHref, compact }: Props) {
             onClick={() => void signOut({ callbackUrl: "/" })}
           >
             Log out
-          </button>
-          <button
-            type="button"
-            role="menuitem"
-            disabled={deleting}
-            className="w-full border-t border-black/[0.06] px-3 py-2.5 text-left text-[13px] font-medium text-[#991b1b] transition hover:bg-red-50 disabled:opacity-50"
-            onClick={() => void handleDeleteAccount()}
-          >
-            {deleting ? "Deleting…" : "Delete account"}
           </button>
         </div>
       ) : null}
