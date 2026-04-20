@@ -50,8 +50,14 @@ type SignupFormProps = {
 export function SignupForm({ role, oauthCallbackUrl }: SignupFormProps) {
   const router = useRouter();
   const c = useMemo(() => copy[role], [role]);
-  const afterAuth =
+  /** First screen of profile wizard after account creation / OAuth. */
+  const setupTarget =
     oauthCallbackUrl ?? (role === "student" ? "/student/setup/1" : "/mentor/setup/1");
+  /**
+   * Always land on `/auth/continue` after sign-in so `auth()` + JWT are stable before hitting setup.
+   * Deep-linking straight to `/student/setup/1` can race the session cookie and bounce users to login.
+   */
+  const postSignInCallbackUrl = `/auth/continue?next=${encodeURIComponent(setupTarget)}`;
   const icon = role === "student" ? AUTH_ASSETS.student : AUTH_ASSETS.mentor;
   const [submitting, setSubmitting] = useState(false);
 
@@ -62,7 +68,14 @@ export function SignupForm({ role, oauthCallbackUrl }: SignupFormProps) {
     const name = String(fd.get("name") ?? "").trim();
     const email = String(fd.get("email") ?? "").trim();
     try {
-      sessionStorage.setItem("commonsia_signup_draft", JSON.stringify({ name, email, role }));
+      sessionStorage.setItem(
+        "commonsia_signup_draft",
+        JSON.stringify({
+          name,
+          email,
+          role: role === "mentor" ? "mentor" : "student",
+        }),
+      );
     } catch {
       /* ignore */
     }
@@ -146,7 +159,7 @@ export function SignupForm({ role, oauthCallbackUrl }: SignupFormProps) {
               await signIn("credentials", {
                 email: email.trim().toLowerCase(),
                 password: pw,
-                callbackUrl: afterAuth,
+                callbackUrl: postSignInCallbackUrl,
                 redirect: true,
               });
               /* Unreachable on success — client navigates away. */
@@ -228,7 +241,7 @@ export function SignupForm({ role, oauthCallbackUrl }: SignupFormProps) {
         </form>
 
         <div className="mt-4">
-          <AuthSocialRow callbackUrl={afterAuth} onBeforeOAuth={saveDraftForOAuth} />
+          <AuthSocialRow callbackUrl={postSignInCallbackUrl} onBeforeOAuth={saveDraftForOAuth} />
         </div>
 
         <LegalConsentLinks />
@@ -236,7 +249,7 @@ export function SignupForm({ role, oauthCallbackUrl }: SignupFormProps) {
         <p className="mt-4 text-center text-[13px] text-[#717182]">
           Already have an account?{" "}
           <Link
-            href={`/auth/login?callbackUrl=${encodeURIComponent(afterAuth)}`}
+            href={`/auth/login?callbackUrl=${encodeURIComponent(postSignInCallbackUrl)}`}
             className="font-medium text-primary hover:underline"
           >
             Sign in

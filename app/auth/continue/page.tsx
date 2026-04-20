@@ -5,6 +5,8 @@ import { getMentorOnboardingRedirectPath } from "@/lib/mentor-onboarding";
 import { prisma } from "@/lib/prisma";
 import { getStudentOnboardingRedirectPath } from "@/lib/student-onboarding";
 
+export const dynamic = "force-dynamic";
+
 function safeNextPath(raw: string | undefined): string | null {
   if (!raw || typeof raw !== "string") return null;
   if (!raw.startsWith("/") || raw.startsWith("//")) return null;
@@ -19,13 +21,15 @@ export default async function AuthContinuePage({
 }: {
   searchParams: Promise<{ next?: string }>;
 }) {
-  const session = await auth();
-  if (!session?.user?.id) {
-    redirect("/auth/login?callbackUrl=/auth/continue");
-  }
-
   const { next: nextRaw } = await searchParams;
   const next = safeNextPath(nextRaw);
+  const resumeContinue =
+    next != null ? `/auth/continue?next=${encodeURIComponent(next)}` : "/auth/continue";
+
+  const session = await auth();
+  if (!session?.user?.id) {
+    redirect(`/auth/login?callbackUrl=${encodeURIComponent(resumeContinue)}`);
+  }
 
   const user = await prisma.user.findUnique({
     where: { id: session.user.id },
@@ -52,7 +56,7 @@ export default async function AuthContinuePage({
   });
 
   if (!user) {
-    redirect("/auth/login?callbackUrl=/auth/continue");
+    redirect(`/auth/login?callbackUrl=${encodeURIComponent(resumeContinue)}`);
   }
 
   // OAuth users have no role until setup / MergeSignupDraft — honor `next` when present so onboarding runs.
