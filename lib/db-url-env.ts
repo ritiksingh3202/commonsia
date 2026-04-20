@@ -17,6 +17,31 @@ export function normalizePostgresUrlEnvVar(name: "DATABASE_URL" | "DIRECT_URL"):
 }
 
 /**
+ * If only the Supabase transaction pooler URL is set, derive the session pooler URL (port 5432, no pgbouncer).
+ * prisma/schema.prisma requires DIRECT_URL; Vercel projects often omit it when only one string was pasted.
+ */
+export function deriveMissingDirectUrlFromDatabaseUrl(databaseUrl: string): string | null {
+  const u = databaseUrl.trim();
+  if (!u) return null;
+  const isPooler = /pooler\.supabase\.(com|co)/i.test(u);
+  if (!isPooler || !u.includes(":6543")) return null;
+  try {
+    const asHttp = u.replace(/^postgresql:\/\//i, "http://").replace(/^postgres:\/\//i, "http://");
+    const parsed = new URL(asHttp);
+    if (parsed.port !== "6543") return null;
+    parsed.port = "5432";
+    const sp = new URLSearchParams(parsed.search);
+    sp.delete("pgbouncer");
+    const q = sp.toString();
+    parsed.search = q ? `?${q}` : "";
+    const scheme = u.startsWith("postgres://") ? "postgres:" : "postgresql:";
+    return parsed.toString().replace(/^http:\/\//i, `${scheme}//`);
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Call from `next.config.ts` on Vercel so misconfigured env fails immediately with a clear message.
  */
 export function assertValidDatabaseUrlForVercelBuild(): void {
@@ -40,13 +65,25 @@ export function assertValidDatabaseUrlForVercelBuild(): void {
     );
   }
 
-  const d = (process.env.DIRECT_URL ?? "").trim();
+  let d = (process.env.DIRECT_URL ?? "").trim();
   if (!d) {
-    throw new Error(
-      "Missing DIRECT_URL on Vercel. prisma/schema.prisma uses `directUrl` for Supabase: copy the session pooler " +
-        "URI (port 5432) from Supabase → Settings → Database → Connection pooling. DATABASE_URL should be the " +
-        "transaction pooler (port 6543) with ?pgbouncer=true.",
-    );
+    const derived = deriveMissingDirectUrlFromDatabaseUrl(u);
+    if (derived) {
+      process.env.DIRECT_URL = derived;
+      d = derived;
+      console.warn(
+        "[commonsia] DIRECT_URL was unset on Vercel; derived session pooler URL from DATABASE_URL (6543 → 5432, " +
+          "pgbouncer param removed). Prefer setting DIRECT_URL explicitly in Vercel for clarity.",
+      );
+    } else {
+      process.env.DIRECT_URL = u;
+      d = u;
+      console.warn(
+        "[commonsia] DIRECT_URL was unset on Vercel; defaulted to DATABASE_URL. " +
+          "For Supabase with a transaction pooler on DATABASE_URL, add DIRECT_URL (session pooler, port 5432) " +
+          "from Settings → Database → Connection pooling so migrations and introspection stay reliable.",
+      );
+    }
   }
   if (!d.startsWith("postgresql://") && !d.startsWith("postgres://")) {
     throw new Error(
