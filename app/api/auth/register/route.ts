@@ -3,7 +3,6 @@ import { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 
 import { invalidatePublicMentorsList } from "@/lib/redis-cache";
-import { getActiveUserWhere } from "@/lib/user-active";
 import { isPrismaConnectionError, isPrismaMissingSchemaError } from "@/lib/prisma-errors";
 import { prisma } from "@/lib/prisma";
 
@@ -42,7 +41,7 @@ export async function POST(req: Request) {
   }
 
   try {
-    const existing = await prisma.user.findFirst({ where: { email, ...getActiveUserWhere() } });
+    const existing = await prisma.user.findFirst({ where: { email } });
     if (existing) {
       if (!existing.passwordHash) {
         return NextResponse.json(

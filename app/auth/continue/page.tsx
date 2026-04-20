@@ -59,15 +59,25 @@ export default async function AuthContinuePage({
     redirect(`/auth/login?callbackUrl=${encodeURIComponent(resumeContinue)}`);
   }
 
-  // OAuth users have no role until setup / MergeSignupDraft — honor `next` when present so onboarding runs.
+  /**
+   * OAuth users have no `role` until setup or `MergeSignupDraft` saves. If we redirected them back
+   * to `/auth` here, they would land on the Choose-Role signup page even though the navbar shows
+   * "My profile" — the exact loop reported for sign-in with Google/LinkedIn. Instead:
+   *   1. Honor an explicit `next` (works for Signup → `/student/setup/1` etc.).
+   *   2. Else infer role from existing mentor-onboarding hints on the account.
+   *   3. Otherwise default to the student onboarding wizard — it lets users pick their path
+   *      without another full "sign up" screen.
+   */
   if (!user.role) {
-    if (next?.startsWith("/student")) {
+    if (next?.startsWith("/student") || next?.startsWith("/mentor")) {
       redirect(next);
     }
-    if (next?.startsWith("/mentor")) {
-      redirect(next);
-    }
-    redirect("/auth");
+    const looksLikeMentor =
+      Boolean(user.mentorOnboardingComplete) ||
+      Boolean(user.mentorTitle?.trim()) ||
+      Boolean(user.mentorCompany?.trim()) ||
+      (Array.isArray(user.mentorExpertise) && user.mentorExpertise.length > 0);
+    redirect(looksLikeMentor ? "/mentor/setup/1" : "/student/setup/1");
   }
 
   if (user.role === "mentor") {

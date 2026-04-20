@@ -12,7 +12,6 @@ import { resolveAuthSecret, warnIfUsingEphemeralDevAuthSecret } from "@/lib/auth
 import { isDevRequestHost } from "@/lib/dev-request-host";
 import { getGoogleOAuthClient, getLinkedInOAuthClient } from "@/lib/oauth-credentials";
 import { prisma } from "@/lib/prisma";
-import { getActiveUserWhere, prismaGeneratedClientHasAccountDeletedAt } from "@/lib/user-active";
 
 /**
  * OAuth (Auth.js v5):
@@ -188,7 +187,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth((req) => {
 
           try {
             const user = await prisma.user.findFirst({
-              where: { email, ...getActiveUserWhere() },
+              where: { email },
             });
             if (!user?.passwordHash) return null;
 
@@ -244,37 +243,39 @@ export const { handlers, auth, signIn, signOut } = NextAuth((req) => {
         }
         return baseTrimmed;
       },
-      async jwt({ token, user }) {
+      async jwt({ token, user, trigger }) {
         if (user?.id) {
           token.id = user.id;
           /** Keep `sub` aligned with DB id so `session.user.id` is stable for credentials + OAuth. */
           token.sub = user.id;
         }
         const uid = ((token.id as string | undefined) ?? (token.sub as string | undefined))?.trim();
-        if (!uid) {
-          return token;
-        }
+
         /**
-         * Always load `role` from the DB on each JWT refresh (not only when `user` or `update` fires).
-         * Otherwise OAuth users who finish onboarding (role null → student/mentor) keep a stale JWT
-         * until `update()`, and `/auth/continue` can mis-route.
+         * Refresh `role` from DB only when it matters:
+         *  - Initial sign-in (`user` present)
+         *  - Client calls `update()` (`trigger === "update"`)
+         *  - Token has no role yet (e.g. very first OAuth issuance)
+         * Avoids a DB round-trip on every request while still catching role changes after onboarding.
          */
-        try {
-          const hasDel = prismaGeneratedClientHasAccountDeletedAt();
-          const u = await prisma.user.findUnique({
-            where: { id: uid },
-            select: hasDel ? { role: true, accountDeletedAt: true } : { role: true },
-          });
-          const closed = hasDel && u && "accountDeletedAt" in u && Boolean(u.accountDeletedAt);
-          token.role = closed ? null : (u?.role ?? null);
-        } catch {
-          if (user?.id) {
-            token.role = null;
+        const shouldRefreshRole =
+          !!uid && (Boolean(user) || trigger === "update" || token.role == null);
+
+        if (shouldRefreshRole && uid) {
+          try {
+            const u = await prisma.user.findUnique({
+              where: { id: uid },
+              select: { role: true },
+            });
+            token.role = u?.role ?? null;
+          } catch {
+            if (token.role === undefined) token.role = null;
           }
         }
+
         /**
          * Keep the encrypted session JWE small: OAuth/account objects can attach token fields;
-         * `picture` must never carry a multi‑100KB data URL (profile photo storage).
+         * `picture` must never carry a multi-100KB data URL (profile photo storage).
          */
         const t = token as Record<string, unknown>;
         delete t.access_token;
@@ -294,48 +295,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth((req) => {
       async session({ session, token }) {
         if (!session.user) return session;
         const uid = ((token.id as string | undefined) ?? (token.sub as string | undefined))?.trim();
-        if (!uid) {
-          session.user.id = "";
-          session.user.role = (token.role as string | null) ?? null;
-          session.user.image =
-            profileImageSafeForAuthCookie(session.user.image) ??
-            profileImageSafeForAuthCookie(token.picture as string | null) ??
-            "";
-          return session;
-        }
-        try {
-          const hasDel = prismaGeneratedClientHasAccountDeletedAt();
-          const u = await prisma.user.findUnique({
-            where: { id: uid },
-            select: hasDel
-              ? { accountDeletedAt: true, role: true, image: true }
-              : { role: true, image: true },
-          });
-          const closed = hasDel && u && "accountDeletedAt" in u && Boolean(u.accountDeletedAt);
-          if (!u || closed) {
-            session.user.id = "";
-            /** Cleared profile — Auth.js types use `string` for these fields, not `null`. */
-            session.user.email = "";
-            session.user.name = "";
-            session.user.image = "";
-            session.user.role = null;
-            return session;
-          }
-          session.user.id = uid;
-          session.user.role = u.role ?? null;
-          session.user.image =
-            profileImageSafeForAuthCookie(u.image) ??
-            profileImageSafeForAuthCookie(session.user.image) ??
-            profileImageSafeForAuthCookie(token.picture as string | null) ??
-            "";
-        } catch {
-          session.user.id = uid;
-          session.user.role = (token.role as string | null) ?? null;
-          session.user.image =
-            profileImageSafeForAuthCookie(session.user.image) ??
-            profileImageSafeForAuthCookie(token.picture as string | null) ??
-            "";
-        }
+        session.user.id = uid ?? "";
+        session.user.role = (token.role as string | null) ?? null;
+        session.user.image =
+          profileImageSafeForAuthCookie(session.user.image) ??
+          profileImageSafeForAuthCookie(token.picture as string | null) ??
+          "";
         return session;
       },
     },
