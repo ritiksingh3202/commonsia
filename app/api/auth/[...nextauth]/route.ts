@@ -1,3 +1,5 @@
+import type { NextRequest } from "next/server";
+
 import { handlers } from "@/auth";
 
 /** Prisma adapter requires Node (not Edge). */
@@ -27,7 +29,7 @@ async function responseBodyLooksLikeHtml(res: Response): Promise<boolean> {
  * `/api/auth/session` with an HTML error page. SessionProvider then throws ClientFetchError
  * (“Unexpected token '<'”). Coerce session routes to JSON so the shell still loads.
  */
-async function safeGet(req: Request): Promise<Response> {
+async function safeGet(req: NextRequest): Promise<Response> {
   const sessionRoute = isSessionPath(req.url);
   try {
     const res = await handlers.GET(req);
@@ -57,7 +59,7 @@ async function safeGet(req: Request): Promise<Response> {
   }
 }
 
-async function safePost(req: Request): Promise<Response> {
+async function safePost(req: NextRequest): Promise<Response> {
   const sessionRoute = isSessionPath(req.url);
   try {
     const res = await handlers.POST(req);

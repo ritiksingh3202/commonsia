@@ -147,7 +147,7 @@ export function invalidateStudentDashboard(userId: string): void {
 export function invalidatePublicMentorsList(): void {
   void delKeys([CacheKeys.publicMentorsList()]);
   try {
-    revalidateTag(PUBLIC_MENTORS_REVALIDATE_TAG);
+    revalidateTag(PUBLIC_MENTORS_REVALIDATE_TAG, "max");
   } catch {
     /* e.g. called outside a Next server context */
   }
