@@ -90,8 +90,8 @@ export function MentorSetupStep1({
           </span>
         </h2>
         <p className="mb-3 text-[12px] leading-snug text-[#6b7280]">
-          Country, city, role, organization, experience, and areas of expertise are required (expertise counts as one
-          section). Changes save automatically.
+          Country and city can be typed or chosen from suggestions; role, organization, experience, and areas of expertise
+          are required (expertise counts as one section). Changes save automatically.
         </p>
         <form
           className="space-y-3"
