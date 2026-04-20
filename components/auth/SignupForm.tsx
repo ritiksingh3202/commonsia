@@ -107,6 +107,7 @@ export function SignupForm({ role, oauthCallbackUrl }: SignupFormProps) {
         <form
           id={`signup-form-${role}`}
           className="space-y-3"
+          suppressHydrationWarning
           onSubmit={async (e) => {
             e.preventDefault();
             const form = e.currentTarget;
@@ -185,6 +186,7 @@ export function SignupForm({ role, oauthCallbackUrl }: SignupFormProps) {
               placeholder={c.namePlaceholder}
               className={field}
               required
+              suppressHydrationWarning
             />
           </div>
           <div className="space-y-1.5">
@@ -199,6 +201,7 @@ export function SignupForm({ role, oauthCallbackUrl }: SignupFormProps) {
               placeholder={c.emailPlaceholder}
               className={field}
               required
+              suppressHydrationWarning
             />
           </div>
           <div className="space-y-1.5">
@@ -214,6 +217,7 @@ export function SignupForm({ role, oauthCallbackUrl }: SignupFormProps) {
               className={field}
               required
               minLength={MIN_PASSWORD}
+              suppressHydrationWarning
             />
           </div>
           <div className="space-y-1.5">
@@ -229,11 +233,13 @@ export function SignupForm({ role, oauthCallbackUrl }: SignupFormProps) {
               className={field}
               required
               minLength={MIN_PASSWORD}
+              suppressHydrationWarning
             />
           </div>
           <button
             type="submit"
             disabled={submitting}
+            suppressHydrationWarning
             className="mt-1 w-full rounded-md bg-primary px-3 py-2.5 text-[13px] font-semibold text-white shadow-sm transition-colors hover:bg-primary/90 disabled:opacity-60 sm:text-sm"
           >
             {submitting ? "Creating account…" : "Continue"}

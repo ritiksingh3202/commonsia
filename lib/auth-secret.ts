@@ -27,3 +27,21 @@ export function resolveAuthSecret(requestHost?: string | null): string {
 
   return "";
 }
+
+/**
+ * Warn once in dev when no `AUTH_SECRET` is set — JWT signing uses a fixed fallback, so sessions
+ * invalid across server restarts and teammates see “session expired” / CSRF issues.
+ */
+export function warnIfUsingEphemeralDevAuthSecret(): void {
+  if (process.env.NODE_ENV === "production") return;
+  const g = globalThis as unknown as { __commonsiaAuthSecretDevWarn?: boolean };
+  if (g.__commonsiaAuthSecretDevWarn) return;
+  const fromEnv = (process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET ?? "").trim();
+  if (fromEnv.length > 0) return;
+  g.__commonsiaAuthSecretDevWarn = true;
+  console.warn(
+    "[auth] AUTH_SECRET (or NEXTAUTH_SECRET) is not set. Using a fixed dev-only secret — " +
+      "sessions do not survive `npm run dev` restarts and are not portable across machines " +
+      '(symptoms: "session token expired", MissingCSRF). Run: npx auth secret  → add to .env).',
+  );
+}

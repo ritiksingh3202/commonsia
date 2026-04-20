@@ -67,6 +67,7 @@ export function LoginForm({ callbackUrl = "/auth/continue", authError }: LoginFo
 
         <form
           className="space-y-3"
+          suppressHydrationWarning
           onSubmit={async (e) => {
             e.preventDefault();
             const form = e.currentTarget;
@@ -108,6 +109,7 @@ export function LoginForm({ callbackUrl = "/auth/continue", authError }: LoginFo
               placeholder="you@example.com"
               className={field}
               required
+              suppressHydrationWarning
               onFocus={() => setCredsError(null)}
             />
           </div>
@@ -136,12 +138,14 @@ export function LoginForm({ callbackUrl = "/auth/continue", authError }: LoginFo
               placeholder="Enter your password"
               className={field}
               required
+              suppressHydrationWarning
               onFocus={() => setCredsError(null)}
             />
           </div>
           <button
             type="submit"
             disabled={submitting}
+            suppressHydrationWarning
             className="mt-1 w-full rounded-md bg-primary px-3 py-2.5 text-[13px] font-semibold text-white shadow-sm transition-colors hover:bg-primary/90 disabled:opacity-60 sm:text-sm"
           >
             {submitting ? "Signing in…" : "Sign In"}

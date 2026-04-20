@@ -5,7 +5,8 @@ import Credentials from "next-auth/providers/credentials";
 import GoogleProvider from "next-auth/providers/google";
 import LinkedInProvider from "next-auth/providers/linkedin";
 
-import { resolveAuthSecret } from "@/lib/auth-secret";
+import { warnDevLoopbackAuthUrlEnvMismatchOnce } from "@/lib/auth-oauth-host-warn";
+import { resolveAuthSecret, warnIfUsingEphemeralDevAuthSecret } from "@/lib/auth-secret";
 import { isDevRequestHost } from "@/lib/dev-request-host";
 import { getGoogleOAuthClient, getLinkedInOAuthClient } from "@/lib/oauth-credentials";
 import { prisma } from "@/lib/prisma";
@@ -101,11 +102,16 @@ const oauthProviders = [
 ];
 
 export const { handlers, auth, signIn, signOut } = NextAuth((req) => {
+  /** Snapshot before dev origin pinning — used for loopback mismatch warnings only. */
+  const authUrlBeforePin = (process.env.AUTH_URL ?? process.env.NEXTAUTH_URL ?? "").trim();
+
   const host = req?.headers.get("x-forwarded-host") ?? req?.headers.get("host");
   const proto = req?.headers.get("x-forwarded-proto") ?? "http";
   const isLocal = isDevRequestHost(host);
   const isNonProduction = process.env.NODE_ENV !== "production";
   const hostname = (host ?? "").split(":")[0]?.toLowerCase() ?? "";
+
+  warnIfUsingEphemeralDevAuthSecret();
   /** Avoid overwriting `AUTH_URL` on real Vercel preview/prod hosts when `NODE_ENV` is development (rare). */
   const isVercelAppHost = hostname.endsWith(".vercel.app");
 
@@ -118,6 +124,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth((req) => {
     const origin = `${proto === "https" ? "https" : "http"}://${host}`;
     process.env.AUTH_URL = origin;
     process.env.NEXTAUTH_URL = origin;
+  }
+
+  if (hostname) {
+    warnDevLoopbackAuthUrlEnvMismatchOnce(authUrlBeforePin, hostname);
   }
 
   /**
@@ -147,6 +157,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth((req) => {
     },
     /** Set `AUTH_DEBUG=1` in Vercel temporarily to log OAuth details (then remove). */
     debug: process.env.AUTH_DEBUG === "1",
+    events:
+      process.env.AUTH_DEBUG === "1"
+        ? {
+            signIn({ user, account }) {
+              console.log("[auth][debug] signIn", { userId: user?.id, provider: account?.provider });
+            },
+          }
+        : undefined,
     session: {
       strategy: "jwt",
       maxAge: 30 * 24 * 60 * 60,
@@ -192,6 +210,23 @@ export const { handlers, auth, signIn, signOut } = NextAuth((req) => {
       }),
     ],
     callbacks: {
+      /**
+       * Default Auth.js behavior: only same-origin or relative URLs after sign-in.
+       * Prevents open redirects if a forged `callbackUrl` slips through.
+       */
+      redirect({ url, baseUrl }) {
+        if (url.startsWith("/")) {
+          return `${baseUrl}${url}`;
+        }
+        try {
+          if (new URL(url).origin === new URL(baseUrl).origin) {
+            return url;
+          }
+        } catch {
+          /* ignore */
+        }
+        return baseUrl;
+      },
       async jwt({ token, user }) {
         if (user?.id) {
           token.id = user.id;
