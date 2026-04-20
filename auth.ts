@@ -6,6 +6,7 @@ import GoogleProvider from "next-auth/providers/google";
 import LinkedInProvider from "next-auth/providers/linkedin";
 
 import { warnDevLoopbackAuthUrlEnvMismatchOnce } from "@/lib/auth-oauth-host-warn";
+import { profileImageSafeForAuthCookie } from "@/lib/auth-session-cookie-profile";
 import { resolveAuthSecret, warnIfUsingEphemeralDevAuthSecret } from "@/lib/auth-secret";
 import { isDevRequestHost } from "@/lib/dev-request-host";
 import { getGoogleOAuthClient, getLinkedInOAuthClient } from "@/lib/oauth-credentials";
@@ -166,6 +167,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth((req) => {
           }
         : undefined,
     session: {
+      /** DB adapter defaults to DB sessions, but Credentials requires JWT (@auth/core). Keep payloads tiny (see `jwt`). */
       strategy: "jwt",
       maxAge: 30 * 24 * 60 * 60,
     },
@@ -196,7 +198,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth((req) => {
               id: user.id,
               name: user.name,
               email: user.email,
-              image: user.image,
+              /** Never put data URLs here — they inflate the JWT session cookie (Vercel 431). */
+              image: profileImageSafeForAuthCookie(user.image) ?? undefined,
             };
           } catch (e) {
             /**
@@ -255,6 +258,23 @@ export const { handlers, auth, signIn, signOut } = NextAuth((req) => {
             token.role = null;
           }
         }
+        /**
+         * Keep the encrypted session JWE small: OAuth/account objects can attach token fields;
+         * `picture` must never carry a multi‑100KB data URL (profile photo storage).
+         */
+        const t = token as Record<string, unknown>;
+        delete t.access_token;
+        delete t.refresh_token;
+        delete t.id_token;
+        delete t.session_state;
+        delete t.oauth_token;
+        delete t.oauth_token_secret;
+        const pic = t.picture;
+        t.picture = profileImageSafeForAuthCookie(typeof pic === "string" ? pic : null);
+        const img = t.image;
+        if (typeof img === "string") {
+          t.image = profileImageSafeForAuthCookie(img);
+        }
         return token;
       },
       async session({ session, token }) {
@@ -263,13 +283,19 @@ export const { handlers, auth, signIn, signOut } = NextAuth((req) => {
         if (!uid) {
           session.user.id = "";
           session.user.role = (token.role as string | null) ?? null;
+          session.user.image =
+            profileImageSafeForAuthCookie(session.user.image) ??
+            profileImageSafeForAuthCookie(token.picture as string | null) ??
+            "";
           return session;
         }
         try {
           const hasDel = prismaGeneratedClientHasAccountDeletedAt();
           const u = await prisma.user.findUnique({
             where: { id: uid },
-            select: hasDel ? { accountDeletedAt: true, role: true } : { role: true },
+            select: hasDel
+              ? { accountDeletedAt: true, role: true, image: true }
+              : { role: true, image: true },
           });
           const closed = hasDel && u && "accountDeletedAt" in u && Boolean(u.accountDeletedAt);
           if (!u || closed) {
@@ -283,9 +309,18 @@ export const { handlers, auth, signIn, signOut } = NextAuth((req) => {
           }
           session.user.id = uid;
           session.user.role = u.role ?? null;
+          session.user.image =
+            profileImageSafeForAuthCookie(u.image) ??
+            profileImageSafeForAuthCookie(session.user.image) ??
+            profileImageSafeForAuthCookie(token.picture as string | null) ??
+            "";
         } catch {
           session.user.id = uid;
           session.user.role = (token.role as string | null) ?? null;
+          session.user.image =
+            profileImageSafeForAuthCookie(session.user.image) ??
+            profileImageSafeForAuthCookie(token.picture as string | null) ??
+            "";
         }
         return session;
       },
