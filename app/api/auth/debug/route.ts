@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
+import { auth } from "@/auth";
 import { getGoogleOAuthClient, getLinkedInOAuthClient } from "@/lib/oauth-credentials";
 import { prisma } from "@/lib/prisma";
 
@@ -76,9 +77,66 @@ export async function GET(req: NextRequest) {
   const authUrlMasked = maskUrl(authUrl);
   const nextAuthUrlMasked = maskUrl(nextAuthUrl);
 
+  /**
+   * "Who am I" section — when a signed-in session cookie is sent, report the
+   * DB row's role + onboarding flags. Tells you whether /auth/continue will
+   * route you to mentor vs student vs null-role inference on this deployment.
+   * No PII leaked: email is hashed-tailed, not returned in full.
+   */
+  let whoami: Record<string, unknown> | null = null;
+  try {
+    const session = await auth();
+    if (session?.user?.id) {
+      const u = await prisma.user.findUnique({
+        where: { id: session.user.id },
+        select: {
+          email: true,
+          role: true,
+          profileComplete: true,
+          mentorOnboardingComplete: true,
+          mentorTitle: true,
+          mentorCompany: true,
+          mentorYearsExperience: true,
+          mentorExpertise: true,
+          mentorMentorshipFocus: true,
+          bio: true,
+          linkedinUrl: true,
+          whatsappUrl: true,
+          university: true,
+          yearOfStudy: true,
+          major: true,
+        },
+      });
+      whoami = {
+        signedIn: true,
+        userIdTail: session.user.id.slice(-6),
+        emailTail: u?.email ? u.email.slice(-10) : null,
+        role: u?.role ?? null,
+        profileComplete: u?.profileComplete ?? null,
+        mentorOnboardingComplete: u?.mentorOnboardingComplete ?? null,
+        hasMentorTitle: Boolean(u?.mentorTitle?.trim()),
+        hasMentorCompany: Boolean(u?.mentorCompany?.trim()),
+        hasMentorYears: Boolean(u?.mentorYearsExperience?.trim()),
+        mentorExpertiseCount: Array.isArray(u?.mentorExpertise) ? u.mentorExpertise.length : 0,
+        hasMentorFocus: Boolean(u?.mentorMentorshipFocus?.trim()),
+        hasBio: Boolean(u?.bio?.trim()),
+        hasLinkedinUrl: Boolean(u?.linkedinUrl?.trim()),
+        hasWhatsappUrl: Boolean(u?.whatsappUrl?.trim()),
+        hasUniversity: Boolean(u?.university?.trim()),
+        hasYearOfStudy: Boolean(u?.yearOfStudy?.trim()),
+        hasMajor: Boolean(u?.major?.trim()),
+      };
+    } else {
+      whoami = { signedIn: false };
+    }
+  } catch (e) {
+    whoami = { signedIn: null, error: e instanceof Error ? e.message.slice(0, 200) : "unknown" };
+  }
+
   return NextResponse.json(
     {
       now: new Date().toISOString(),
+      whoami,
       runtime: {
         nodeEnv: process.env.NODE_ENV ?? null,
         onVercel: process.env.VERCEL === "1",
