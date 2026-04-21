@@ -132,11 +132,20 @@ export const { handlers, auth, signIn, signOut } = NextAuth((req) => {
   }
 
   /**
-   * Only mark cookies `Secure` when the request is HTTPS. Do not infer from `NODE_ENV`:
-   * `next start` on `http://192.168.x.x` would otherwise set Secure cookies that the browser
-   * never sends over HTTP — sign-in looks broken (session never sticks).
+   * `useSecureCookies` MUST be stable across every invocation of this factory for a given
+   * deployment, otherwise the cookie NAME toggles between `authjs.session-token` and
+   * `__Secure-authjs.session-token` across requests. On Vercel production at least one internal
+   * warm-up/routing call can reach this factory without `x-forwarded-proto: https`, causing
+   * Auth.js to read the unprefixed name even though the browser holds the `__Secure-` cookie —
+   * session is silently lost (401 on every protected route). Keep `next start` on plain HTTP
+   * safe by falling back to the per-request `proto`; only flip on prod-like env signals.
    */
-  const useSecureCookies = proto === "https";
+  const authUrlRaw = (process.env.AUTH_URL ?? process.env.NEXTAUTH_URL ?? "").trim();
+  const authUrlIsHttps = /^https:\/\//i.test(authUrlRaw);
+  const isVercelProdLike =
+    process.env.VERCEL === "1" &&
+    (process.env.VERCEL_ENV === "production" || process.env.VERCEL_ENV === "preview");
+  const useSecureCookies = authUrlIsHttps || isVercelProdLike || proto === "https";
 
   const secret = resolveAuthSecret(host);
   if (!secret) {
