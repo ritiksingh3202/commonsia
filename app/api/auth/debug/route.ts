@@ -57,6 +57,24 @@ export async function GET(req: NextRequest) {
 
   const reqHost = req.headers.get("x-forwarded-host") ?? req.headers.get("host") ?? "";
   const reqProto = req.headers.get("x-forwarded-proto") ?? "";
+  /**
+   * Safe cookie summary: names + byte-length ONLY, never values.
+   * Tells us whether __Secure-authjs.session-token (possibly split as .0 / .1 chunks) made it to the server.
+   */
+  const cookieHeader = req.headers.get("cookie") ?? "";
+  const cookieSummary = cookieHeader
+    ? cookieHeader
+        .split(";")
+        .map((c) => c.trim())
+        .filter(Boolean)
+        .map((c) => {
+          const eq = c.indexOf("=");
+          const name = eq === -1 ? c : c.slice(0, eq);
+          const value = eq === -1 ? "" : c.slice(eq + 1);
+          return { name, valueLength: value.length };
+        })
+    : [];
+  const authCookieFragments = cookieSummary.filter((c) => /authjs\.session-token/i.test(c.name));
   const google = getGoogleOAuthClient();
   const linkedin = getLinkedInOAuthClient();
 
@@ -137,6 +155,12 @@ export async function GET(req: NextRequest) {
     {
       now: new Date().toISOString(),
       whoami,
+      cookies: {
+        totalCount: cookieSummary.length,
+        totalHeaderBytes: cookieHeader.length,
+        names: cookieSummary.map((c) => c.name),
+        authJsSessionFragments: authCookieFragments.map((c) => ({ name: c.name, valueLength: c.valueLength })),
+      },
       runtime: {
         nodeEnv: process.env.NODE_ENV ?? null,
         onVercel: process.env.VERCEL === "1",
