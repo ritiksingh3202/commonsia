@@ -16,33 +16,79 @@ type NotificationItem = {
 
 /** Slightly longer interval reduces background work on tab-heavy sessions. */
 const POLL_MS = 45_000;
+/**
+ * Minimum time between real network calls. Because <Navbar/> is rendered inside
+ * per-route shells (MarketingShell / dashboard layouts), every navigation unmounts
+ * and remounts this component. Without this TTL, each navigation would fire a new
+ * summary request. The TTL is shorter than POLL_MS so freshness is preserved.
+ */
+const CACHE_TTL_MS = 20_000;
+
+type CachedSummary = { totalCount: number; items: NotificationItem[]; ts: number };
+let sharedCache: CachedSummary | null = null;
+let inFlight: Promise<CachedSummary | null> | null = null;
+
+async function fetchSummary(): Promise<CachedSummary | null> {
+  try {
+    const res = await fetch("/api/notifications/summary", { cache: "no-store" });
+    if (!res.ok) return null;
+    const data = (await res.json()) as { totalCount?: number; items?: NotificationItem[] };
+    const next: CachedSummary = {
+      totalCount: typeof data.totalCount === "number" ? data.totalCount : 0,
+      items: Array.isArray(data.items) ? data.items : [],
+      ts: Date.now(),
+    };
+    sharedCache = next;
+    return next;
+  } catch {
+    return null;
+  }
+}
 
 export function NavNotificationsBell() {
   const [open, setOpen] = useState(false);
-  const [items, setItems] = useState<NotificationItem[]>([]);
-  const [total, setTotal] = useState(0);
-  const [loading, setLoading] = useState(true);
+  const [items, setItems] = useState<NotificationItem[]>(() => sharedCache?.items ?? []);
+  const [total, setTotal] = useState<number>(() => sharedCache?.totalCount ?? 0);
+  const [loading, setLoading] = useState<boolean>(() => sharedCache === null);
   const wrapRef = useRef<HTMLDivElement>(null);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (reason = "unknown") => {
+    const now = Date.now();
+    const forceRefresh = reason === "manual";
+    if (!forceRefresh && sharedCache && now - sharedCache.ts < CACHE_TTL_MS) {
+      setTotal(sharedCache.totalCount);
+      setItems(sharedCache.items);
+      setLoading(false);
+      return;
+    }
+    if (inFlight) {
+      const result = await inFlight;
+      if (result) {
+        setTotal(result.totalCount);
+        setItems(result.items);
+      }
+      setLoading(false);
+      return;
+    }
+    const p = fetchSummary();
+    inFlight = p;
     try {
-      const res = await fetch("/api/notifications/summary", { cache: "no-store" });
-      if (!res.ok) return;
-      const data = (await res.json()) as { totalCount?: number; items?: NotificationItem[] };
-      setTotal(typeof data.totalCount === "number" ? data.totalCount : 0);
-      setItems(Array.isArray(data.items) ? data.items : []);
-    } catch {
-      /* ignore */
+      const result = await p;
+      if (result) {
+        setTotal(result.totalCount);
+        setItems(result.items);
+      }
     } finally {
+      inFlight = null;
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    void load();
-    const id = window.setInterval(() => void load(), POLL_MS);
+    void load("mount");
+    const id = window.setInterval(() => void load("interval"), POLL_MS);
     const onVis = () => {
-      if (document.visibilityState === "visible") void load();
+      if (document.visibilityState === "visible") void load("visibility");
     };
     document.addEventListener("visibilitychange", onVis);
     return () => {
@@ -53,7 +99,7 @@ export function NavNotificationsBell() {
 
   useEffect(() => {
     if (!open) return;
-    void load();
+    void load("dropdown-open");
   }, [open, load]);
 
   useEffect(() => {
@@ -72,7 +118,7 @@ export function NavNotificationsBell() {
       body: JSON.stringify({ action }),
     });
     if (!res.ok) return;
-    await load();
+    await load("manual");
   };
 
   return (
