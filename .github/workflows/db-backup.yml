@@ -1,0 +1,86 @@
+name: Nightly DB Backup
+
+# Runs every night at 02:30 UTC (08:00 IST) and lets you trigger manually from the Actions tab.
+# The compressed dump is uploaded as a private workflow artifact with 90-day retention — that's
+# your off-site copy. Adjust retention-days below if you want to keep backups longer or shorter.
+#
+# REQUIRED REPO SECRET (Settings -> Secrets and variables -> Actions -> New repository secret):
+#   SUPABASE_DIRECT_URL  — the full "Direct connection" URL from Supabase
+#                          Dashboard -> Database -> Connection string -> URI (port 5432,
+#                          NOT the pooler on port 6543 — pg_dump cannot use pgbouncer).
+
+on:
+  schedule:
+    - cron: "30 2 * * *"
+  workflow_dispatch: {}
+
+concurrency:
+  group: db-backup
+  cancel-in-progress: false
+
+jobs:
+  dump:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Install Postgres 15 client tools
+        run: |
+          sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
+          wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends postgresql-client-15
+
+      - name: Validate secret
+        env:
+          DIRECT_URL: ${{ secrets.SUPABASE_DIRECT_URL }}
+        run: |
+          if [ -z "$DIRECT_URL" ]; then
+            echo "::error::SUPABASE_DIRECT_URL secret is not set. Add it under Settings > Secrets and variables > Actions."
+            exit 1
+          fi
+          # Sanity check — pgbouncer URL on :6543 cannot pg_dump (transaction-mode breaks COPY/utility).
+          case "$DIRECT_URL" in
+            *"pooler.supabase.com:6543"*)
+              echo "::error::SUPABASE_DIRECT_URL points at the transaction pooler (:6543). Use the direct :5432 URL."
+              exit 1
+              ;;
+          esac
+
+      - name: Run pg_dump
+        env:
+          DIRECT_URL: ${{ secrets.SUPABASE_DIRECT_URL }}
+        run: |
+          mkdir -p backups
+          TS=$(date -u +%Y-%m-%d_%H%MZ)
+          OUT="backups/$TS.dump"
+          # Strip query string — the client respects sslmode via the ?sslmode=require param too,
+          # but pg_dump accepts either form. Keep it simple.
+          CONN="${DIRECT_URL%%\?*}"
+          pg_dump --format=custom --no-owner --no-privileges --verbose --file="$OUT" "$CONN"
+          gzip --best "$OUT"
+          ls -lh "$OUT.gz"
+          echo "DUMP_NAME=$TS" >> "$GITHUB_ENV"
+
+      - name: Upload backup artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: db-backup-${{ env.DUMP_NAME }}
+          path: backups/*.dump.gz
+          # 90 days is the max for free accounts; drop this to 30 if you want a tighter rotation.
+          retention-days: 90
+          if-no-files-found: error
+          compression-level: 0 # the dump is already gzip'd; avoid re-compressing.
+
+      # Optional — surface the size in the job summary so you can tell at a glance that data flowed.
+      - name: Summary
+        if: always()
+        run: |
+          echo "### DB Backup Summary" >> "$GITHUB_STEP_SUMMARY"
+          if ls backups/*.dump.gz >/dev/null 2>&1; then
+            SIZE=$(du -h backups/*.dump.gz | cut -f1)
+            echo "- Artifact: db-backup-${{ env.DUMP_NAME }}" >> "$GITHUB_STEP_SUMMARY"
+            echo "- Size: $SIZE" >> "$GITHUB_STEP_SUMMARY"
+            echo "- Retention: 90 days" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "- FAILED: no dump file produced" >> "$GITHUB_STEP_SUMMARY"
+          fi

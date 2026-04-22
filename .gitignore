@@ -47,3 +47,8 @@ yarn-error.log*
 
 # typescript
 *.tsbuildinfo
+
+# database backups — never commit real data to git
+/backups
+*.dump
+*.dump.gz
