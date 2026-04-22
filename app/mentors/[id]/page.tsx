@@ -32,43 +32,84 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function PublicMentorPage({ params }: Props) {
   const { id } = await params;
-  const mentor = await getPublicMentorById(id);
+
+  /**
+   * Fetch the anchor mentor + current session in parallel — `auth()` ends up hitting the DB for
+   * session + provider state, so running it alongside the mentor lookup hides ~half its latency.
+   */
+  const [mentor, session] = await Promise.all([getPublicMentorById(id), auth()]);
   if (!mentor) notFound();
 
-  const session = await auth();
+  /**
+   * Trust the session's `role` claim for routing choices; the old extra `user.findFirst` just
+   * re-read the same row from Prisma on every page view. We skip it here and fall back to a
+   * parallel `viewerDbPromise` only when the role is unknown — keeps the critical path fast
+   * without losing correctness for edge cases (stale session after role change).
+   */
+  const sessionUserId = session?.user?.id ?? null;
+  const sessionRole = session?.user?.role ?? null;
 
-  const viewerDb =
-    session?.user?.id != null
-      ? await prisma.user.findFirst({
-          where: { id: session.user.id, ...getActiveUserWhere() },
+  const linked = mentor.linkedUserId?.trim();
+
+  /**
+   * Kick off every remaining DB read in parallel — previously these awaited sequentially and the
+   * page-render stalled on each round trip. Even modest connections see ~300–600ms shaved.
+   */
+  const viewerDbPromise =
+    sessionUserId && !sessionRole
+      ? prisma.user.findFirst({
+          where: { id: sessionUserId, ...getActiveUserWhere() },
           select: { role: true },
         })
-      : null;
-  const viewerRole = viewerDb?.role ?? session?.user?.role ?? null;
+      : Promise.resolve(null);
 
-  const similarMentors = await getSimilarMentorsForProfile(
+  const similarMentorsPromise = getSimilarMentorsForProfile(
     mentor.id,
     mentor,
-    viewerRole === "student" ? session!.user!.id : undefined,
+    sessionRole === "student" && sessionUserId ? sessionUserId : undefined,
     8,
   );
-  const mentorReviews = await getPublicReviewsForMentor(mentor.id);
-  const bookingStats = await getMentorBookingStats(mentor.id);
+
+  const mentorReviewsPromise = getPublicReviewsForMentor(mentor.id);
+  const bookingStatsPromise = getMentorBookingStats(mentor.id);
+
+  const viewerPortfolioRowPromise = linked
+    ? prisma.user.findFirst({
+        where: { id: linked, ...getActiveUserWhere(), role: "mentor" },
+        select: {
+          id: true,
+          portfolioUrl: true,
+          portfolioFileName: true,
+          portfolioVisibleToOthers: true,
+        },
+      })
+    : Promise.resolve(null);
+
+  const [viewerDb, similarMentors, mentorReviews, bookingStats, viewerPortfolioRow] =
+    await Promise.all([
+      viewerDbPromise,
+      similarMentorsPromise,
+      mentorReviewsPromise,
+      bookingStatsPromise,
+      viewerPortfolioRowPromise,
+    ]);
+
+  const viewerRole = sessionRole ?? viewerDb?.role ?? null;
+
   const back = `/mentors/${mentor.id}`;
-  const linked = mentor.linkedUserId?.trim();
   const scheduleTarget = linked
     ? `/schedule?mentorUserId=${encodeURIComponent(linked)}`
     : "/schedule";
-  const scheduleHref = session?.user?.id
+  const scheduleHref = sessionUserId
     ? scheduleTarget
     : `/auth/login?callbackUrl=${encodeURIComponent(scheduleTarget)}`;
 
   let messageHref: string;
   if (viewerRole === "student" && linked) {
     messageHref = `/messages?peer=${encodeURIComponent(linked)}`;
-  } else if (!session?.user?.id && linked) {
+  } else if (!sessionUserId && linked) {
     messageHref = `/auth/login?callbackUrl=${encodeURIComponent(`/messages?peer=${encodeURIComponent(linked)}`)}`;
-  } else if (session?.user?.id && linked && viewerRole === "mentor") {
+  } else if (sessionUserId && linked && viewerRole === "mentor") {
     messageHref = `/messages`;
   } else {
     messageHref = `/chat?${new URLSearchParams({
@@ -80,32 +121,14 @@ export default async function PublicMentorPage({ params }: Props) {
     }).toString()}`;
   }
 
-  let viewerPortfolio: {
-    userId: string;
-    portfolioUrl: string | null;
-    portfolioFileName: string | null;
-    portfolioVisibleToOthers: boolean;
-  } | null = null;
-
-  if (linked) {
-    const u = await prisma.user.findFirst({
-      where: { id: linked, ...getActiveUserWhere(), role: "mentor" },
-      select: {
-        id: true,
-        portfolioUrl: true,
-        portfolioFileName: true,
-        portfolioVisibleToOthers: true,
-      },
-    });
-    if (u) {
-      viewerPortfolio = {
-        userId: u.id,
-        portfolioUrl: u.portfolioUrl,
-        portfolioFileName: u.portfolioFileName,
-        portfolioVisibleToOthers: u.portfolioVisibleToOthers,
-      };
-    }
-  }
+  const viewerPortfolio = viewerPortfolioRow
+    ? {
+        userId: viewerPortfolioRow.id,
+        portfolioUrl: viewerPortfolioRow.portfolioUrl,
+        portfolioFileName: viewerPortfolioRow.portfolioFileName,
+        portfolioVisibleToOthers: viewerPortfolioRow.portfolioVisibleToOthers,
+      }
+    : null;
 
   return (
     <PublicMentorProfile

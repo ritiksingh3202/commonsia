@@ -325,32 +325,28 @@ export async function getSimilarMentorsForProfile(
   studentUserId: string | undefined,
   take = 8,
 ): Promise<Mentor[]> {
-  const rows = await prisma.user.findMany({
-    where: { ...getActiveUserWhere(), role: "mentor", mentorOnboardingComplete: true, NOT: { id: excludeId } },
-    orderBy: [{ name: "asc" }],
-    select: mentorSelectDirectory,
-  });
-  const since = new Date();
-  since.setMonth(since.getMonth() - 6);
-  const simIds = rows.map((r) => r.id);
-  const simBookings =
-    simIds.length === 0
-      ? []
-      : await prisma.mentoringBooking.findMany({
-          where: { mentorId: { in: simIds }, startAt: { gte: since } },
-          select: { mentorId: true, startAt: true },
-        });
-  const monthlyConsumedSimilar = buildMonthlyWeekdayConsumedMap(rows, simBookings);
-  const list = rows.map((u) =>
-    mapRowToMentor({ ...(u as MentorRow), bannerImageUrl: null }, { monthlyConsumed: monthlyConsumedSimilar }),
-  );
+  /**
+   * Reuses the Redis-cached `/mentors` list instead of re-querying Prisma + bookings per profile
+   * view. Saves a full `user.findMany` + `mentoringBooking.findMany` + monthly-consumed compute
+   * on every mentor page open — the slot labels and images are already baked into that list.
+   *
+   * Student interest lookup still runs (single small query, only when signed in) — fetched in
+   * parallel with the list to stay off the critical path.
+   */
+  const [allMentors, student] = await Promise.all([
+    getPublicMentors(),
+    studentUserId
+      ? prisma.user.findFirst({
+          where: { ...getActiveUserWhere(), id: studentUserId, role: "student" },
+          select: { interests: true, otherInterests: true, major: true, softwareSkills: true },
+        })
+      : Promise.resolve(null),
+  ]);
+  const list = allMentors.filter((m) => m.id !== excludeId);
 
   const studentPhrases: string[] = [];
   if (studentUserId) {
-    const s = await prisma.user.findFirst({
-      where: { ...getActiveUserWhere(), id: studentUserId, role: "student" },
-      select: { interests: true, otherInterests: true, major: true, softwareSkills: true },
-    });
+    const s = student;
     if (s) {
       if (Array.isArray(s.interests)) {
         for (const x of s.interests) {

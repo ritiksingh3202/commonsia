@@ -7,7 +7,14 @@ import { avatarColorsFromSeed, initialsFromDisplayName } from "@/lib/avatar-init
 import { highResProfileImageUrl } from "@/lib/profile-image-url";
 
 function isLocalPublicPath(src: string): boolean {
-  return src.startsWith("/") && !src.startsWith("//");
+  if (!src.startsWith("/") || src.startsWith("//")) return false;
+  /**
+   * `/api/mentors/:id/photo?v={hash}` is the cache-bustable avatar proxy. It already streams a
+   * properly sized, cache-controlled JPEG/PNG, so routing it through `next/image` just adds an
+   * extra optimizer hop (and trips Next 16's `images.localPatterns` check for query strings).
+   */
+  if (src.startsWith("/api/mentors/")) return false;
+  return true;
 }
 
 function isNextImageRemoteHost(hostname: string): boolean {
