@@ -56,7 +56,7 @@ export function MentorPagination({ page, total, onPageChange }: Props) {
         <Image
           src="/left_arrow.svg"
           alt=""
-          width={12}
+          width={14}
           height={10}
           className="icon-brand-line h-2.5 w-3.5"
         />
@@ -104,7 +104,7 @@ export function MentorPagination({ page, total, onPageChange }: Props) {
         <Image
           src="/right_arrow.svg"
           alt=""
-          width={12}
+          width={14}
           height={10}
           className="icon-brand-line h-2.5 w-3.5"
         />

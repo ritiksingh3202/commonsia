@@ -69,6 +69,13 @@ const nextConfig: NextConfig = {
       }
     : {}),
   images: {
+    /**
+     * Next.js 16 defaults the allowed quality list to `[75]`. Mentor avatars intentionally
+     * request `quality={95}` in `MentorAvatar.tsx` (card photos are small but prominent, so
+     * sharper JPEGs are worth the bytes) — without explicitly allowing 95 here, Next logs a
+     * noisy `images.qualities` warning for every avatar and falls back to 75.
+     */
+    qualities: [75, 95],
     remotePatterns: [
       {
         protocol: "https",
