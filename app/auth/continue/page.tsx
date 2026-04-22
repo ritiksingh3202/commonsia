@@ -7,15 +7,6 @@ import { getStudentOnboardingRedirectPath } from "@/lib/student-onboarding";
 
 export const dynamic = "force-dynamic";
 
-// #region agent log
-const __dbg = (msg: string, data: Record<string, unknown> = {}, hyp = "") => {
-  if (process.env.AUTH_DEBUG !== "1") return;
-  try {
-    console.error("[auth-flow]", JSON.stringify({ location: "auth/continue", message: msg, hyp, data }));
-  } catch { /* ignore */ }
-};
-// #endregion
-
 function safeNextPath(raw: string | undefined): string | null {
   if (!raw || typeof raw !== "string") return null;
   if (!raw.startsWith("/") || raw.startsWith("//")) return null;
@@ -36,13 +27,7 @@ export default async function AuthContinuePage({
     next != null ? `/auth/continue?next=${encodeURIComponent(next)}` : "/auth/continue";
 
   const session = await auth();
-  // #region agent log
-  __dbg("entered /auth/continue", { nextRaw, nextSafe: next, hasSession: Boolean(session?.user?.id), userIdTail: session?.user?.id?.slice(-6) ?? null }, "H3_H4");
-  // #endregion
   if (!session?.user?.id?.trim()) {
-    // #region agent log
-    __dbg("no session -> redirect to /auth/login", { resumeContinue }, "H3");
-    // #endregion
     redirect(`/auth/login?callbackUrl=${encodeURIComponent(resumeContinue)}`);
   }
 
@@ -70,14 +55,7 @@ export default async function AuthContinuePage({
     },
   });
 
-  // #region agent log
-  __dbg("loaded user row", { userFound: Boolean(user), role: user?.role ?? null, profileComplete: user?.profileComplete ?? null, mentorOnboardingComplete: user?.mentorOnboardingComplete ?? null }, "H1_H2_H4");
-  // #endregion
-
   if (!user) {
-    // #region agent log
-    __dbg("user row missing -> redirect to login", { resumeContinue }, "H3");
-    // #endregion
     redirect(`/auth/login?callbackUrl=${encodeURIComponent(resumeContinue)}`);
   }
 
@@ -92,9 +70,6 @@ export default async function AuthContinuePage({
    */
   if (!user.role) {
     if (next?.startsWith("/student") || next?.startsWith("/mentor")) {
-      // #region agent log
-      __dbg("role=null, honoring next path", { next }, "H4");
-      // #endregion
       redirect(next);
     }
     const looksLikeMentor =
@@ -103,9 +78,6 @@ export default async function AuthContinuePage({
       Boolean(user.mentorCompany?.trim()) ||
       (Array.isArray(user.mentorExpertise) && user.mentorExpertise.length > 0);
     const target = looksLikeMentor ? "/mentor/setup/1" : "/student/setup/1";
-    // #region agent log
-    __dbg("role=null, inferred", { looksLikeMentor, target }, "H4");
-    // #endregion
     redirect(target);
   }
 
@@ -121,9 +93,6 @@ export default async function AuthContinuePage({
       linkedinUrl: user.linkedinUrl,
       whatsappUrl: user.whatsappUrl,
     });
-    // #region agent log
-    __dbg("role=mentor, redirect decision", { onboarding, next }, "H1_H2");
-    // #endregion
     if (onboarding) redirect(onboarding);
     if (next) redirect(next);
     redirect("/mentor");
@@ -140,17 +109,11 @@ export default async function AuthContinuePage({
       otherInterests: user.otherInterests,
       softwareSkills: user.softwareSkills,
     });
-    // #region agent log
-    __dbg("role=student, redirect decision", { onboarding, next }, "H1");
-    // #endregion
     if (onboarding) redirect(onboarding);
     if (next) redirect(next);
     redirect("/student");
   }
 
-  // #region agent log
-  __dbg("no role branch matched -> fallback", { next, role: user.role }, "H4");
-  // #endregion
   if (next) redirect(next);
   redirect("/");
 }
