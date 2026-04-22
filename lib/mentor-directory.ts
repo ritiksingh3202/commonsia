@@ -101,6 +101,24 @@ type MentorRow = {
 /** Avoid shipping huge base64 avatars on the `/mentors` grid (cards use a placeholder instead). */
 export const MAX_AVATAR_DATA_URL_CHARS = 16_000;
 
+/**
+ * Short content-derived tag for cache-busting the photo proxy URL.
+ *
+ * When a mentor re-uploads their avatar the `image` data-URL bytes change, so the `?v=` query
+ * flips and browsers fetch fresh bytes instead of serving a stale 2-minute CDN/browser cache.
+ * Uses a cheap character-based hash — avoids sha256 of multi-MB strings on every directory render.
+ */
+function imageVersionTag(rawImg: string): string {
+  let h = 5381;
+  const len = rawImg.length;
+  const step = Math.max(1, Math.floor(len / 256));
+  for (let i = 0; i < len; i += step) {
+    h = ((h << 5) + h + rawImg.charCodeAt(i)) | 0;
+  }
+  /** Mix in length so two images of different sizes never collide on their sampled bytes. */
+  return (((h >>> 0) ^ len) >>> 0).toString(36);
+}
+
 /** Drop oversized `data:` blobs before JSON APIs or client props (keeps payloads small). */
 export function trimLargeDataUrlField(value: string | null | undefined): string | null {
   const v = value?.trim();
@@ -194,7 +212,10 @@ function mapRowToMentor(
     rawImg.startsWith("data:") &&
     rawImg.length > MAX_AVATAR_DATA_URL_CHARS;
 
-  const cardImageSrc = useAvatarProxy ? `/api/mentors/${u.id}/photo` : listSafeImg;
+  /** `?v={hash}` busts the browser/CDN cache the instant the mentor re-uploads, so cards update live. */
+  const cardImageSrc = useAvatarProxy
+    ? `/api/mentors/${u.id}/photo?v=${imageVersionTag(rawImg)}`
+    : listSafeImg;
 
   const tags = expertiseTags(u.mentorExpertise);
   const monthlyLookup: NextSlotMonthlyConsumedLookup | undefined = opts?.monthlyConsumed
@@ -354,6 +375,9 @@ export async function getSimilarMentorsForProfile(
   }
   const studentSet = [...new Set(studentPhrases)];
 
+  const anchorTagSet = new Set(
+    anchor.tags.map((t) => t.toLowerCase().trim()).filter((t) => t.length > 0),
+  );
   const anchorHay = [...anchor.tags, anchor.summary, ...anchor.experienceLines, anchor.role].join(" ").toLowerCase();
   const anchorWords = new Set(anchorHay.split(/\s+/).filter((w) => w.length > 4));
 
@@ -372,15 +396,21 @@ export async function getSimilarMentorsForProfile(
       .toLowerCase();
   }
 
-  function score(m: Mentor): number {
+  /** Returns `{ score, sharedTags }` — `sharedTags` is the count of exact tag overlaps with the anchor. */
+  function evaluate(m: Mentor): { score: number; sharedTags: number } {
     let sc = 0;
+    let sharedTags = 0;
     const hay = haystack(m);
     for (const ph of studentSet) {
       if (ph.length >= 3 && hay.includes(ph)) sc += 5;
     }
     for (const t of m.tags) {
-      const tl = t.toLowerCase();
-      if (anchor.tags.some((at) => at.toLowerCase() === tl)) sc += 6;
+      const tl = t.toLowerCase().trim();
+      if (anchorTagSet.has(tl)) {
+        /** Exact tag match is the strongest signal — weight it heavily so these rise to the top. */
+        sc += 20;
+        sharedTags += 1;
+      }
       for (const ph of studentSet) {
         if (ph.length >= 3 && (tl.includes(ph) || ph.includes(tl))) sc += 3;
       }
@@ -392,11 +422,23 @@ export async function getSimilarMentorsForProfile(
     for (const w of anchorWords) {
       if (hay.includes(w)) sc += 1;
     }
-    return sc;
+    return { score: sc, sharedTags };
   }
 
-  list.sort((a, b) => score(b) - score(a) || a.name.localeCompare(b.name));
-  return list.slice(0, take);
+  const scored = list.map((m) => ({ m, ...evaluate(m) }));
+  scored.sort((a, b) => b.score - a.score || a.m.name.localeCompare(b.m.name));
+
+  /**
+   * Prefer mentors with at least one shared tag — e.g. an "Architectural Design" mentor suggests
+   * other "Architectural Design" mentors, not random unrelated profiles. Fall back to top-ranked if
+   * tag overlap is too thin to fill the section (small directories, brand-new tags, etc.).
+   */
+  const MIN_TAG_MATCHED = Math.max(2, Math.min(take, 4));
+  const tagMatched = scored.filter((r) => r.sharedTags > 0);
+  if (anchorTagSet.size > 0 && tagMatched.length >= MIN_TAG_MATCHED) {
+    return tagMatched.slice(0, take).map((r) => r.m);
+  }
+  return scored.slice(0, take).map((r) => r.m);
 }
 
 /** @deprecated Prefer {@link getSimilarMentorsForProfile} for profile pages. */

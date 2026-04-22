@@ -45,7 +45,12 @@ export async function GET(req: Request, ctx: Ctx) {
       headers: {
         "Content-Type": mime,
         ETag: etag,
-        "Cache-Control": "private, max-age=120, stale-while-revalidate=600",
+        /**
+         * Directory URLs ship with `?v={contentHash}` so a new upload produces a brand-new URL —
+         * we can safely cache aggressively on shared proxies and the browser for the old URL's
+         * bytes. The ETag still lets clients that somehow hit the un-versioned URL revalidate.
+         */
+        "Cache-Control": "public, max-age=300, stale-while-revalidate=86400",
       },
     });
   }
