@@ -112,15 +112,21 @@ export async function writeJsonCacheEntry(key: string, value: unknown, ttlSecond
  * Read a cached binary blob (mentor photo bytes, etc.). Upstash has no native binary type —
  * we store `{ b: base64, m: mime, e: etag }` JSON and decode on the way out. Tiny overhead vs.
  * re-parsing a 60 KB `data:` URL from Postgres on every request.
+ *
+ * `bytes` is an `ArrayBuffer` so it can be passed directly to `NextResponse` / the Fetch
+ * `Body` type without TypeScript's `Uint8Array<ArrayBufferLike>` variance issues
+ * (Next 16 + TS 5.7 tightened these).
  */
-export type BlobCacheEntry = { bytes: Uint8Array; mime: string; etag: string };
+export type BlobCacheEntry = { bytes: ArrayBuffer; mime: string; etag: string };
 
 export async function readBlobCache(key: string): Promise<BlobCacheEntry | undefined> {
   const raw = await readJson<{ b: string; m: string; e: string }>(key);
   if (!raw || typeof raw.b !== "string") return undefined;
   try {
     const buf = Buffer.from(raw.b, "base64");
-    return { bytes: new Uint8Array(buf), mime: raw.m, etag: raw.e };
+    /** `buf.buffer` may be pooled — slice to get an isolated, cacheable ArrayBuffer. */
+    const ab = buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength) as ArrayBuffer;
+    return { bytes: ab, mime: raw.m, etag: raw.e };
   } catch {
     return undefined;
   }

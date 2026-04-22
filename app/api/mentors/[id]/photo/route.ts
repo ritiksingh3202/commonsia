@@ -94,7 +94,11 @@ export async function GET(req: Request, ctx: Ctx) {
     }
     const mime = parsed.mime.startsWith("image/") ? parsed.mime : "image/jpeg";
     const etag = `"${createHash("sha256").update(image).digest("hex").slice(0, 28)}"`;
-    const body = new Uint8Array(parsed.buffer);
+    /** Slice to an isolated ArrayBuffer — Node `Buffer` often uses a shared pool. */
+    const body = parsed.buffer.buffer.slice(
+      parsed.buffer.byteOffset,
+      parsed.buffer.byteOffset + parsed.buffer.byteLength,
+    ) as ArrayBuffer;
 
     if (cacheKey) {
       /** Fire-and-forget: don't block the response on the cache write. */
