@@ -31,7 +31,18 @@ let inFlight: Promise<CachedSummary | null> | null = null;
 async function fetchSummary(): Promise<CachedSummary | null> {
   try {
     const res = await fetch("/api/notifications/summary", { cache: "no-store" });
-    if (!res.ok) return null;
+    if (!res.ok) {
+      /**
+       * Cache the empty state on auth errors too — otherwise every nav remount fires a fresh
+       * 401 since `sharedCache` stayed null. `CACHE_TTL_MS` still lets us re-check later.
+       */
+      if (res.status === 401 || res.status === 403) {
+        const empty: CachedSummary = { totalCount: 0, items: [], ts: Date.now() };
+        sharedCache = empty;
+        return empty;
+      }
+      return null;
+    }
     const data = (await res.json()) as { totalCount?: number; items?: NotificationItem[] };
     const next: CachedSummary = {
       totalCount: typeof data.totalCount === "number" ? data.totalCount : 0,

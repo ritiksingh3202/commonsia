@@ -38,14 +38,10 @@ export function MentorCard({
 
   return (
     <motion.article
-      initial={{ opacity: 0, y: 24 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: "-40px" }}
-      transition={{ duration: 0.45, delay: index * 0.05, ease: [0.22, 1, 0.36, 1] }}
       whileHover={{
-        y: -4,
+        y: -3,
         boxShadow: "0 16px 44px rgba(0,0,0,0.1)",
-        transition: { duration: 0.2 },
+        transition: { duration: 0.18 },
       }}
       role="link"
       tabIndex={0}

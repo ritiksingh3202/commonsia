@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { ABeeZee, Poppins } from "next/font/google";
 
 import { AuthSessionProvider } from "@/components/providers/AuthSessionProvider";
+import { RouteProgressBar } from "@/components/nav/RouteProgressBar";
 import "./globals.css";
 
 const poppins = Poppins({
@@ -64,7 +65,10 @@ export default function RootLayout({
       <body
         className={`${poppins.variable} ${abeeZee.variable} ${poppins.className} min-h-screen bg-[#ffffff] font-sans text-neutral-900 antialiased`}
       >
-        <AuthSessionProvider>{children}</AuthSessionProvider>
+        <AuthSessionProvider>
+          <RouteProgressBar />
+          {children}
+        </AuthSessionProvider>
       </body>
     </html>
   );

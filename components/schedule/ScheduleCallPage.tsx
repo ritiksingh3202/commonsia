@@ -459,7 +459,7 @@ export function ScheduleCallPage({
                   value={inviteInput}
                   onChange={(e) => setInviteInput(e.target.value)}
                   placeholder="Invite Someone"
-                  className="min-w-0 flex-1 border-0 bg-transparent px-3 py-2.5 text-sm outline-none placeholder:text-neutral-400"
+                  className="min-w-0 flex-1 border-0 bg-transparent px-3 py-2.5 text-base outline-none placeholder:text-neutral-400 sm:text-sm"
                   onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addGuest())}
                 />
                 <button

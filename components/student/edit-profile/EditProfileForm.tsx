@@ -52,8 +52,9 @@ export type EditProfileUser = {
   instagramUrl: string | null;
 };
 
+/** `text-base` on mobile prevents iOS Safari viewport zoom on focus; `sm:text-[13px]` restores compact desktop size. */
 const field =
-  "w-full rounded-lg border border-black/[0.1] bg-white px-3 py-2.5 text-[13px] text-[#0a0a0a] outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/15";
+  "w-full rounded-lg border border-black/[0.1] bg-white px-3 py-2.5 text-base text-[#0a0a0a] outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/15 sm:text-[13px]";
 const label = "mb-1.5 block text-[13px] font-medium text-[#0a0a0a]";
 const chipOn = "border-primary bg-primary/5 text-[#0a0a0a] ring-1 ring-primary/25";
 const chipOff = "border-[#e5e7eb] bg-white text-[#0a0a0a] hover:border-neutral-300";

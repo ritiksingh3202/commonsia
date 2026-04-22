@@ -17,8 +17,9 @@ const REVIEW_TAGS = [
   "Technical Skills",
 ] as const;
 
+/** `text-base` on mobile stops iOS Safari viewport zoom on focus; `sm:text-sm` restores compact desktop size. */
 const field =
-  "w-full rounded-xl border border-neutral-200 bg-white px-3.5 py-2.5 text-sm text-[#0a0a0a] shadow-sm outline-none transition placeholder:text-neutral-400 focus:border-primary focus:ring-2 focus:ring-primary/15";
+  "w-full rounded-xl border border-neutral-200 bg-white px-3.5 py-2.5 text-base text-[#0a0a0a] shadow-sm outline-none transition placeholder:text-neutral-400 focus:border-primary focus:ring-2 focus:ring-primary/15 sm:text-sm";
 
 export type SessionReviewProps = {
   mentorUserId: string;

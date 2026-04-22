@@ -553,7 +553,7 @@ export function MessagesInbox({
                           ? "Conversation closed"
                           : "Type a message…"
                     }
-                    className="min-w-0 flex-1 rounded-xl border border-neutral-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/15 disabled:bg-neutral-50"
+                    className="min-w-0 flex-1 rounded-xl border border-neutral-200 bg-white px-3 py-2.5 text-base outline-none focus:border-primary focus:ring-2 focus:ring-primary/15 disabled:bg-neutral-50 sm:text-sm"
                   />
                   <button
                     type="button"

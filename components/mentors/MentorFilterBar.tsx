@@ -152,7 +152,7 @@ export function MentorFilterBar({
               <select
                 value={sortOrder}
                 onChange={(e) => onSortOrder(e.target.value as SortOrder)}
-                className="h-10 w-full rounded-xl border border-black/[0.1] bg-white px-3 text-[13px] font-medium text-[#1a1a1a] shadow-sm outline-none ring-primary/20 focus:ring-2"
+                className="h-10 w-full rounded-xl border border-black/[0.1] bg-white px-3 text-base font-medium text-[#1a1a1a] shadow-sm outline-none ring-primary/20 focus:ring-2 sm:text-[13px]"
               >
                 <option value="default">Default (list order)</option>
                 <option value="name-asc">Name (A–Z)</option>

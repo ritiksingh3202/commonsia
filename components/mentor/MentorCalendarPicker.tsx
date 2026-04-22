@@ -73,7 +73,7 @@ export function MentorCalendarPicker({ selected, onToggleDate, onClearDatesInMon
             id="calendar-year"
             value={year}
             onChange={(e) => setYear(Number(e.target.value))}
-            className="w-full rounded-lg border border-black/10 bg-white px-3 py-2 text-[13px] text-[#0a0a0a] outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
+            className="w-full rounded-lg border border-black/10 bg-white px-3 py-2 text-base text-[#0a0a0a] outline-none focus:border-primary focus:ring-2 focus:ring-primary/15 sm:text-[13px]"
           >
             {yearOptions.map((y) => (
               <option key={y} value={y}>
@@ -90,7 +90,7 @@ export function MentorCalendarPicker({ selected, onToggleDate, onClearDatesInMon
             id="calendar-month"
             value={month}
             onChange={(e) => setMonth(Number(e.target.value))}
-            className="w-full rounded-lg border border-black/10 bg-white px-3 py-2 text-[13px] text-[#0a0a0a] outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
+            className="w-full rounded-lg border border-black/10 bg-white px-3 py-2 text-base text-[#0a0a0a] outline-none focus:border-primary focus:ring-2 focus:ring-primary/15 sm:text-[13px]"
           >
             {MONTH_OPTIONS.map((m) => (
               <option key={m.value} value={m.value}>

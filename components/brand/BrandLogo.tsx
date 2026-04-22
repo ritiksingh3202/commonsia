@@ -19,13 +19,13 @@ export function BrandLogo({ className, priority = false, context = "navbar" }: B
 
   const symbolClass = isFooter
     ? "h-10 w-auto shrink-0 object-contain object-left sm:h-11 md:h-12"
-    : "h-9 w-auto shrink-0 object-contain object-left sm:h-10";
+    : "h-[27px] w-auto shrink-0 object-contain object-left sm:h-[30px]";
 
   const wordmarkClass = isFooter
     ? "h-7 w-auto min-w-0 max-w-full shrink object-contain object-left sm:h-8 md:h-9 lg:h-10"
-    : "h-6 w-auto min-w-0 max-w-full shrink object-contain object-left sm:h-7 md:h-8";
+    : "h-[18px] w-auto min-w-0 max-w-full shrink object-contain object-left sm:h-[21px] md:h-6";
 
-  const gapClass = isFooter ? "gap-3 sm:gap-3.5 md:gap-4" : "gap-2 sm:gap-2.5";
+  const gapClass = isFooter ? "gap-3 sm:gap-3.5 md:gap-4" : "gap-1.5 sm:gap-2";
 
   return (
     <span className={`inline-flex min-w-0 max-w-full items-center ${gapClass} ${className ?? ""}`}>

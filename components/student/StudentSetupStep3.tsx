@@ -14,7 +14,7 @@ const btnGhost =
   "flex flex-1 items-center justify-center gap-1.5 rounded-md border border-black/10 bg-white py-2.5 text-[13px] font-medium text-[#0a0a0a] transition-colors hover:bg-neutral-50 sm:text-sm";
 
 const btnPrimary =
-  "flex flex-1 items-center justify-center gap-1.5 rounded-md bg-primary py-2.5 text-[13px] font-semibold text-white shadow-sm transition-colors hover:bg-primary/90 sm:text-sm";
+  "flex flex-1 items-center justify-center gap-1.5 rounded-md bg-primary py-2.5 text-[13px] font-semibold text-white shadow-sm transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-70 disabled:hover:bg-primary sm:text-sm";
 
 export function StudentSetupStep3({
   initial,
@@ -27,11 +27,12 @@ export function StudentSetupStep3({
 }) {
   const router = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
-  const { schedule: scheduleSave, flushNow } = useProfileAutosave();
+  const { schedule: scheduleSave, cancelPending } = useProfileAutosave();
 
   const [bio, setBio] = useState(initial?.bio ?? "");
   const [linkedinUrl, setLinkedinUrl] = useState(initial?.linkedinUrl ?? "");
   const [portfolioUrl, setPortfolioUrl] = useState(initial?.portfolioUrl ?? "");
+  const [saving, setSaving] = useState(false);
 
   return (
     <StudentSetupShell step={3} backHref="/student/setup/2">
@@ -51,6 +52,7 @@ export function StudentSetupStep3({
           className="space-y-3"
           onSubmit={async (e) => {
             e.preventDefault();
+            if (saving) return;
             const text = bio.trim();
             if (!text) {
               window.alert("Please write something in About you.");
@@ -65,23 +67,30 @@ export function StudentSetupStep3({
               window.alert("Please connect Google Calendar before completing your profile.");
               return;
             }
-            await flushNow();
-            const res = await fetch("/api/profile", {
-              method: "PATCH",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                role: "student",
-                bio: text,
-                linkedinUrl: li,
-                portfolioUrl: portfolioUrl.trim() || null,
-                profileComplete: true,
-              }),
-            });
-            if (!res.ok) {
-              window.alert("Could not save your profile. Try signing in again.");
-              return;
+            cancelPending();
+            setSaving(true);
+            try {
+              const res = await fetch("/api/profile", {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  role: "student",
+                  bio: text,
+                  linkedinUrl: li,
+                  portfolioUrl: portfolioUrl.trim() || null,
+                  profileComplete: true,
+                }),
+              });
+              if (!res.ok) {
+                window.alert("Could not save your profile. Try signing in again.");
+                setSaving(false);
+                return;
+              }
+              router.push("/student?welcome=1");
+            } catch {
+              window.alert("Network error. Check your connection and try again.");
+              setSaving(false);
             }
-            router.push("/student?welcome=1");
           }}
         >
           <div className="space-y-1.5">
@@ -178,10 +187,18 @@ export function StudentSetupStep3({
             </button>
             <button
               type="submit"
-              disabled={!googleCalendarConnected}
-              className={`${btnPrimary} ${!googleCalendarConnected ? "opacity-50" : ""}`}
+              disabled={!googleCalendarConnected || saving}
+              aria-busy={saving}
+              className={btnPrimary}
             >
-              Complete profile
+              {saving ? (
+                <>
+                  <SpinnerIcon className="size-3.5" />
+                  Completing…
+                </>
+              ) : (
+                "Complete profile"
+              )}
             </button>
           </div>
         </form>
@@ -214,6 +231,15 @@ function UploadIcon({ className }: { className?: string }) {
         strokeLinecap="round"
         strokeLinejoin="round"
       />
+    </svg>
+  );
+}
+
+function SpinnerIcon({ className }: { className?: string }) {
+  return (
+    <svg className={`${className ?? ""} animate-spin`} viewBox="0 0 24 24" fill="none" aria-hidden>
+      <circle cx="12" cy="12" r="9" stroke="currentColor" strokeOpacity="0.25" strokeWidth="3" />
+      <path d="M21 12a9 9 0 0 1-9 9" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
     </svg>
   );
 }

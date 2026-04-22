@@ -14,12 +14,18 @@ async function patchProfile(body: ProfilePatch): Promise<Response> {
 
 /**
  * Debounced PATCH to `/api/profile`. Merges partial updates without blocking the UI.
- * Surfaces auth loss (401); use `flushNow()` before a full PATCH + navigate so nothing is stuck in the queue.
+ * Surfaces auth loss (401).
+ *
+ * Before a canonical submit PATCH + navigate, call {@link cancelPending} (NOT `flushNow`) — the
+ * canonical payload carries the full state, so flushing the debounced patch just wastes a round trip.
+ * Keep `flushNow` for screens that don't send a canonical final PATCH (e.g. an edit page where the
+ * user navigates away without hitting a "Save" button).
  */
 export function useProfileAutosave(debounceMs = 700) {
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pending = useRef<ProfilePatch | null>(null);
   const alerted401 = useRef(false);
+  const cancelledRef = useRef(false);
 
   const flush = useCallback(async () => {
     const body = pending.current;
@@ -50,8 +56,22 @@ export function useProfileAutosave(debounceMs = 700) {
     await flush();
   }, [flush]);
 
+  /**
+   * Kill the pending debounced PATCH without firing it. Use this before a canonical submit PATCH
+   * so the redundant autosave request never goes out and can't race against the canonical write.
+   */
+  const cancelPending = useCallback(() => {
+    if (timer.current) {
+      clearTimeout(timer.current);
+      timer.current = null;
+    }
+    pending.current = null;
+    cancelledRef.current = true;
+  }, []);
+
   const schedule = useCallback(
     (patch: ProfilePatch) => {
+      cancelledRef.current = false;
       pending.current = { ...pending.current, ...patch };
       if (timer.current) clearTimeout(timer.current);
       timer.current = setTimeout(() => {
@@ -65,9 +85,10 @@ export function useProfileAutosave(debounceMs = 700) {
   useEffect(() => {
     return () => {
       if (timer.current) clearTimeout(timer.current);
-      void flush();
+      /** On unmount, only flush if the caller didn't explicitly cancel (e.g. just submitted a canonical PATCH). */
+      if (!cancelledRef.current) void flush();
     };
   }, [flush]);
 
-  return { schedule, flushNow };
+  return { schedule, flushNow, cancelPending };
 }

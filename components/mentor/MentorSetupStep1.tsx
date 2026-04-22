@@ -26,7 +26,7 @@ import { useProfileAutosave } from "@/hooks/useProfileAutosave";
 import { expertiseToStringList, type MentorSetupUserSnapshot } from "@/lib/setup-load-user";
 
 const btnPrimary =
-  "mt-1 flex w-full items-center justify-center gap-2 rounded-md bg-primary px-3 py-2.5 text-[13px] font-semibold text-white shadow-sm transition-colors hover:bg-primary/90 sm:text-sm";
+  "mt-1 flex w-full items-center justify-center gap-2 rounded-md bg-primary px-3 py-2.5 text-[13px] font-semibold text-white shadow-sm transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-70 disabled:hover:bg-primary sm:text-sm";
 
 const chipOn = "border-primary bg-primary/5 text-[#0a0a0a] ring-1 ring-primary/25";
 const chipOff = "border-[#e5e7eb] bg-white text-[#0a0a0a] hover:border-neutral-300";
@@ -44,7 +44,7 @@ export function MentorSetupStep1({
   linkedInConnected?: boolean;
 }) {
   const router = useRouter();
-  const { schedule: scheduleSave, flushNow } = useProfileAutosave();
+  const { schedule: scheduleSave, cancelPending } = useProfileAutosave();
 
   const expertiseDerived = useMemo(
     () => expertiseFromSnapshot(initial?.mentorExpertise),
@@ -58,6 +58,7 @@ export function MentorSetupStep1({
   const [years, setYears] = useState(() => normalizeMentorYearsBand(initial?.mentorYearsExperience ?? ""));
   const [expertise, setExpertise] = useState<Set<string>>(() => new Set(expertiseDerived.sel));
   const [otherExpertise, setOtherExpertise] = useState(expertiseDerived.other);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     const d = expertiseFromSnapshot(initial?.mentorExpertise);
@@ -97,6 +98,7 @@ export function MentorSetupStep1({
           className="space-y-3"
           onSubmit={async (e) => {
             e.preventDefault();
+            if (saving) return;
             if (!country.trim()) {
               window.alert("Please enter your country.");
               return;
@@ -122,25 +124,32 @@ export function MentorSetupStep1({
               otherExpertise,
               MENTOR_EXPERTISE_OTHER,
             );
-            await flushNow();
-            const res = await fetch("/api/profile", {
-              method: "PATCH",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                role: "mentor",
-                country: country.trim() || null,
-                city: city.trim() || null,
-                mentorTitle: title.trim(),
-                mentorCompany: company.trim(),
-                mentorYearsExperience: years.trim(),
-                mentorExpertise: expertiseList,
-              }),
-            });
-            if (!res.ok) {
-              window.alert("Could not save your profile. Try signing in again.");
-              return;
+            cancelPending();
+            setSaving(true);
+            try {
+              const res = await fetch("/api/profile", {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  role: "mentor",
+                  country: country.trim() || null,
+                  city: city.trim() || null,
+                  mentorTitle: title.trim(),
+                  mentorCompany: company.trim(),
+                  mentorYearsExperience: years.trim(),
+                  mentorExpertise: expertiseList,
+                }),
+              });
+              if (!res.ok) {
+                window.alert("Could not save your profile. Try signing in again.");
+                setSaving(false);
+                return;
+              }
+              router.push("/mentor/setup/2");
+            } catch {
+              window.alert("Network error. Check your connection and try again.");
+              setSaving(false);
             }
-            router.push("/mentor/setup/2");
           }}
         >
           <CountryCityComboboxFields
@@ -285,9 +294,18 @@ export function MentorSetupStep1({
             </div>
           </div>
 
-          <button type="submit" className={btnPrimary}>
-            Next: Mentorship Details
-            <ArrowRight className="size-3.5" />
+          <button type="submit" className={btnPrimary} disabled={saving} aria-busy={saving}>
+            {saving ? (
+              <>
+                <SpinnerIcon className="size-3.5" />
+                Saving…
+              </>
+            ) : (
+              <>
+                Next: Mentorship Details
+                <ArrowRight className="size-3.5" />
+              </>
+            )}
           </button>
         </form>
       </section>
@@ -313,6 +331,15 @@ function ArrowRight({ className }: { className?: string }) {
         strokeLinecap="round"
         strokeLinejoin="round"
       />
+    </svg>
+  );
+}
+
+function SpinnerIcon({ className }: { className?: string }) {
+  return (
+    <svg className={`${className ?? ""} animate-spin`} viewBox="0 0 24 24" fill="none" aria-hidden>
+      <circle cx="12" cy="12" r="9" stroke="currentColor" strokeOpacity="0.25" strokeWidth="3" />
+      <path d="M21 12a9 9 0 0 1-9 9" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
     </svg>
   );
 }

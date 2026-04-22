@@ -13,7 +13,7 @@ import { useProfileAutosave } from "@/hooks/useProfileAutosave";
 import type { StudentSetupUserSnapshot } from "@/lib/setup-load-user";
 
 const btnPrimary =
-  "mt-1 flex w-full items-center justify-center gap-2 rounded-md bg-primary px-3 py-2.5 text-[13px] font-semibold text-white shadow-sm transition-colors hover:bg-primary/90 sm:text-sm";
+  "mt-1 flex w-full items-center justify-center gap-2 rounded-md bg-primary px-3 py-2.5 text-[13px] font-semibold text-white shadow-sm transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-70 disabled:hover:bg-primary sm:text-sm";
 
 function programStateFromMajor(major: string | null | undefined): {
   program: string;
@@ -36,7 +36,7 @@ export function StudentSetupStep1({
   googleCalendarConnected?: boolean;
 }) {
   const router = useRouter();
-  const { schedule: scheduleSave, flushNow } = useProfileAutosave();
+  const { schedule: scheduleSave, cancelPending } = useProfileAutosave();
 
   const { program: p0, majorOther: mo0 } = useMemo(
     () => programStateFromMajor(initial?.major ?? null),
@@ -50,6 +50,7 @@ export function StudentSetupStep1({
   const [program, setProgram] = useState(p0);
   const [majorOther, setMajorOther] = useState(mo0);
   const [phone, setPhone] = useState(initial?.phone ?? "");
+  const [saving, setSaving] = useState(false);
 
   return (
     <StudentSetupShell step={1} backHref="/auth/register/student">
@@ -69,6 +70,7 @@ export function StudentSetupStep1({
           className="space-y-3"
           onSubmit={async (e) => {
             e.preventDefault();
+            if (saving) return;
             if (!country.trim()) {
               window.alert("Please enter your country.");
               return;
@@ -98,25 +100,32 @@ export function StudentSetupStep1({
               window.alert("Please select your major / program.");
               return;
             }
-            await flushNow();
-            const res = await fetch("/api/profile", {
-              method: "PATCH",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                role: "student",
-                country: country.trim() || null,
-                city: city.trim() || null,
-                university: university.trim() || null,
-                yearOfStudy: year.trim() || null,
-                major,
-                phone: phone.trim() || null,
-              }),
-            });
-            if (!res.ok) {
-              window.alert("Could not save your profile. Try signing in again.");
-              return;
+            cancelPending();
+            setSaving(true);
+            try {
+              const res = await fetch("/api/profile", {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  role: "student",
+                  country: country.trim() || null,
+                  city: city.trim() || null,
+                  university: university.trim() || null,
+                  yearOfStudy: year.trim() || null,
+                  major,
+                  phone: phone.trim() || null,
+                }),
+              });
+              if (!res.ok) {
+                window.alert("Could not save your profile. Try signing in again.");
+                setSaving(false);
+                return;
+              }
+              router.push("/student/setup/2");
+            } catch {
+              window.alert("Network error. Check your connection and try again.");
+              setSaving(false);
             }
-            router.push("/student/setup/2");
           }}
         >
           <CountryCityComboboxFields
@@ -257,9 +266,18 @@ export function StudentSetupStep1({
             description="Required before you can finish profile setup (step 3). Connect now or on the last step. If you signed in with Google, this may already show as connected."
           />
 
-          <button type="submit" className={btnPrimary}>
-            Next: Interests &amp; Skills
-            <ArrowRight className="size-3.5" />
+          <button type="submit" className={btnPrimary} disabled={saving} aria-busy={saving}>
+            {saving ? (
+              <>
+                <SpinnerIcon className="size-3.5" />
+                Saving…
+              </>
+            ) : (
+              <>
+                Next: Interests &amp; Skills
+                <ArrowRight className="size-3.5" />
+              </>
+            )}
           </button>
         </form>
       </section>
@@ -285,6 +303,15 @@ function ArrowRight({ className }: { className?: string }) {
         strokeLinecap="round"
         strokeLinejoin="round"
       />
+    </svg>
+  );
+}
+
+function SpinnerIcon({ className }: { className?: string }) {
+  return (
+    <svg className={`${className ?? ""} animate-spin`} viewBox="0 0 24 24" fill="none" aria-hidden>
+      <circle cx="12" cy="12" r="9" stroke="currentColor" strokeOpacity="0.25" strokeWidth="3" />
+      <path d="M21 12a9 9 0 0 1-9 9" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
     </svg>
   );
 }

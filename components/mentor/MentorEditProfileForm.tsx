@@ -34,8 +34,9 @@ import { normalizeLinkedInUrl, normalizeWhatsappUrl } from "@/lib/mentor-contact
 
 type TabId = "personal" | "professional" | "mentorship" | "profile";
 
+/** `text-base` on mobile stops iOS Safari viewport zoom on focus; `sm:text-sm` restores the compact desktop size. */
 const field =
-  "w-full rounded-xl border border-neutral-200 bg-white px-3.5 py-2.5 text-sm text-[#0a0a0a] shadow-sm outline-none transition placeholder:text-neutral-400 focus:border-primary focus:ring-2 focus:ring-primary/15";
+  "w-full rounded-xl border border-neutral-200 bg-white px-3.5 py-2.5 text-base text-[#0a0a0a] shadow-sm outline-none transition placeholder:text-neutral-400 focus:border-primary focus:ring-2 focus:ring-primary/15 sm:text-sm";
 
 const label = "text-sm font-semibold text-[#0a0a0a]";
 

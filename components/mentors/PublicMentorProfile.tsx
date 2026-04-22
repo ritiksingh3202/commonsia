@@ -416,13 +416,12 @@ export function PublicMentorProfile({
               ? "Based on your profile interests and this mentor’s areas of expertise — not a random list."
               : "Ranked by overlap with this mentor’s expertise. Sign in as a student to tailor suggestions to your interests."}
           </p>
-          <div className="mt-5 grid min-w-0 gap-4 sm:gap-5 md:grid-cols-2">
+          <div className="mt-5 grid min-w-0 grid-cols-1 items-stretch gap-3.5 sm:gap-4 md:gap-5 lg:grid-cols-2 lg:gap-x-8 lg:gap-y-5">
             {similar.slice(similarStart, similarStart + similarPageSize).map((m, i) => (
               <MentorCard
                 key={`${m.id}-${similarStart}-${i}`}
                 mentor={m}
                 index={similarStart + i}
-                layout="spotlight"
               />
             ))}
           </div>
