@@ -38,8 +38,9 @@ const copy: Record<
   },
 };
 
+/** `text-base` on mobile prevents iOS Safari viewport zoom on focus (needs >=16px). Shrinks to 13px on sm+. */
 const field =
-  "w-full rounded-md border border-[#e5e5e5] bg-white px-2.5 py-2 text-[13px] text-[#0a0a0a] placeholder:text-[#717182] outline-none transition-[box-shadow,border-color] focus:border-primary focus:ring-[1.5px] focus:ring-primary/20";
+  "w-full rounded-md border border-[#e5e5e5] bg-white px-2.5 py-2 text-base text-[#0a0a0a] placeholder:text-[#717182] outline-none transition-[box-shadow,border-color] focus:border-primary focus:ring-[1.5px] focus:ring-primary/20 sm:text-[13px]";
 
 type SignupFormProps = {
   role: AuthRole;

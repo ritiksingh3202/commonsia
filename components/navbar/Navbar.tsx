@@ -32,6 +32,8 @@ export function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
+  /** Desktop profile dropdown — state-driven so taps work on touch tablets, not hover-only. */
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const { data: session, status } = useSession();
   const authed = status === "authenticated";
   const loading = status === "loading";
@@ -68,8 +70,27 @@ export function Navbar() {
   useEffect(() => {
     startTransition(() => {
       setMenuOpen(false);
+      setProfileMenuOpen(false);
     });
   }, [pathname]);
+
+  /** Close the desktop profile dropdown when clicking / tapping outside of it. */
+  useEffect(() => {
+    if (!profileMenuOpen) return;
+    const close = (e: MouseEvent | TouchEvent) => {
+      const target = e.target as Node | null;
+      const container = document.getElementById("nav-profile-menu-container");
+      if (container && target && !container.contains(target)) {
+        setProfileMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", close);
+    document.addEventListener("touchstart", close, { passive: true });
+    return () => {
+      document.removeEventListener("mousedown", close);
+      document.removeEventListener("touchstart", close);
+    };
+  }, [profileMenuOpen]);
 
   /** Defer prefetches so first paint / hydration are not competing with background RSC fetches. */
   useEffect(() => {
@@ -136,30 +157,61 @@ export function Navbar() {
           {!loading && authed ? (
             <div className="flex items-center gap-1.5 sm:gap-2">
               <NavNotificationsBell />
-              <div className="group relative hidden sm:inline-block">
+              <div
+                id="nav-profile-menu-container"
+                className="relative hidden sm:inline-flex sm:items-center"
+              >
                 <Link
                   href={myProfileHref}
                   prefetch
                   className="inline-flex rounded-full bg-primary px-4 py-2 text-xs font-semibold text-white shadow-sm transition-transform hover:scale-[1.02] active:scale-[0.98] sm:px-8 sm:py-2.5 sm:text-sm"
+                  onContextMenu={(e) => {
+                    e.preventDefault();
+                    setProfileMenuOpen((v) => !v);
+                  }}
                 >
                   <span className="max-w-[7rem] truncate sm:max-w-none">My profile</span>
                 </Link>
-                <div
-                  className="pointer-events-none invisible absolute right-0 top-full z-[60] -mt-1 pt-2 opacity-0 transition-all duration-150 group-hover:pointer-events-auto group-hover:visible group-hover:opacity-100"
-                  role="menu"
-                  aria-label="Account"
+                <button
+                  type="button"
+                  aria-label={profileMenuOpen ? "Close account menu" : "Open account menu"}
+                  aria-expanded={profileMenuOpen}
+                  aria-haspopup="menu"
+                  className="ml-1 inline-flex h-9 w-9 items-center justify-center rounded-full text-[#334155] transition-colors hover:bg-neutral-100 active:bg-neutral-200 sm:h-10 sm:w-10"
+                  onClick={() => setProfileMenuOpen((v) => !v)}
                 >
-                  <div className="min-w-[9rem] rounded-xl border border-black/[0.08] bg-white py-1 shadow-lg ring-1 ring-black/5">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                    <polyline points="6 9 12 15 18 9" />
+                  </svg>
+                </button>
+                {profileMenuOpen ? (
+                  <div
+                    className="absolute right-0 top-full z-[60] mt-1 min-w-[10rem] rounded-xl border border-black/[0.08] bg-white py-1 shadow-lg ring-1 ring-black/5"
+                    role="menu"
+                    aria-label="Account"
+                  >
+                    <Link
+                      href={myProfileHref}
+                      prefetch
+                      role="menuitem"
+                      className="block w-full px-3 py-2.5 text-left text-[13px] font-medium text-ink transition hover:bg-neutral-50"
+                      onClick={() => setProfileMenuOpen(false)}
+                    >
+                      My profile
+                    </Link>
                     <button
                       type="button"
                       role="menuitem"
                       className="w-full px-3 py-2.5 text-left text-[13px] font-medium text-[#b91c1c] transition hover:bg-red-50"
-                      onClick={() => void signOut({ callbackUrl: "/" })}
+                      onClick={() => {
+                        setProfileMenuOpen(false);
+                        void signOut({ callbackUrl: "/" });
+                      }}
                     >
                       Log out
                     </button>
                   </div>
-                </div>
+                ) : null}
               </div>
             </div>
           ) : null}
