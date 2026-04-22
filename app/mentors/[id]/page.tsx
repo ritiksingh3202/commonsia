@@ -5,6 +5,7 @@ import { auth } from "@/auth";
 import { PublicMentorProfile } from "@/components/mentors/PublicMentorProfile";
 import { getPublicMentorById, getSimilarMentorsForProfile } from "@/lib/mentor-directory";
 import { getMentorBookingStats } from "@/lib/mentor-dashboard-stats";
+import { mentorProfileHref } from "@/lib/mentor-slug";
 import { getPublicReviewsForMentor } from "@/lib/mentor-reviews";
 import { prisma } from "@/lib/prisma";
 import { getActiveUserWhere } from "@/lib/user-active";
@@ -20,8 +21,13 @@ function initialsFromName(name: string): string {
 
 type Props = { params: Promise<{ id: string }> };
 
-/** Fresh booking stats when visitors open or refresh a mentor profile. */
-export const dynamic = "force-dynamic";
+/**
+ * Allow Next.js to short-cache the page between hits while still re-rendering on mentor edits
+ * (we invalidate the Redis profile + list caches from `/api/profile`). Dropping `force-dynamic`
+ * lets `<Link prefetch>` pre-render mentor cards on the `/mentors` grid, which is the difference
+ * between "click and wait" and "click and it's there".
+ */
+export const revalidate = 60;
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
@@ -31,13 +37,15 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function PublicMentorPage({ params }: Props) {
-  const { id } = await params;
+  const { id: param } = await params;
 
   /**
    * Fetch the anchor mentor + current session in parallel — `auth()` ends up hitting the DB for
    * session + provider state, so running it alongside the mentor lookup hides ~half its latency.
+   * `param` can be either the raw CUID (legacy URLs) or a `name-xxxxxx` slug; `getPublicMentorById`
+   * resolves both off the Redis-cached mentors list, so slug visits don't cost an extra DB hop.
    */
-  const [mentor, session] = await Promise.all([getPublicMentorById(id), auth()]);
+  const [mentor, session] = await Promise.all([getPublicMentorById(param), auth()]);
   if (!mentor) notFound();
 
   /**
@@ -96,7 +104,8 @@ export default async function PublicMentorPage({ params }: Props) {
 
   const viewerRole = sessionRole ?? viewerDb?.role ?? null;
 
-  const back = `/mentors/${mentor.id}`;
+  const profilePath = mentorProfileHref(mentor);
+  const back = profilePath;
   const scheduleTarget = linked
     ? `/schedule?mentorUserId=${encodeURIComponent(linked)}`
     : "/schedule";
@@ -131,7 +140,7 @@ export default async function PublicMentorPage({ params }: Props) {
     : null;
 
   /** Anonymous viewers can't hit `/api/profile/:id/portfolio` (auth required); land them on /auth/login first. */
-  const portfolioLoginHref = `/auth/login?callbackUrl=${encodeURIComponent(`/mentors/${mentor.id}`)}`;
+  const portfolioLoginHref = `/auth/login?callbackUrl=${encodeURIComponent(profilePath)}`;
 
   return (
     <PublicMentorProfile

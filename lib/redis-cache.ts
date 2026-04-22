@@ -42,6 +42,9 @@ export const CacheKeys = {
   publicMentorsList: () => `${PREFIX}:mentors:public-list:v4`,
   /** Individual public mentor profile — cached JSON for `/mentors/[id]` SSR. */
   publicMentorProfile: (id: string) => `${PREFIX}:mentors:public-profile:v1:${id}`,
+  /** Public booking totals shown on a mentor's profile (completed sessions + minutes). */
+  publicMentorBookingStats: (id: string) =>
+    `${PREFIX}:mentors:public-booking-stats:v1:${id}`,
   /** Binary mentor photo bytes keyed by content-hash version from the URL's `?v=` param. */
   mentorPhotoBlob: (id: string, version: string) =>
     `${PREFIX}:mentors:photo:${id}:${version}`,
@@ -61,6 +64,8 @@ export const CacheTtl = {
   publicMentorsList: 300,
   /** Public mentor profile — short but helpful: serialize once per 60s instead of per request. */
   publicMentorProfile: 60,
+  /** Public booking totals — only change after a session ends; bookings APIs also invalidate explicitly. */
+  publicMentorBookingStats: 90,
   /** Mentor photo blob — URL is content-hashed, so entries are immutable for their TTL window. */
   mentorPhotoBlob: 60 * 60 * 24 * 7,
 } as const;
@@ -205,6 +210,11 @@ export function invalidatePublicMentorProfile(mentorUserId: string): void {
   void delKeys([CacheKeys.publicMentorProfile(mentorUserId)]);
 }
 
+/** Drop cached public booking totals (call after a session saves, cancels, or completes). */
+export function invalidatePublicMentorBookingStats(mentorUserId: string): void {
+  void delKeys([CacheKeys.publicMentorBookingStats(mentorUserId)]);
+}
+
 export async function invalidateChatThreadsForParticipants(
   studentId: string,
   mentorId: string,
@@ -220,6 +230,8 @@ export function invalidateSessionWithMentor(studentId: string, mentorUserId: str
 export function invalidateAfterBooking(studentId: string, mentorUserId: string): void {
   invalidateStudentDashboard(studentId);
   invalidateSessionWithMentor(studentId, mentorUserId);
+  /** Public profile totals ("minutes" + "sessions completed") change when the new session later ends. */
+  invalidatePublicMentorBookingStats(mentorUserId);
 }
 
 /** Slot cache keys for a mentor around `when` (±1 local calendar day). */

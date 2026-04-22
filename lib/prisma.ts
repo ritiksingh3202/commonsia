@@ -8,21 +8,22 @@ warnDatabaseUrlMisconfigDevOnce();
 const globalForPrisma = globalThis as unknown as { prisma: PrismaClient | undefined };
 
 /**
- * Prefer `DIRECT_URL` (Supabase session pool on port 5432) for runtime queries.
+ * Use `DATABASE_URL` (Supabase transaction pool on port 6543 with pgbouncer) for runtime queries.
  *
- * Supabase's pgbouncer transaction pool (port 6543, pointed to by `DATABASE_URL`) was repeatedly
- * saturating — dev hot-reloads and long-lived connections leaked "idle in transaction" sessions
- * that pinned pool slots, so every subsequent query hit
- *   FATAL: Unable to check out connection from the pool due to timeout
- * and the site SSR blanked out. Routing through the session pooler gives us a separate, larger,
- * leak-resistant pool (Supabase now also auto-kills stuck `idle_in_transaction` sessions after
- * 60s — see migration `auto_kill_stuck_idle_transactions`).
+ * This pool is purpose-built for web apps: pgbouncer multiplexes many short queries across a small
+ * number of physical Postgres connections, so saturation is rare as long as Prisma's
+ * `connection_limit` is tuned (see `applyServerlessPoolDefaults` in `lib/db-url-env.ts`).
  *
- * `DATABASE_URL` is still the default if `DIRECT_URL` is missing; migrations / PrismaAdapter
- * already use `directUrl` from `schema.prisma`, so behaviour stays identical.
+ * Supabase's session pool (port 5432 / `DIRECT_URL`) has far fewer slots (~15 on free/pro) and
+ * holds a full connection per client — great for migrations and LISTEN/NOTIFY, terrible for a
+ * dev server with HMR or a serverless runtime that creates fresh clients frequently. We therefore
+ * reserve it for fallback reads in `lib/prisma-direct.ts`.
+ *
+ * `idle_in_transaction_session_timeout = 60s` is also set on the Supabase database (migration
+ * `auto_kill_stuck_idle_transactions`) so any leaked transactions self-heal within a minute.
  */
 function buildRuntimeClient(): PrismaClient {
-  const preferred = (process.env.DIRECT_URL ?? process.env.DATABASE_URL ?? "").trim();
+  const preferred = (process.env.DATABASE_URL ?? process.env.DIRECT_URL ?? "").trim();
   if (!preferred) return new PrismaClient();
   return new PrismaClient({ datasources: { db: { url: preferred } } });
 }

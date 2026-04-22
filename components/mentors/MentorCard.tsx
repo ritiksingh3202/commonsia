@@ -2,11 +2,11 @@
 
 import { motion } from "framer-motion";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 
 import { MentorAvatar } from "@/components/mentors/MentorAvatar";
 import type { Mentor } from "@/lib/mentor-directory";
+import { mentorProfileHref } from "@/lib/mentor-slug";
 
 const MAX_SKILL_TAGS_ON_CARD = 5;
 
@@ -20,22 +20,34 @@ export function MentorCard({
   index: number;
   layout?: "default" | "spotlight";
 }) {
-  const router = useRouter();
   const { data: session } = useSession();
   const scheduleTarget = `/schedule?mentorUserId=${encodeURIComponent(mentor.id)}`;
   const scheduleHref = session?.user?.id
     ? scheduleTarget
     : `/auth/login?callbackUrl=${encodeURIComponent(scheduleTarget)}`;
 
-  const profileHref = `/mentors/${mentor.id}`;
+  const profileHref = mentorProfileHref(mentor);
   const visibleTags = mentor.tags.slice(0, MAX_SKILL_TAGS_ON_CARD);
   const extraTagCount = mentor.tags.length - visibleTags.length;
 
+  /**
+   * Fixed desktop height (`md:h-[320px]`) — combined with fixed photo column width in the
+   * photo div below — pins every mentor card to the exact same length × width regardless of
+   * where it's rendered (`/mentors` directory, profile page "more mentors", home spotlight…)
+   * or how much content a mentor has filled in. On mobile we keep a flexible min-height so
+   * varying expertise lists don't create awkward gaps when the layout stacks vertically.
+   */
   const shellClass =
     layout === "spotlight"
-      ? "group flex h-full min-h-[17.5rem] w-full min-w-0 flex-col-reverse overflow-hidden rounded-[18px] border border-neutral-200/90 bg-white shadow-[0_16px_40px_-20px_rgba(0,0,0,0.12)] ring-1 ring-black/[0.04] sm:min-h-[19rem] md:min-h-[20rem] md:flex-row md:items-stretch"
-      : "group flex h-full min-h-[280px] w-full min-w-0 flex-col-reverse overflow-hidden rounded-xl border border-neutral-200/90 bg-white shadow-sm ring-1 ring-black/[0.04] md:min-h-[300px] md:flex-row md:items-stretch";
+      ? "group relative flex h-full min-h-[17.5rem] w-full min-w-0 flex-col-reverse overflow-hidden rounded-[18px] border border-neutral-200/90 bg-white shadow-[0_16px_40px_-20px_rgba(0,0,0,0.12)] ring-1 ring-black/[0.04] sm:min-h-[19rem] md:h-[20rem] md:min-h-[20rem] md:flex-row md:items-stretch"
+      : "group relative flex h-full min-h-[280px] w-full min-w-0 flex-col-reverse overflow-hidden rounded-xl border border-neutral-200/90 bg-white shadow-sm ring-1 ring-black/[0.04] md:h-[320px] md:min-h-[320px] md:flex-row md:items-stretch";
 
+  /**
+   * Perceived-performance pattern: a full-card invisible `<Link>` (stretched with `absolute
+   * inset-0`) lets Next.js prefetch the profile page as the card enters the viewport / on hover,
+   * so clicking the card feels instant instead of triggering a fresh SSR round trip. The
+   * "Book a session" CTA sits in a higher stacking context and handles its own click.
+   */
   return (
     <motion.article
       whileHover={{
@@ -43,17 +55,17 @@ export function MentorCard({
         boxShadow: "0 16px 44px rgba(0,0,0,0.1)",
         transition: { duration: 0.18 },
       }}
-      role="link"
-      tabIndex={0}
-      onClick={() => router.push(profileHref)}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          router.push(profileHref);
-        }
-      }}
       className={shellClass}
     >
+      <Link
+        href={profileHref}
+        prefetch
+        aria-label={`View ${mentor.name}'s mentor profile`}
+        className="absolute inset-0 z-10 rounded-xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+      >
+        <span className="sr-only">View profile</span>
+      </Link>
+
       {/* Text — fills remaining width; footer pinned to bottom for equal card heights */}
       <div className="flex min-h-0 min-w-0 flex-1 flex-col justify-between gap-3 p-3.5 sm:p-4 md:py-5 md:pl-5 md:pr-4">
         <div className="min-w-0 space-y-2">
@@ -74,14 +86,12 @@ export function MentorCard({
                   </span>
                 ))}
                 {extraTagCount > 0 ? (
-                  <Link
-                    href={profileHref}
-                    onClick={(e) => e.stopPropagation()}
+                  <span
                     className="mentor-tag-expertise-pill transition hover:brightness-95"
                     aria-label={`View all ${mentor.tags.length} expertise tags on ${mentor.name}'s profile`}
                   >
                     +{extraTagCount} more
-                  </Link>
+                  </span>
                 ) : null}
               </div>
             ) : (
@@ -97,8 +107,7 @@ export function MentorCard({
           <p className="break-words text-[10px] font-semibold leading-snug text-neutral-800 sm:text-[11px]">{mentor.slot}</p>
           <Link
             href={scheduleHref}
-            onClick={(e) => e.stopPropagation()}
-            className="inline-flex w-full items-center justify-center rounded-full bg-primary px-4 py-2.5 text-[11px] font-semibold text-white shadow-sm transition group-hover:bg-primary/95 sm:w-fit sm:px-5 sm:text-sm"
+            className="relative z-20 inline-flex w-full items-center justify-center rounded-full bg-primary px-4 py-2.5 text-[11px] font-semibold text-white shadow-sm transition group-hover:bg-primary/95 sm:w-fit sm:px-5 sm:text-sm"
           >
             Book a session
           </Link>

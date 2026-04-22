@@ -1,6 +1,12 @@
 import { CHAT_ACTIVE } from "@/lib/chat-thread-status";
 import { withPoolFallback } from "@/lib/db-resilient";
 import { prisma } from "@/lib/prisma";
+import {
+  CacheKeys,
+  CacheTtl,
+  readJsonCache,
+  writeJsonCacheEntry,
+} from "@/lib/redis-cache";
 import { prismaGeneratedClientHasAccountDeletedAt } from "@/lib/user-active";
 
 export type MentorBookingStats = {
@@ -87,7 +93,19 @@ export function formatSessionBadge(startAt: Date): { label: string; className: s
   return sessionBadge(startAt);
 }
 
+/**
+ * Compute completed-session totals for a mentor.
+ *
+ * Cached in Redis for ~90s per mentor: these numbers only shift after a session actually ends
+ * (past `endAt`), and the public profile renders them on every `/mentors/:id` view. Without
+ * caching, every anonymous visit fired a full `MentoringBooking.findMany` — the single biggest
+ * DB hit on the profile page. Cache is auto-busted from bookings APIs on create/cancel.
+ */
 export async function getMentorBookingStats(mentorId: string): Promise<MentorBookingStats> {
+  const cacheKey = CacheKeys.publicMentorBookingStats(mentorId);
+  const cached = await readJsonCache<MentorBookingStats>(cacheKey);
+  if (cached) return cached;
+
   const now = new Date();
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
   startOfMonth.setHours(0, 0, 0, 0);
@@ -120,12 +138,20 @@ export async function getMentorBookingStats(mentorId: string): Promise<MentorBoo
     }
   }
 
-  return {
+  const stats: MentorBookingStats = {
     completedSessionCount: completed.length,
     totalMentoringMinutes,
     sessionsThisMonth,
     minutesThisMonth,
   };
+
+  try {
+    await writeJsonCacheEntry(cacheKey, stats, CacheTtl.publicMentorBookingStats);
+  } catch {
+    /* best-effort cache write */
+  }
+
+  return stats;
 }
 
 export async function getMentorDashboardLiveData(mentorId: string): Promise<MentorDashboardLiveData> {

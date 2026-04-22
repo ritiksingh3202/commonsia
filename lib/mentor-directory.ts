@@ -1,6 +1,11 @@
 import { normalizeMentorYearsBand } from "@/components/mentor/mentor-setup-constants";
 import { formatMentorAvailabilityPatternLabel } from "@/lib/mentor-availability-display";
 import { MENTOR_PAGE_HERO_ASSETS } from "@/lib/mentor-page-assets";
+import {
+  extractMentorIdSuffixFromSlug,
+  looksLikeRawMentorId,
+  mentorIdSuffix,
+} from "@/lib/mentor-slug";
 import { buildMonthlyWeekdayConsumedMap } from "@/lib/mentor-monthly-booking";
 import { formatNextAvailableSlotLine, type NextSlotMonthlyConsumedLookup } from "@/lib/mentor-next-slot";
 import { CacheKeys, CacheTtl, delKeys, readJsonCache, writeJsonCacheEntry } from "@/lib/redis-cache";
@@ -324,7 +329,36 @@ export async function getPublicMentors(): Promise<Mentor[]> {
 }
 
 /**
- * Public profile fetch for `/mentors/[id]`.
+ * Resolve a URL param (raw CUID or `name-slug-xxxxxx` slug) to the real mentor id.
+ *
+ * We reuse the Redis-cached `/mentors` list here, so a slug visit is almost always a single
+ * Redis GET — no extra DB queries. Raw-id URLs short-circuit immediately for zero overhead.
+ */
+async function resolveMentorParamToId(param: string): Promise<string | null> {
+  const trimmed = param.trim();
+  if (!trimmed) return null;
+  if (looksLikeRawMentorId(trimmed)) return trimmed;
+
+  const tail = extractMentorIdSuffixFromSlug(trimmed);
+  if (!tail) return null;
+
+  const all = await getPublicMentors();
+  const suffixLower = tail.toLowerCase();
+  for (const m of all) {
+    if (mentorIdSuffix(m.id).toLowerCase() === suffixLower) return m.id;
+  }
+  /** Tail might have been longer than the 6-char canonical suffix — fall back to endsWith. */
+  for (const m of all) {
+    if (m.id.toLowerCase().endsWith(suffixLower)) return m.id;
+  }
+  return null;
+}
+
+/**
+ * Public profile fetch for `/mentors/[slug]`.
+ *
+ * Accepts either the raw CUID (`cmo9m22g00002jy04tju1odqo`) or a readable slug
+ * (`abdul-rehman-u1odqo`). Old shared links keep working unchanged.
  *
  * Perf notes:
  *   - Cached in Redis for 60s keyed per mentor id. Repeat opens of the same profile (common
@@ -334,7 +368,10 @@ export async function getPublicMentors(): Promise<Mentor[]> {
  *   - Pool-aware fallback: if the primary pgbouncer pool throws, we retry the pair on the
  *     session pool via `prismaDirect` so a saturation blip doesn't 404 the page.
  */
-export async function getPublicMentorById(id: string): Promise<Mentor | null> {
+export async function getPublicMentorById(param: string): Promise<Mentor | null> {
+  const id = await resolveMentorParamToId(param);
+  if (!id) return null;
+
   const cacheKey = CacheKeys.publicMentorProfile(id);
   const cached = await readJsonCache<Mentor>(cacheKey);
   if (cached) return cached;

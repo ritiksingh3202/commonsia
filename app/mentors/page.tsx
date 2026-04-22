@@ -1,7 +1,20 @@
 import type { Metadata } from "next";
 import nextDynamic from "next/dynamic";
 
-import { getPublicMentors } from "@/lib/mentor-directory";
+import { getPublicMentors, type Mentor } from "@/lib/mentor-directory";
+
+/**
+ * Fisher–Yates shuffle — O(n), zero allocations beyond the result array. We shuffle a copy so
+ * the cached list returned by `getPublicMentors()` (shared across requests) stays untouched.
+ */
+function shuffleMentors(list: readonly Mentor[]): Mentor[] {
+  const out = list.slice();
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [out[i], out[j]] = [out[j], out[i]];
+  }
+  return out;
+}
 
 const MentorsPage = nextDynamic(
   () => import("@/components/mentors/MentorsPage").then((m) => m.MentorsPage),
@@ -35,5 +48,12 @@ export const dynamic = "force-dynamic";
 
 export default async function MentorsRoute() {
   const mentors = await getPublicMentors();
-  return <MentorsPage mentors={mentors} />;
+  /**
+   * Randomize directory order on every visit — the cached list is still alphabetical (stable
+   * cache key, small payload) but each request serves a fresh shuffle so no single mentor is
+   * permanently at the top. Users who want deterministic order can still pick A-Z / Z-A from
+   * the sort dropdown; that overrides this shuffle on the client.
+   */
+  const shuffled = shuffleMentors(mentors);
+  return <MentorsPage mentors={shuffled} />;
 }

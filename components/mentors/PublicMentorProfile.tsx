@@ -94,8 +94,21 @@ export function PublicMentorProfile({
   const reviewStart = Math.min(reviewIdx, maxReviewStart);
 
   const similarPageSize = 2;
-  const maxSimilarStart = Math.max(0, similar.length - similarPageSize);
-  const similarStart = Math.min(similarIdx, maxSimilarStart);
+  /**
+   * Page by full pages (stride = similarPageSize) so each click advances to a fresh pair of
+   * cards instead of overlapping pairs ([A,B] → [B,C]).
+   *
+   * Edge case: if the final page would contain just 1 card, back its start up so we always
+   * show a full row of 2 — otherwise the grid renders an empty right-hand cell at ½-width
+   * and the last card looks wider than all the others.
+   */
+  const similarPageCount = Math.max(1, Math.ceil(similar.length / similarPageSize));
+  const similarPageIdx = Math.min(similarIdx, similarPageCount - 1);
+  const rawSimilarStart = similarPageIdx * similarPageSize;
+  const similarStart =
+    similar.length > similarPageSize && rawSimilarStart + similarPageSize > similar.length
+      ? similar.length - similarPageSize
+      : rawSimilarStart;
 
   const achievementRows = useMemo(
     () => achievementsFromCertifications(mentor.certifications),
@@ -417,36 +430,44 @@ export function PublicMentorProfile({
           </div>
         ) : null}
 
-        <section className="mt-14 border-t border-black/[0.06] pt-10">
-          <h2 className="text-base font-semibold text-[#0a0a0a]">
-            {similarMentorsPersonalized ? "Suggested mentors for you" : "More mentors to explore"}
-          </h2>
-          <p className="mt-1 text-[12px] leading-relaxed text-neutral-500">
-            {similarMentorsPersonalized
-              ? "Based on your profile interests and this mentor’s areas of expertise — not a random list."
-              : "Ranked by overlap with this mentor’s expertise. Sign in as a student to tailor suggestions to your interests."}
-          </p>
-          <div className="mt-5 grid min-w-0 grid-cols-1 items-stretch gap-3.5 sm:gap-4 md:gap-5 lg:grid-cols-2 lg:gap-x-8 lg:gap-y-5">
-            {similar.slice(similarStart, similarStart + similarPageSize).map((m, i) => (
-              <MentorCard
-                key={`${m.id}-${similarStart}-${i}`}
-                mentor={m}
-                index={similarStart + i}
-              />
-            ))}
-          </div>
-          <div className="mt-6 flex justify-center">
-            <MentorCarouselArrows
-              ariaPrev="Previous similar mentors"
-              ariaNext="Next similar mentors"
-              prevDisabled={similarStart <= 0}
-              nextDisabled={similarStart >= maxSimilarStart}
-              onPrev={() => setSimilarIdx((i) => Math.max(0, i - 1))}
-              onNext={() => setSimilarIdx((i) => Math.min(maxSimilarStart, i + 1))}
-            />
-          </div>
-        </section>
       </div>
+
+      {/**
+       * The "more mentors" section intentionally breaks out of the profile's narrower
+       * `max-w-6xl` container and reuses the same `max-w-7xl` wrapper as the `/mentors`
+       * directory page. Combined with the matching grid (`lg:grid-cols-2` + `lg:gap-x-8`),
+       * this guarantees each suggestion card has the same length, width and internal
+       * proportions as a card in the main mentors listing.
+       */}
+      <section className="mx-auto mt-14 min-w-0 max-w-7xl border-t border-black/[0.06] px-3 pt-10 sm:px-5 md:px-6 lg:px-8">
+        <h2 className="text-base font-semibold text-[#0a0a0a]">
+          {similarMentorsPersonalized ? "Suggested mentors for you" : "More mentors to explore"}
+        </h2>
+        <p className="mt-1 text-[12px] leading-relaxed text-neutral-500">
+          {similarMentorsPersonalized
+            ? "Based on your profile interests and this mentor’s areas of expertise — not a random list."
+            : "Ranked by overlap with this mentor’s expertise. Sign in as a student to tailor suggestions to your interests."}
+        </p>
+        <div className="mt-5 grid min-w-0 auto-rows-fr grid-cols-1 items-stretch gap-3.5 sm:gap-4 md:gap-5 lg:grid-cols-2 lg:gap-x-8 lg:gap-y-5">
+          {similar.slice(similarStart, similarStart + similarPageSize).map((m, i) => (
+            <MentorCard
+              key={`${m.id}-${similarStart}-${i}`}
+              mentor={m}
+              index={similarStart + i}
+            />
+          ))}
+        </div>
+        <div className="mt-6 flex justify-center">
+          <MentorCarouselArrows
+            ariaPrev="Previous similar mentors"
+            ariaNext="Next similar mentors"
+            prevDisabled={similarPageIdx <= 0}
+            nextDisabled={similarPageIdx >= similarPageCount - 1}
+            onPrev={() => setSimilarIdx((i) => Math.max(0, i - 1))}
+            onNext={() => setSimilarIdx((i) => Math.min(similarPageCount - 1, i + 1))}
+          />
+        </div>
+      </section>
     </div>
   );
 }

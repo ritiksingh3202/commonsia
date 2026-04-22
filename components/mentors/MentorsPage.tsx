@@ -226,7 +226,7 @@ export function MentorsPage({ mentors }: { mentors: Mentor[] }) {
                 : `Showing ${filtered.length} of ${mentors.length} mentor${mentors.length === 1 ? "" : "s"}`}
             </p>
           ) : null}
-          <div className="grid min-w-0 grid-cols-1 items-stretch gap-3.5 sm:gap-4 md:gap-5 lg:grid-cols-2 lg:gap-x-8 lg:gap-y-5">
+          <div className="grid min-w-0 auto-rows-fr grid-cols-1 items-stretch gap-3.5 sm:gap-4 md:gap-5 lg:grid-cols-2 lg:gap-x-8 lg:gap-y-5">
             {slice.map((m, i) => (
               <MentorCard key={m.id} mentor={m} index={i} />
             ))}

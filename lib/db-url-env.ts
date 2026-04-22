@@ -42,31 +42,48 @@ export function deriveMissingDirectUrlFromDatabaseUrl(databaseUrl: string): stri
 }
 
 /**
- * Append pool tuning params to a pgbouncer-backed DATABASE_URL if the caller didn't set them.
+ * Append pool tuning params to a Supabase pooler URL if the caller didn't set them.
  *
  * Without explicit `connection_limit` + `pool_timeout`, Prisma uses `num_cpus * 2 + 1` and waits
  * up to 10s for a free slot. On Vercel that means every cold-started lambda tries to open many
- * connections to pgbouncer and stalls under load, surfacing as
+ * connections and stalls under load; locally `next dev` + HMR churn can exhaust a session pool in
+ * seconds. Either surfaces as
  *   "Unable to check out connection from the pool due to timeout"
- * on `/mentors` (which then returns 0 rows and poisons the Redis cache).
+ * on `/mentors` / `/mentors/:id` (which then returns 0 rows and poisons the Redis cache).
  *
- *   - Vercel / serverless: 1 connection per invocation (pgbouncer multiplexes at the proxy).
- *   - Local dev (long-lived `next dev`): 5 is plenty for concurrent SSR requests.
+ * Tuning depends on *which* pool the URL points at:
+ *
+ *   Transaction pool (port 6543, pgbouncer, used by `DATABASE_URL` / primary `prisma` client):
+ *     - Serverless:   1 connection per invocation (pgbouncer multiplexes at the proxy).
+ *     - Local dev:   10 concurrent connections is plenty for SSR + photo route fan-out.
+ *
+ *   Session pool (port 5432, used by `DIRECT_URL` / fallback `prismaDirect` client):
+ *     - Serverless:   1 connection.
+ *     - Local dev:    2 connections — the session pool only has ~15 slots on Supabase free/pro,
+ *                     and this client is fallback-only. Holding more just starves migrations.
  */
-function applyServerlessPoolDefaults(rawUrl: string): string {
+function applyPrismaPoolDefaults(
+  rawUrl: string,
+  pool: "transaction" | "session",
+): string {
   const url = rawUrl.trim();
   if (!url) return rawUrl;
   if (!url.startsWith("postgresql://") && !url.startsWith("postgres://")) return rawUrl;
-  /** Only tune when we're actually routed through a pooler (Supabase's pgbouncer on port 6543). */
-  if (!/pgbouncer=true/i.test(url) && !/:6543\//.test(url) && !/pooler\.supabase/i.test(url)) {
-    return rawUrl;
-  }
+  const isSupabase = /pooler\.supabase/i.test(url);
+  const isPgBouncer = /pgbouncer=true/i.test(url) || /:6543\//.test(url);
+  if (!isSupabase && !isPgBouncer) return rawUrl;
   try {
     const asHttp = url.replace(/^postgresql:\/\//i, "http://").replace(/^postgres:\/\//i, "http://");
     const parsed = new URL(asHttp);
     const sp = parsed.searchParams;
     const isServerless = Boolean(process.env.VERCEL || process.env.NEXT_RUNTIME === "edge");
-    if (!sp.has("connection_limit")) sp.set("connection_limit", isServerless ? "1" : "5");
+    let connLimit: string;
+    if (pool === "transaction") {
+      connLimit = isServerless ? "1" : "10";
+    } else {
+      connLimit = isServerless ? "1" : "2";
+    }
+    if (!sp.has("connection_limit")) sp.set("connection_limit", connLimit);
     if (!sp.has("pool_timeout")) sp.set("pool_timeout", isServerless ? "15" : "20");
     parsed.search = sp.toString() ? `?${sp.toString()}` : "";
     const scheme = url.startsWith("postgres://") ? "postgres:" : "postgresql:";
@@ -84,23 +101,34 @@ export function ensureDirectUrlForPrismaRuntime(): void {
   normalizePostgresUrlEnvVar("DATABASE_URL");
   normalizePostgresUrlEnvVar("DIRECT_URL");
 
-  const tunedDbUrl = applyServerlessPoolDefaults(process.env.DATABASE_URL ?? "");
+  const tunedDbUrl = applyPrismaPoolDefaults(process.env.DATABASE_URL ?? "", "transaction");
   if (tunedDbUrl && tunedDbUrl !== process.env.DATABASE_URL) {
     process.env.DATABASE_URL = tunedDbUrl;
   }
 
   const existing = (process.env.DIRECT_URL ?? "").trim();
-  if (existing) return;
-  const dbUrl = (process.env.DATABASE_URL ?? "").trim();
-  if (!dbUrl) return;
-  const derived = deriveMissingDirectUrlFromDatabaseUrl(dbUrl);
-  process.env.DIRECT_URL = derived ?? dbUrl;
-  if (process.env.NODE_ENV !== "production") {
-    console.warn(
-      "[commonsia] DIRECT_URL was empty; set from DATABASE_URL" +
-        (derived ? " (6543 → 5432 session pooler)" : "") +
-        ". Prefer defining both in .env (see .env.example).",
-    );
+  if (!existing) {
+    const dbUrl = (process.env.DATABASE_URL ?? "").trim();
+    if (!dbUrl) return;
+    const derived = deriveMissingDirectUrlFromDatabaseUrl(dbUrl);
+    process.env.DIRECT_URL = derived ?? dbUrl;
+    if (process.env.NODE_ENV !== "production") {
+      console.warn(
+        "[commonsia] DIRECT_URL was empty; set from DATABASE_URL" +
+          (derived ? " (6543 → 5432 session pooler)" : "") +
+          ". Prefer defining both in .env (see .env.example).",
+      );
+    }
+  }
+
+  /**
+   * Tune DIRECT_URL too — it's used by the fallback `prismaDirect` client. Without a tight
+   * `connection_limit` the session pool (~15 slots on Supabase free/pro) saturates on dev hot
+   * reload and both pools end up timing out. Session-pool defaults are smaller than transaction.
+   */
+  const tunedDirectUrl = applyPrismaPoolDefaults(process.env.DIRECT_URL ?? "", "session");
+  if (tunedDirectUrl && tunedDirectUrl !== process.env.DIRECT_URL) {
+    process.env.DIRECT_URL = tunedDirectUrl;
   }
 }
 
