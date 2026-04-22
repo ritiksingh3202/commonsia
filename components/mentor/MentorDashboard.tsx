@@ -36,7 +36,8 @@ function buildExperienceBullets(user: MentorDashboardUser): string[] {
   if (focus && !bullets.some((b) => b.includes(focus.slice(0, 40)))) {
     bullets.push(focus);
   }
-  return bullets;
+  /** Normalize `A,B,C` (stored without spaces) to `A, B, C` for display. */
+  return bullets.map((s) => s.replace(/,(\S)/g, ", $1"));
 }
 
 function initials(name: string | null): string {
