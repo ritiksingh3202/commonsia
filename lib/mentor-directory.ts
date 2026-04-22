@@ -4,8 +4,8 @@ import { MENTOR_PAGE_HERO_ASSETS } from "@/lib/mentor-page-assets";
 import { buildMonthlyWeekdayConsumedMap } from "@/lib/mentor-monthly-booking";
 import { formatNextAvailableSlotLine, type NextSlotMonthlyConsumedLookup } from "@/lib/mentor-next-slot";
 import { CacheKeys, CacheTtl, delKeys, readJsonCache, writeJsonCacheEntry } from "@/lib/redis-cache";
+import { withPoolFallback } from "@/lib/db-resilient";
 import { prisma } from "@/lib/prisma";
-import { prismaDirect } from "@/lib/prisma-direct";
 import { getActiveUserWhere } from "@/lib/user-active";
 
 /** Public mentor shape for directory cards + profile pages. */
@@ -250,44 +250,31 @@ function mapRowToMentor(
 /**
  * Load the mentor directory.
  *
- * Tries the primary Prisma client first (pgbouncer transaction pool, port 6543). If that
- * throws — most commonly "Unable to check out connection from the pool due to timeout" when
- * the pgbouncer pool is saturated — it retries through `prismaDirect` (session pooler on
- * port 5432, an independent pool). This gives the public grid a second chance to render
- * instead of falling through to the empty-list branch.
+ * - Single DB roundtrip: only the User findMany runs here. The monthly-booking lookup
+ *   used to back the "next slot" label is deliberately skipped for the LIST (it requires
+ *   a second query joining 6 months of MentoringBooking rows — useful on the profile page,
+ *   wasted work for every card on the grid). Cards now show the next slot derived from the
+ *   availability pattern; accuracy against monthly caps happens on the profile page.
+ *
+ * - Resilient to pool saturation: tries the primary Prisma client (pgbouncer transaction pool
+ *   on port 6543). If that throws "Unable to check out connection from the pool due to timeout",
+ *   we retry the same query through `prismaDirect` (session pool on 5432, independent pool),
+ *   so a saturation event doesn't translate into an empty grid.
  */
 async function fetchPublicMentorsFromDb(): Promise<Mentor[]> {
-  async function loadVia(client: typeof prisma): Promise<Mentor[]> {
-    const rows = await client.user.findMany({
-      where: { ...getActiveUserWhere(), role: "mentor", mentorOnboardingComplete: true },
-      orderBy: [{ name: "asc" }],
-      select: mentorSelectDirectory,
-    });
-    const since = new Date();
-    since.setMonth(since.getMonth() - 6);
-    const ids = rows.map((r) => r.id);
-    const bookings =
-      ids.length === 0
-        ? []
-        : await client.mentoringBooking.findMany({
-            where: { mentorId: { in: ids }, startAt: { gte: since } },
-            select: { mentorId: true, startAt: true },
-          });
-    const monthlyConsumed = buildMonthlyWeekdayConsumedMap(rows, bookings);
-    return rows.map((u) =>
-      mapRowToMentor({ ...(u as MentorRow), bannerImageUrl: null }, { monthlyConsumed }),
-    );
-  }
-
-  try {
-    return await loadVia(prisma);
-  } catch (primaryErr) {
-    console.warn(
-      "[fetchPublicMentorsFromDb] primary pool failed; retrying via DIRECT_URL session pool.",
-      primaryErr,
-    );
-    return loadVia(prismaDirect);
-  }
+  const rows = await withPoolFallback(
+    (client) =>
+      client.user.findMany({
+        where: { ...getActiveUserWhere(), role: "mentor", mentorOnboardingComplete: true },
+        orderBy: [{ name: "asc" }],
+        select: mentorSelectDirectory,
+      }),
+    { label: "fetchPublicMentorsFromDb" },
+  );
+  /** No `monthlyConsumed` — the list slot line is informational; real caps are enforced on book. */
+  return rows.map((u) =>
+    mapRowToMentor({ ...(u as MentorRow), bannerImageUrl: null }, { monthlyConsumed: undefined }),
+  );
 }
 
 /**
@@ -336,23 +323,50 @@ export async function getPublicMentors(): Promise<Mentor[]> {
   return list;
 }
 
+/**
+ * Public profile fetch for `/mentors/[id]`.
+ *
+ * Perf notes:
+ *   - Cached in Redis for 60s keyed per mentor id. Repeat opens of the same profile (common
+ *     pattern: student browses back-and-forth between cards) skip all DB + JSON work.
+ *   - The User fetch and the 6-month bookings fetch run in parallel via `Promise.all` —
+ *     previously they ran sequentially, doubling the time spent on the network roundtrip.
+ *   - Pool-aware fallback: if the primary pgbouncer pool throws, we retry the pair on the
+ *     session pool via `prismaDirect` so a saturation blip doesn't 404 the page.
+ */
 export async function getPublicMentorById(id: string): Promise<Mentor | null> {
-  const u = await prisma.user.findFirst({
-    where: { ...getActiveUserWhere(), id, role: "mentor", mentorOnboardingComplete: true },
-    select: mentorSelectFull,
-  });
-  if (!u) return null;
-  const since = new Date();
-  since.setMonth(since.getMonth() - 6);
-  const bookings = await prisma.mentoringBooking.findMany({
-    where: { mentorId: id, startAt: { gte: since } },
-    select: { mentorId: true, startAt: true },
-  });
-  const monthlyConsumed = buildMonthlyWeekdayConsumedMap(
-    [{ id, mentorAvailabilityJson: u.mentorAvailabilityJson }],
-    bookings,
-  );
-  return mapRowToMentor(u as MentorRow, { allowLargeDataUrlAvatar: true, monthlyConsumed });
+  const cacheKey = CacheKeys.publicMentorProfile(id);
+  const cached = await readJsonCache<Mentor>(cacheKey);
+  if (cached) return cached;
+
+  const mentor = await withPoolFallback(async (client) => {
+    const since = new Date();
+    since.setMonth(since.getMonth() - 6);
+    const [u, bookings] = await Promise.all([
+      client.user.findFirst({
+        where: { ...getActiveUserWhere(), id, role: "mentor", mentorOnboardingComplete: true },
+        select: mentorSelectFull,
+      }),
+      client.mentoringBooking.findMany({
+        where: { mentorId: id, startAt: { gte: since } },
+        select: { mentorId: true, startAt: true },
+      }),
+    ]);
+    if (!u) return null;
+    const monthlyConsumed = buildMonthlyWeekdayConsumedMap(
+      [{ id, mentorAvailabilityJson: u.mentorAvailabilityJson }],
+      bookings,
+    );
+    return mapRowToMentor(u as MentorRow, { allowLargeDataUrlAvatar: true, monthlyConsumed });
+  }, { label: "getPublicMentorById" });
+  if (mentor) {
+    try {
+      await writeJsonCacheEntry(cacheKey, mentor, CacheTtl.publicMentorProfile);
+    } catch {
+      /* best-effort cache write */
+    }
+  }
+  return mentor;
 }
 
 /**

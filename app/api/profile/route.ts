@@ -2,6 +2,7 @@ import { auth } from "@/auth";
 import { getActiveUserWhere } from "@/lib/user-active";
 import {
   delKeys,
+  invalidatePublicMentorProfile,
   invalidatePublicMentorsList,
   invalidateStudentDashboard,
   mentorMonthAvailabilityKeysForMentor,
@@ -114,6 +115,7 @@ export async function PATCH(req: Request) {
   });
   if (roleAfter?.role === "mentor") {
     invalidatePublicMentorsList();
+    invalidatePublicMentorProfile(session.user.id);
   }
 
   return NextResponse.json({ ok: true });

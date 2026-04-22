@@ -40,6 +40,11 @@ export const CacheKeys = {
     `${PREFIX}:monthavail:${mentorUserId}:${year}-${month}`,
   /** Public `/mentors` grid — slim payload (no banner blobs); Redis avoids Next.js 2MB data-cache limit. */
   publicMentorsList: () => `${PREFIX}:mentors:public-list:v4`,
+  /** Individual public mentor profile — cached JSON for `/mentors/[id]` SSR. */
+  publicMentorProfile: (id: string) => `${PREFIX}:mentors:public-profile:v1:${id}`,
+  /** Binary mentor photo bytes keyed by content-hash version from the URL's `?v=` param. */
+  mentorPhotoBlob: (id: string, version: string) =>
+    `${PREFIX}:mentors:photo:${id}:${version}`,
   /** Short-lived NX lock to reduce double-booking the same mentor slot (see `tryAcquireSlotBookingLock`). */
   bookingSlotLock: (mentorUserId: string, startIso: string) =>
     `${PREFIX}:lock:slot:${mentorUserId}:${startIso}`,
@@ -54,6 +59,10 @@ export const CacheTtl = {
   mentorMonthAvailability: 180,
   /** Mentor directory list — safe to cache longer (invalidated on mentor profile / signup). */
   publicMentorsList: 300,
+  /** Public mentor profile — short but helpful: serialize once per 60s instead of per request. */
+  publicMentorProfile: 60,
+  /** Mentor photo blob — URL is content-hashed, so entries are immutable for their TTL window. */
+  mentorPhotoBlob: 60 * 60 * 24 * 7,
 } as const;
 
 /** CDN / browser hint for schedule JSON (pairs with removing `cache: "no-store"` on the client). */
@@ -97,6 +106,33 @@ async function writeJson(key: string, value: unknown, ttlSeconds: number): Promi
 /** Direct write to Redis (for callers that manage their own read-through logic — e.g. skipping empty results). */
 export async function writeJsonCacheEntry(key: string, value: unknown, ttlSeconds: number): Promise<void> {
   return writeJson(key, value, ttlSeconds);
+}
+
+/**
+ * Read a cached binary blob (mentor photo bytes, etc.). Upstash has no native binary type —
+ * we store `{ b: base64, m: mime, e: etag }` JSON and decode on the way out. Tiny overhead vs.
+ * re-parsing a 60 KB `data:` URL from Postgres on every request.
+ */
+export type BlobCacheEntry = { bytes: Uint8Array; mime: string; etag: string };
+
+export async function readBlobCache(key: string): Promise<BlobCacheEntry | undefined> {
+  const raw = await readJson<{ b: string; m: string; e: string }>(key);
+  if (!raw || typeof raw.b !== "string") return undefined;
+  try {
+    const buf = Buffer.from(raw.b, "base64");
+    return { bytes: new Uint8Array(buf), mime: raw.m, etag: raw.e };
+  } catch {
+    return undefined;
+  }
+}
+
+export async function writeBlobCache(
+  key: string,
+  entry: BlobCacheEntry,
+  ttlSeconds: number,
+): Promise<void> {
+  const b = Buffer.from(entry.bytes).toString("base64");
+  return writeJson(key, { b, m: entry.mime, e: entry.etag }, ttlSeconds);
 }
 
 /**
@@ -156,6 +192,11 @@ export function invalidatePublicMentorsList(): void {
   } catch {
     /* e.g. called outside a Next server context */
   }
+}
+
+/** Drop the single-mentor profile cache (call after the mentor edits profile/avatar/banner). */
+export function invalidatePublicMentorProfile(mentorUserId: string): void {
+  void delKeys([CacheKeys.publicMentorProfile(mentorUserId)]);
 }
 
 export async function invalidateChatThreadsForParticipants(

@@ -1,28 +1,29 @@
 import { PrismaClient } from "@prisma/client";
 
 /**
- * Secondary Prisma client pinned to `DIRECT_URL` (Supabase session pooler on port 5432, no pgbouncer).
+ * Secondary Prisma client, pinned to `DATABASE_URL` (Supabase transaction pooler on port 6543
+ * with pgbouncer).
  *
- * Purpose: guarantee a working connection path for *read-only public queries* (`/mentors` grid,
- * public profile pages) even when the primary transaction pooler (port 6543) is exhausted or
- * temporarily rejecting new connections. The session pooler has its own pool, separate from
- * pgbouncer's transaction pool, so a saturation event on one rarely affects the other.
+ * Relationship to the primary `prisma` client:
+ *   - Primary (`lib/prisma.ts`) is now pinned to `DIRECT_URL` (session pool, 5432).
+ *   - This `prismaDirect` is pinned to the OTHER pool so read-heavy public paths can fall back
+ *     across pools. If one pool saturates (leaked idle-in-transaction, flood, etc.), the
+ *     other still answers queries and the SSR render doesn't turn into an empty grid / 500.
  *
- * It is intentionally NOT exposed for writes. Migrations and mutations still flow through the
- * shared `prisma` client so we don't widen the write footprint beyond what Auth.js needs.
+ * Used only for read-through fallbacks (see mentor-directory / photo route / mentor-reviews /
+ * mentor-dashboard-stats). Writes stay on the primary client.
  */
 const globalForDirect = globalThis as unknown as { prismaDirect: PrismaClient | undefined };
 
-function buildDirectClient(): PrismaClient {
-  const direct = (process.env.DIRECT_URL ?? "").trim();
-  if (!direct) {
-    /** Fall back to the default client config if DIRECT_URL isn't set — caller should also handle errors. */
+function buildFallbackClient(): PrismaClient {
+  const fallback = (process.env.DATABASE_URL ?? process.env.DIRECT_URL ?? "").trim();
+  if (!fallback) {
     return new PrismaClient();
   }
   return new PrismaClient({
-    datasources: { db: { url: direct } },
+    datasources: { db: { url: fallback } },
   });
 }
 
-export const prismaDirect: PrismaClient = globalForDirect.prismaDirect ?? buildDirectClient();
+export const prismaDirect: PrismaClient = globalForDirect.prismaDirect ?? buildFallbackClient();
 globalForDirect.prismaDirect = prismaDirect;

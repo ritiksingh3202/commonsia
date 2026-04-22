@@ -1,4 +1,5 @@
 import { CHAT_ACTIVE } from "@/lib/chat-thread-status";
+import { withPoolFallback } from "@/lib/db-resilient";
 import { prisma } from "@/lib/prisma";
 import { prismaGeneratedClientHasAccountDeletedAt } from "@/lib/user-active";
 
@@ -91,13 +92,17 @@ export async function getMentorBookingStats(mentorId: string): Promise<MentorBoo
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
   startOfMonth.setHours(0, 0, 0, 0);
 
-  const completed = await prisma.mentoringBooking.findMany({
-    where: {
-      mentorId,
-      endAt: { lte: now },
-    },
-    select: { startAt: true, endAt: true },
-  });
+  const completed = await withPoolFallback(
+    (client) =>
+      client.mentoringBooking.findMany({
+        where: {
+          mentorId,
+          endAt: { lte: now },
+        },
+        select: { startAt: true, endAt: true },
+      }),
+    { label: "getMentorBookingStats" },
+  );
 
   let totalMentoringMinutes = 0;
   let sessionsThisMonth = 0;
