@@ -39,7 +39,7 @@ export const CacheKeys = {
   mentorMonthAvailability: (mentorUserId: string, year: number, month: number) =>
     `${PREFIX}:monthavail:${mentorUserId}:${year}-${month}`,
   /** Public `/mentors` grid — slim payload (no banner blobs); Redis avoids Next.js 2MB data-cache limit. */
-  publicMentorsList: () => `${PREFIX}:mentors:public-list:v3`,
+  publicMentorsList: () => `${PREFIX}:mentors:public-list:v4`,
   /** Short-lived NX lock to reduce double-booking the same mentor slot (see `tryAcquireSlotBookingLock`). */
   bookingSlotLock: (mentorUserId: string, startIso: string) =>
     `${PREFIX}:lock:slot:${mentorUserId}:${startIso}`,
@@ -92,6 +92,11 @@ async function writeJson(key: string, value: unknown, ttlSeconds: number): Promi
   } catch {
     /* ignore cache write failures */
   }
+}
+
+/** Direct write to Redis (for callers that manage their own read-through logic — e.g. skipping empty results). */
+export async function writeJsonCacheEntry(key: string, value: unknown, ttlSeconds: number): Promise<void> {
+  return writeJson(key, value, ttlSeconds);
 }
 
 /**

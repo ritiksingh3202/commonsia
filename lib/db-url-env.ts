@@ -42,12 +42,53 @@ export function deriveMissingDirectUrlFromDatabaseUrl(databaseUrl: string): stri
 }
 
 /**
+ * Append pool tuning params to a pgbouncer-backed DATABASE_URL if the caller didn't set them.
+ *
+ * Without explicit `connection_limit` + `pool_timeout`, Prisma uses `num_cpus * 2 + 1` and waits
+ * up to 10s for a free slot. On Vercel that means every cold-started lambda tries to open many
+ * connections to pgbouncer and stalls under load, surfacing as
+ *   "Unable to check out connection from the pool due to timeout"
+ * on `/mentors` (which then returns 0 rows and poisons the Redis cache).
+ *
+ *   - Vercel / serverless: 1 connection per invocation (pgbouncer multiplexes at the proxy).
+ *   - Local dev (long-lived `next dev`): 5 is plenty for concurrent SSR requests.
+ */
+function applyServerlessPoolDefaults(rawUrl: string): string {
+  const url = rawUrl.trim();
+  if (!url) return rawUrl;
+  if (!url.startsWith("postgresql://") && !url.startsWith("postgres://")) return rawUrl;
+  /** Only tune when we're actually routed through a pooler (Supabase's pgbouncer on port 6543). */
+  if (!/pgbouncer=true/i.test(url) && !/:6543\//.test(url) && !/pooler\.supabase/i.test(url)) {
+    return rawUrl;
+  }
+  try {
+    const asHttp = url.replace(/^postgresql:\/\//i, "http://").replace(/^postgres:\/\//i, "http://");
+    const parsed = new URL(asHttp);
+    const sp = parsed.searchParams;
+    const isServerless = Boolean(process.env.VERCEL || process.env.NEXT_RUNTIME === "edge");
+    if (!sp.has("connection_limit")) sp.set("connection_limit", isServerless ? "1" : "5");
+    if (!sp.has("pool_timeout")) sp.set("pool_timeout", isServerless ? "15" : "20");
+    parsed.search = sp.toString() ? `?${sp.toString()}` : "";
+    const scheme = url.startsWith("postgres://") ? "postgres:" : "postgresql:";
+    return parsed.toString().replace(/^http:\/\//i, `${scheme}//`);
+  } catch {
+    return rawUrl;
+  }
+}
+
+/**
  * `schema.prisma` uses `directUrl = env("DIRECT_URL")`. Local `.env` often only sets `DATABASE_URL`;
  * Vercel fills `DIRECT_URL` in `next.config.ts`. Mirror that here so Prisma + PrismaAdapter behave the same.
  */
 export function ensureDirectUrlForPrismaRuntime(): void {
   normalizePostgresUrlEnvVar("DATABASE_URL");
   normalizePostgresUrlEnvVar("DIRECT_URL");
+
+  const tunedDbUrl = applyServerlessPoolDefaults(process.env.DATABASE_URL ?? "");
+  if (tunedDbUrl && tunedDbUrl !== process.env.DATABASE_URL) {
+    process.env.DATABASE_URL = tunedDbUrl;
+  }
+
   const existing = (process.env.DIRECT_URL ?? "").trim();
   if (existing) return;
   const dbUrl = (process.env.DATABASE_URL ?? "").trim();

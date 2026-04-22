@@ -1,11 +1,9 @@
 import type { Metadata } from "next";
-import dynamic from "next/dynamic";
-import { unstable_cache } from "next/cache";
+import nextDynamic from "next/dynamic";
 
 import { getPublicMentors } from "@/lib/mentor-directory";
-import { PUBLIC_MENTORS_REVALIDATE_TAG } from "@/lib/redis-cache";
 
-const MentorsPage = dynamic(
+const MentorsPage = nextDynamic(
   () => import("@/components/mentors/MentorsPage").then((m) => m.MentorsPage),
   {
     loading: () => (
@@ -25,16 +23,17 @@ export const metadata: Metadata = {
   title: { absolute: "Mentors" },
 };
 
-/** ISR fallback; list data is also cached via `unstable_cache` + Redis + `revalidateTag` on mentor updates. */
-export const revalidate = 60;
-
-const getCachedMentorsForPage = unstable_cache(
-  async () => getPublicMentors(),
-  ["mentors-directory"],
-  { revalidate: 60, tags: [PUBLIC_MENTORS_REVALIDATE_TAG] },
-);
+/**
+ * Render fresh on every request. The `unstable_cache` wrapper that used to live here could
+ * lock the page into an empty list if a single request got an empty payload (transient DB
+ * hiccup, cold start, stale Redis after a deploy) — the edge cached `[]` and kept serving it
+ * for the full 60s window across every visitor. `getPublicMentors()` already has its own
+ * Redis-backed cache with empty-result guarding, so the extra layer adds staleness without
+ * meaningful perf gain.
+ */
+export const dynamic = "force-dynamic";
 
 export default async function MentorsRoute() {
-  const mentors = await getCachedMentorsForPage();
+  const mentors = await getPublicMentors();
   return <MentorsPage mentors={mentors} />;
 }

@@ -3,7 +3,7 @@ import { formatMentorAvailabilityPatternLabel } from "@/lib/mentor-availability-
 import { MENTOR_PAGE_HERO_ASSETS } from "@/lib/mentor-page-assets";
 import { buildMonthlyWeekdayConsumedMap } from "@/lib/mentor-monthly-booking";
 import { formatNextAvailableSlotLine, type NextSlotMonthlyConsumedLookup } from "@/lib/mentor-next-slot";
-import { CacheKeys, CacheTtl, delKeys, readJsonCache, withJsonCache } from "@/lib/redis-cache";
+import { CacheKeys, CacheTtl, delKeys, readJsonCache, writeJsonCacheEntry } from "@/lib/redis-cache";
 import { prisma } from "@/lib/prisma";
 import { getActiveUserWhere } from "@/lib/user-active";
 
@@ -266,30 +266,46 @@ async function fetchPublicMentorsFromDb(): Promise<Mentor[]> {
   return rows.map((u) => mapRowToMentor({ ...(u as MentorRow), bannerImageUrl: null }, { monthlyConsumed }));
 }
 
-/** Cached in Redis (not Next data cache) so large mentor sets stay under Next’s 2MB limit. */
+/**
+ * Cached in Redis (not Next data cache) so large mentor sets stay under Next's 2MB limit.
+ *
+ * Crucially, an empty array is NEVER cached: a transient DB hiccup or a cold start that
+ * returned zero rows could otherwise lock the grid into "0 mentors" for the full TTL window.
+ * If the cached payload is empty (from an older version or another region) we also retry
+ * the DB once — so the site self-heals on the next request instead of waiting for TTL.
+ */
 export async function getPublicMentors(): Promise<Mentor[]> {
   const key = CacheKeys.publicMentorsList();
   const t0 = Date.now();
   let list: Mentor[];
-  try {
-    list = await withJsonCache(key, CacheTtl.publicMentorsList, fetchPublicMentorsFromDb);
-  } catch (err) {
-    /** DB unreachable, quota, cold start, etc. — avoid hard 500 when Redis still has a recent list. */
-    console.warn("[getPublicMentors] DB load failed; trying stale Redis cache.", err);
-    const stale = await readJsonCache<Mentor[]>(key);
-    list = Array.isArray(stale) ? stale : [];
-  }
-  /** Stale/wrong Redis payloads (or manual edits) must not take down `/mentors` SSR (`mentors.filter`). */
-  if (!Array.isArray(list)) {
-    await delKeys([key]);
+
+  const cached = await readJsonCache<Mentor[]>(key);
+  if (Array.isArray(cached) && cached.length > 0) {
+    list = cached;
+  } else {
+    if (Array.isArray(cached) && cached.length === 0) {
+      /** Stuck empty payload (e.g. from a transient cold start). Drop it before re-fetching so
+       *  other instances don't keep serving the bad cache while we rebuild. */
+      await delKeys([key]);
+    }
     try {
       list = await fetchPublicMentorsFromDb();
     } catch (err) {
-      console.warn("[getPublicMentors] retry after bad cache shape failed.", err);
+      console.warn("[getPublicMentors] DB load failed; falling back to stale Redis (may be empty).", err);
       const stale = await readJsonCache<Mentor[]>(key);
       list = Array.isArray(stale) ? stale : [];
     }
+    if (Array.isArray(list) && list.length > 0) {
+      /** Only persist non-empty results — an empty list is almost always a symptom, not truth. */
+      try {
+        await writeJsonCacheEntry(key, list, CacheTtl.publicMentorsList);
+      } catch {
+        /* best-effort cache write */
+      }
+    }
   }
+
+  if (!Array.isArray(list)) list = [];
   if (process.env.NODE_ENV === "development") {
     console.info(`[perf] getPublicMentors ${Date.now() - t0}ms (${list.length} mentors)`);
   }
