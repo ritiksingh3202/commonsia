@@ -130,6 +130,9 @@ export default async function PublicMentorPage({ params }: Props) {
       }
     : null;
 
+  /** Anonymous viewers can't hit `/api/profile/:id/portfolio` (auth required); land them on /auth/login first. */
+  const portfolioLoginHref = `/auth/login?callbackUrl=${encodeURIComponent(`/mentors/${mentor.id}`)}`;
+
   return (
     <PublicMentorProfile
       mentor={mentor}
@@ -143,6 +146,8 @@ export default async function PublicMentorPage({ params }: Props) {
       messageHref={messageHref}
       scheduleHref={scheduleHref}
       viewerPortfolio={viewerPortfolio}
+      viewerSignedIn={Boolean(sessionUserId)}
+      portfolioLoginHref={portfolioLoginHref}
     />
   );
 }

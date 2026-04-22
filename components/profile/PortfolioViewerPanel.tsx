@@ -3,18 +3,28 @@
 /**
  * Read-only portfolio area for viewers (mentor sees student, etc.).
  * Opens the uploaded PDF/ZIP via authenticated GET, or external URL in a new tab.
+ *
+ * When the viewer is anonymous we swap the doc button for a "Sign in to view" CTA that lands
+ * them on `/auth/login` with a callback back to the current page — without this, clicking the
+ * button opened a new tab that rendered the API's 401 JSON (the user saw "nothing happens").
  */
 export function PortfolioViewerPanel({
   userId,
   portfolioUrl,
   portfolioFileName,
   portfolioVisibleToOthers,
+  viewerSignedIn = true,
+  loginHref,
   className,
 }: {
   userId: string;
   portfolioUrl: string | null;
   portfolioFileName: string | null;
   portfolioVisibleToOthers: boolean;
+  /** True when the current viewer is authenticated — the doc endpoint requires a session. */
+  viewerSignedIn?: boolean;
+  /** `/auth/login?callbackUrl=...` used when the viewer isn't signed in yet. */
+  loginHref?: string;
   /** Merged onto the root; default includes top margin for standalone use. */
   className?: string;
 }) {
@@ -25,6 +35,7 @@ export function PortfolioViewerPanel({
   if (!hasFile && !hasUrl) return null;
 
   const docHref = `/api/profile/${encodeURIComponent(userId)}/portfolio`;
+  const needsSignInForFile = hasFile && !viewerSignedIn;
 
   return (
     <div className={`mt-6 rounded-2xl border border-black/[0.08] bg-neutral-50/90 p-4 sm:p-5${className ? ` ${className}` : ""}`}>
@@ -44,14 +55,23 @@ export function PortfolioViewerPanel({
       ) : (
         <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
           {hasFile && portfolioVisibleToOthers ? (
-            <a
-              href={docHref}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center justify-center rounded-xl bg-primary px-4 py-2.5 text-center text-[13px] font-semibold text-white shadow-sm ring-1 ring-primary/20 transition hover:bg-primary/90"
-            >
-              Open portfolio document
-            </a>
+            needsSignInForFile && loginHref ? (
+              <a
+                href={loginHref}
+                className="inline-flex items-center justify-center rounded-xl bg-primary px-4 py-2.5 text-center text-[13px] font-semibold text-white shadow-sm ring-1 ring-primary/20 transition hover:bg-primary/90"
+              >
+                Sign in to view portfolio
+              </a>
+            ) : (
+              <a
+                href={docHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center justify-center rounded-xl bg-primary px-4 py-2.5 text-center text-[13px] font-semibold text-white shadow-sm ring-1 ring-primary/20 transition hover:bg-primary/90"
+              >
+                Open portfolio document
+              </a>
+            )
           ) : null}
           {hasUrl && portfolioVisibleToOthers ? (
             <a

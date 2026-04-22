@@ -52,6 +52,8 @@ export function PublicMentorProfile({
   messageHref,
   scheduleHref,
   viewerPortfolio,
+  viewerSignedIn = true,
+  portfolioLoginHref,
   similarMentorsPersonalized = false,
 }: {
   mentor: Mentor;
@@ -74,6 +76,10 @@ export function PublicMentorProfile({
     portfolioFileName: string | null;
     portfolioVisibleToOthers: boolean;
   } | null;
+  /** Authenticated viewers can open the uploaded document directly; anonymous viewers get a sign-in CTA. */
+  viewerSignedIn?: boolean;
+  /** `/auth/login?callbackUrl=...` back to this profile, shown to anonymous viewers. */
+  portfolioLoginHref?: string;
 }) {
   const [tab, setTab] = useState<Tab>("overview");
   const [reviewIdx, setReviewIdx] = useState(0);
@@ -262,6 +268,8 @@ export function PublicMentorProfile({
                   portfolioUrl={viewerPortfolio.portfolioUrl}
                   portfolioFileName={viewerPortfolio.portfolioFileName}
                   portfolioVisibleToOthers={viewerPortfolio.portfolioVisibleToOthers}
+                  viewerSignedIn={viewerSignedIn}
+                  loginHref={portfolioLoginHref}
                 />
               ) : null}
             </div>
@@ -391,6 +399,8 @@ export function PublicMentorProfile({
                 portfolioUrl={viewerPortfolio.portfolioUrl}
                 portfolioFileName={viewerPortfolio.portfolioFileName}
                 portfolioVisibleToOthers={viewerPortfolio.portfolioVisibleToOthers}
+                viewerSignedIn={viewerSignedIn}
+                loginHref={portfolioLoginHref}
                 className="!mt-0"
               />
             ) : null}

@@ -3,7 +3,11 @@ import { prisma } from "@/lib/prisma";
 /**
  * Who may view another user's portfolio document or external portfolio URL.
  * - Always allowed for the profile owner.
- * - Cross-role: mentor ↔ student only (not random users).
+ * - Any authenticated mentor or student may view a mentor/student portfolio when the owner
+ *   has `portfolioVisibleToOthers = true`. Previously this was restricted to cross-role pairs
+ *   only, which meant a mentor browsing another mentor's public profile saw a broken "Open
+ *   portfolio document" button (API returned 403 → blank/error tab). Owners still control
+ *   visibility via the single toggle on their profile.
  */
 export async function canViewOthersPortfolio(params: {
   viewerId: string;
@@ -21,7 +25,5 @@ export async function canViewOthersPortfolio(params: {
   if (!target) return false;
   if (target.portfolioVisibleToOthers === false) return false;
 
-  if (viewerRole === "mentor" && target.role === "student") return true;
-  if (viewerRole === "student" && target.role === "mentor") return true;
-  return false;
+  return target.role === "mentor" || target.role === "student";
 }
