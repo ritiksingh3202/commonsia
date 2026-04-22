@@ -417,7 +417,12 @@ export function MentorEditProfileForm({ initial }: { initial: MentorEditProfileI
         }
         lastSavedJsonRef.current = JSON.stringify(buildMentorPayload());
         setAutoSave("saved");
-        router.refresh();
+        /**
+         * Deliberately no `router.refresh()` here: the autosave only persists fields that
+         * the form is already the source of truth for, so re-fetching the server component
+         * (extra DB roundtrip + re-serialize) just to re-hydrate the same values makes every
+         * keystroke pause for ~800–1500ms on Neon/Supabase round-trips.
+         */
         window.setTimeout(() => {
           if (!cancelled) setAutoSave("idle");
         }, 2000);
@@ -429,7 +434,7 @@ export function MentorEditProfileForm({ initial }: { initial: MentorEditProfileI
       cancelled = true;
       window.clearTimeout(t);
     };
-  }, [buildMentorPayload, imageDataUrl, patchProfile, revokePreview, router]);
+  }, [buildMentorPayload, imageDataUrl, patchProfile, revokePreview]);
 
   const handleSave = async () => {
     if (!fullName.trim()) {

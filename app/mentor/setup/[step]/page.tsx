@@ -39,19 +39,42 @@ export default async function MentorSetupPage({
     redirect(`/auth/login?callbackUrl=${encodeURIComponent("/mentor")}`);
   }
 
-  const [user, linkedInAccount] = await Promise.all([
-    prisma.user.findUnique({
-      where: { id: session.user.id },
-      select: mentorSetupUserSelect,
-    }),
-    prisma.account.findFirst({
-      where: { userId: session.user.id, provider: "linkedin" },
-      select: { id: true },
-    }),
-  ]);
+  /**
+   * Collapse user + LinkedIn probe into ONE findUnique — saves a Postgres round-trip on every
+   * "Save & Next" navigation during mentor signup.
+   */
+  const user = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: {
+      ...mentorSetupUserSelect,
+      accounts: {
+        where: { provider: "linkedin" },
+        select: { provider: true },
+        take: 1,
+      },
+    },
+  });
 
-  const linkedInConnected = !!linkedInAccount;
-  const initial = user ?? undefined;
+  const linkedInConnected = !!user?.accounts?.length;
+  const initial = user
+    ? ({
+        country: user.country,
+        city: user.city,
+        mentorTitle: user.mentorTitle,
+        mentorCompany: user.mentorCompany,
+        mentorYearsExperience: user.mentorYearsExperience,
+        mentorExpertise: user.mentorExpertise,
+        mentorMentorshipFocus: user.mentorMentorshipFocus,
+        mentorAvailabilityPref: user.mentorAvailabilityPref,
+        mentorMaxMenteesPref: user.mentorMaxMenteesPref,
+        bio: user.bio,
+        linkedinUrl: user.linkedinUrl,
+        portfolioUrl: user.portfolioUrl,
+        portfolioFileName: user.portfolioFileName,
+        mentorCertifications: user.mentorCertifications,
+        whatsappUrl: user.whatsappUrl,
+      })
+    : undefined;
 
   if (step === 1) {
     return (

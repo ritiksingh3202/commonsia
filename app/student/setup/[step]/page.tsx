@@ -5,7 +5,6 @@ import { auth } from "@/auth";
 import { StudentSetupStep1 } from "@/components/student/StudentSetupStep1";
 import { StudentSetupStep2 } from "@/components/student/StudentSetupStep2";
 import { StudentSetupStep3 } from "@/components/student/StudentSetupStep3";
-import { getGoogleCalendarRefreshTokenForUser } from "@/lib/google-calendar-oauth-client";
 import { prisma } from "@/lib/prisma";
 import { studentSetupUserSelect } from "@/lib/setup-load-user";
 
@@ -40,20 +39,49 @@ export default async function StudentSetupPage({
     redirect(`/auth/login?callbackUrl=${encodeURIComponent("/student")}`);
   }
 
-  const [user, linkedInAccount] = await Promise.all([
-    prisma.user.findUnique({
-      where: { id: session.user.id },
-      select: studentSetupUserSelect,
-    }),
-    prisma.account.findFirst({
-      where: { userId: session.user.id, provider: "linkedin" },
-      select: { id: true },
-    }),
-  ]);
+  /**
+   * Single findUnique collapses what used to be 3–4 sequential Postgres round-trips
+   * (user fields, LinkedIn account probe, raw googleCalendarRefreshToken read, and a Google
+   * Account fallback) into ONE query. Every "Save & Next" navigation triggers a server render,
+   * so cutting round-trips here directly speeds up the signup flow on Neon/Supabase.
+   *
+   * Google Calendar is considered connected when either the explicit refresh token column is set
+   * (dedicated "Connect Calendar" flow) OR a Google Account row carries an offline refresh_token
+   * (the user signed in with Google).
+   */
+  const user = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: {
+      ...studentSetupUserSelect,
+      googleCalendarRefreshToken: true,
+      accounts: {
+        where: { provider: { in: ["linkedin", "google"] } },
+        select: { provider: true, refresh_token: true },
+      },
+    },
+  });
 
-  const linkedInConnected = !!linkedInAccount;
-  const initial = user ?? undefined;
-  const googleCalendarConnected = !!(await getGoogleCalendarRefreshTokenForUser(session.user.id));
+  const linkedInConnected = !!user?.accounts?.some((a) => a.provider === "linkedin");
+  const googleCalendarConnected =
+    !!user?.googleCalendarRefreshToken?.trim() ||
+    !!user?.accounts?.some((a) => a.provider === "google" && a.refresh_token);
+
+  const initial = user
+    ? ({
+        country: user.country,
+        city: user.city,
+        university: user.university,
+        yearOfStudy: user.yearOfStudy,
+        major: user.major,
+        interests: user.interests,
+        softwareSkills: user.softwareSkills,
+        otherInterests: user.otherInterests,
+        bio: user.bio,
+        portfolioUrl: user.portfolioUrl,
+        phone: user.phone,
+        linkedinUrl: user.linkedinUrl,
+      })
+    : undefined;
 
   if (step === 1) {
     return (

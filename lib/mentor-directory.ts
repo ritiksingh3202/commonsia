@@ -44,6 +44,16 @@ export type Mentor = {
   onboardingComplete: boolean;
   /** Saved years band from mentor profile (e.g. `0–2 years`, `2–5 years`). */
   yearsExperience: string | null;
+  /**
+   * Portfolio link the mentor pasted in their profile (only included when this `Mentor`
+   * originates from {@link getPublicMentorById} — the directory grid shape strips it so cards
+   * stay small in Redis). May be `null` when the mentor hasn't added one.
+   */
+  portfolioUrl?: string | null;
+  /** Display label for the uploaded portfolio file (PDF/ZIP) when present. */
+  portfolioFileName?: string | null;
+  /** Mentor's opt-in toggle for sharing the uploaded portfolio with students. */
+  portfolioVisibleToOthers?: boolean;
 };
 
 /** Full row for a single mentor profile (includes banner — can be large). */
@@ -63,6 +73,15 @@ const mentorSelectFull = {
   mentorOnboardingComplete: true,
   linkedinUrl: true,
   bannerImageUrl: true,
+  /**
+   * Portfolio fields live alongside the rest of the mentor row, so the `/mentors/:id` page
+   * no longer needs a second `user.findFirst` just to decide whether to render the viewer
+   * portfolio panel. They ride on the same Redis cache entry (`publicMentorProfile:v2:…`)
+   * and get invalidated on any `/api/profile` PATCH from the mentor.
+   */
+  portfolioUrl: true,
+  portfolioFileName: true,
+  portfolioVisibleToOthers: true,
 } as const;
 
 /**
@@ -102,6 +121,9 @@ type MentorRow = {
   mentorOnboardingComplete: boolean;
   linkedinUrl: string | null;
   bannerImageUrl?: string | null;
+  portfolioUrl?: string | null;
+  portfolioFileName?: string | null;
+  portfolioVisibleToOthers?: boolean;
 };
 
 /** Avoid shipping huge base64 avatars on the `/mentors` grid (cards use a placeholder instead). */
@@ -230,7 +252,7 @@ function mapRowToMentor(
   const slot = formatNextAvailableSlotLine(u.mentorAvailabilityJson, new Date(), monthlyLookup);
   const availabilityPattern = formatMentorAvailabilityPatternLabel(u.mentorAvailabilityJson);
   const photo = hasStoredProfilePhoto(rawImg);
-  return {
+  const base: Mentor = {
     id: u.id,
     name: displayName(u.name, u.email),
     role: formatRoleLine(u.mentorTitle, u.mentorCompany),
@@ -250,6 +272,20 @@ function mapRowToMentor(
       normalizeMentorYearsBand(u.mentorYearsExperience) || u.mentorYearsExperience?.trim() || null,
     bio: u.bio?.trim() || null,
   };
+
+  /**
+   * Only attach portfolio fields when the caller selected them (profile page uses
+   * `mentorSelectFull`; directory uses `mentorSelectDirectory` which omits portfolio to keep
+   * the cached list payload small). `undefined` vs `null` lets the consumer tell "mentor has
+   * no portfolio" apart from "we didn't fetch it here".
+   */
+  if ("portfolioUrl" in u || "portfolioFileName" in u || "portfolioVisibleToOthers" in u) {
+    base.portfolioUrl = u.portfolioUrl?.trim() || null;
+    base.portfolioFileName = u.portfolioFileName?.trim() || null;
+    base.portfolioVisibleToOthers = Boolean(u.portfolioVisibleToOthers);
+  }
+
+  return base;
 }
 
 /**

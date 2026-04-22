@@ -81,26 +81,12 @@ export default async function PublicMentorPage({ params }: Props) {
   const mentorReviewsPromise = getPublicReviewsForMentor(mentor.id);
   const bookingStatsPromise = getMentorBookingStats(mentor.id);
 
-  const viewerPortfolioRowPromise = linked
-    ? prisma.user.findFirst({
-        where: { id: linked, ...getActiveUserWhere(), role: "mentor" },
-        select: {
-          id: true,
-          portfolioUrl: true,
-          portfolioFileName: true,
-          portfolioVisibleToOthers: true,
-        },
-      })
-    : Promise.resolve(null);
-
-  const [viewerDb, similarMentors, mentorReviews, bookingStats, viewerPortfolioRow] =
-    await Promise.all([
-      viewerDbPromise,
-      similarMentorsPromise,
-      mentorReviewsPromise,
-      bookingStatsPromise,
-      viewerPortfolioRowPromise,
-    ]);
+  const [viewerDb, similarMentors, mentorReviews, bookingStats] = await Promise.all([
+    viewerDbPromise,
+    similarMentorsPromise,
+    mentorReviewsPromise,
+    bookingStatsPromise,
+  ]);
 
   const viewerRole = sessionRole ?? viewerDb?.role ?? null;
 
@@ -130,14 +116,21 @@ export default async function PublicMentorPage({ params }: Props) {
     }).toString()}`;
   }
 
-  const viewerPortfolio = viewerPortfolioRow
-    ? {
-        userId: viewerPortfolioRow.id,
-        portfolioUrl: viewerPortfolioRow.portfolioUrl,
-        portfolioFileName: viewerPortfolioRow.portfolioFileName,
-        portfolioVisibleToOthers: viewerPortfolioRow.portfolioVisibleToOthers,
-      }
-    : null;
+  /**
+   * Portfolio fields ride on the same Redis-cached mentor payload now, so we don't need a
+   * separate `user.findFirst` here (previously ~1 full DB round-trip on every profile view,
+   * even on cache hits for the mentor itself). `linked` is always `mentor.id` for a real
+   * mentor row; guard anyway so marketing-only cards with no linked user stay safe.
+   */
+  const viewerPortfolio =
+    linked && mentor.portfolioVisibleToOthers !== undefined
+      ? {
+          userId: linked,
+          portfolioUrl: mentor.portfolioUrl ?? null,
+          portfolioFileName: mentor.portfolioFileName ?? null,
+          portfolioVisibleToOthers: Boolean(mentor.portfolioVisibleToOthers),
+        }
+      : null;
 
   /** Anonymous viewers can't hit `/api/profile/:id/portfolio` (auth required); land them on /auth/login first. */
   const portfolioLoginHref = `/auth/login?callbackUrl=${encodeURIComponent(profilePath)}`;

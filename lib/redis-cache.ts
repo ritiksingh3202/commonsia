@@ -40,8 +40,12 @@ export const CacheKeys = {
     `${PREFIX}:monthavail:${mentorUserId}:${year}-${month}`,
   /** Public `/mentors` grid — slim payload (no banner blobs); Redis avoids Next.js 2MB data-cache limit. */
   publicMentorsList: () => `${PREFIX}:mentors:public-list:v4`,
-  /** Individual public mentor profile — cached JSON for `/mentors/[id]` SSR. */
-  publicMentorProfile: (id: string) => `${PREFIX}:mentors:public-profile:v1:${id}`,
+  /**
+   * Individual public mentor profile — cached JSON for `/mentors/[id]` SSR.
+   * Bump version suffix when the cached `Mentor` shape changes so stale v1 payloads
+   * (missing new fields like portfolio info) aren't served for 60s after a deploy.
+   */
+  publicMentorProfile: (id: string) => `${PREFIX}:mentors:public-profile:v2:${id}`,
   /** Public booking totals shown on a mentor's profile (completed sessions + minutes). */
   publicMentorBookingStats: (id: string) =>
     `${PREFIX}:mentors:public-booking-stats:v1:${id}`,
@@ -51,6 +55,8 @@ export const CacheKeys = {
   /** Short-lived NX lock to reduce double-booking the same mentor slot (see `tryAcquireSlotBookingLock`). */
   bookingSlotLock: (mentorUserId: string, startIso: string) =>
     `${PREFIX}:lock:slot:${mentorUserId}:${startIso}`,
+  /** Navbar notification bell summary per user — 15s TTL, invalidated on chat/booking events. */
+  notificationsSummary: (userId: string) => `${PREFIX}:notif:summary:v1:${userId}`,
 } as const;
 
 export const CacheTtl = {
@@ -219,7 +225,19 @@ export async function invalidateChatThreadsForParticipants(
   studentId: string,
   mentorId: string,
 ): Promise<void> {
-  await delKeys([CacheKeys.chatThreads(studentId), CacheKeys.chatThreads(mentorId)]);
+  await delKeys([
+    CacheKeys.chatThreads(studentId),
+    CacheKeys.chatThreads(mentorId),
+    /** Keep the navbar bell in sync — notifications summary is keyed per user. */
+    CacheKeys.notificationsSummary(studentId),
+    CacheKeys.notificationsSummary(mentorId),
+  ]);
+}
+
+/** Expose notification-summary cache invalidation for booking/session flows. */
+export function invalidateNotificationsSummary(...userIds: string[]): void {
+  const keys = userIds.filter(Boolean).map((id) => CacheKeys.notificationsSummary(id));
+  if (keys.length > 0) void delKeys(keys);
 }
 
 export function invalidateSessionWithMentor(studentId: string, mentorUserId: string): void {
@@ -232,6 +250,8 @@ export function invalidateAfterBooking(studentId: string, mentorUserId: string):
   invalidateSessionWithMentor(studentId, mentorUserId);
   /** Public profile totals ("minutes" + "sessions completed") change when the new session later ends. */
   invalidatePublicMentorBookingStats(mentorUserId);
+  /** Navbar bell shows the "Session scheduled" card — bust the notifications summary too. */
+  invalidateNotificationsSummary(studentId, mentorUserId);
 }
 
 /** Slot cache keys for a mentor around `when` (±1 local calendar day). */

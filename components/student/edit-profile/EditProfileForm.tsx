@@ -323,7 +323,11 @@ export function EditProfileForm({ user: initial, googleCalendarConnected }: Prop
         if (cancelled) return;
         lastSavedJsonRef.current = JSON.stringify(buildPayload());
         setAutoSave("saved");
-        router.refresh();
+        /**
+         * Deliberately no `router.refresh()` here: autosave only writes fields the form
+         * already owns, so re-fetching the server component just to re-hydrate the same
+         * values stalls every keystroke behind a full DB round-trip.
+         */
         window.setTimeout(() => {
           if (!cancelled) setAutoSave("idle");
         }, 2000);
@@ -335,7 +339,7 @@ export function EditProfileForm({ user: initial, googleCalendarConnected }: Prop
       cancelled = true;
       window.clearTimeout(t);
     };
-  }, [buildPayload, patch, router]);
+  }, [buildPayload, patch]);
 
   const onSave = async () => {
     if (!name.trim()) {

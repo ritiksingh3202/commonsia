@@ -101,7 +101,9 @@ function SearchableDropdownField({
 
   useEffect(() => {
     if (!open) {
+      /* eslint-disable react-hooks/set-state-in-effect -- clear stale search when dropdown closes */
       setQuery("");
+      /* eslint-enable react-hooks/set-state-in-effect */
       return;
     }
     const t = window.setTimeout(() => searchRef.current?.focus(), 30);
@@ -262,13 +264,29 @@ export function CountryCityComboboxFields({
    */
   useEffect(() => {
     if (!country.trim()) return;
+    /* eslint-disable react-hooks/set-state-in-effect -- sync custom-mode with rehydrated country snapshot */
     if (countryInList && countryCustom) setCountryCustom(false);
+    /* eslint-enable react-hooks/set-state-in-effect */
   }, [country, countryInList, countryCustom]);
 
   useEffect(() => {
     if (!city.trim()) return;
+    /* eslint-disable react-hooks/set-state-in-effect -- sync custom-mode with rehydrated city snapshot */
     if (cityInList && cityCustom) setCityCustom(false);
+    /* eslint-enable react-hooks/set-state-in-effect */
   }, [city, cityInList, cityCustom]);
+
+  /**
+   * When the picked country has no curated city list, auto-flip the city field into free-text mode
+   * so the user can just type — otherwise they'd see an empty dropdown with a single "Other" link
+   * and wonder why no cities show up.
+   */
+  useEffect(() => {
+    if (!country.trim()) return;
+    /* eslint-disable react-hooks/set-state-in-effect -- enable free-text city input when no curated cities exist */
+    if (!cityCustom && citySuggestions.length === 0) setCityCustom(true);
+    /* eslint-enable react-hooks/set-state-in-effect */
+  }, [country, citySuggestions.length, cityCustom]);
 
   const updateCountry = useCallback(
     (v: string, opts?: { resetCity?: boolean }) => {
@@ -392,7 +410,11 @@ export function CountryCityComboboxFields({
             options={citySuggestions}
             disabled={!country.trim()}
             placeholder={country.trim() ? "Select your city" : "Pick a country first"}
-            emptyLabel="No cities match — try Other to type your own."
+            emptyLabel={
+              citySuggestions.length === 0
+                ? `We don't have a city list for ${country.trim()} yet — tap "Other (not in list)" below to type your city.`
+                : "No cities match — try Other to type your own."
+            }
           />
         )}
       </div>

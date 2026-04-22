@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { ABeeZee, Poppins } from "next/font/google";
 
+import { auth } from "@/auth";
 import { AuthSessionProvider } from "@/components/providers/AuthSessionProvider";
 import { RouteProgressBar } from "@/components/nav/RouteProgressBar";
 import "./globals.css";
@@ -55,17 +56,30 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+/**
+ * Root layout is async so we can hydrate `SessionProvider` with the server-rendered session.
+ * This avoids the extra `/api/auth/session` round-trip the client used to make on every initial
+ * page load (you could see paired calls in the dev logs). `auth()` decodes the JWT locally and
+ * does not touch Postgres unless a role refresh is needed — so the cost here is negligible,
+ * while downstream `useSession()` consumers (`Navbar`, `MergeSignupDraft`, `HomePage`, chat and
+ * schedule pages) get `status: "authenticated"` synchronously on mount.
+ *
+ * Important: the NextAuth v5 `Session` object includes a `user.image` that may be a huge data URL
+ * for some accounts. `auth.ts` already sanitizes it via `profileImageSafeForAuthCookie` before
+ * returning, so forwarding the session here does NOT bloat the initial HTML payload.
+ */
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const session = await auth();
   return (
     <html lang="en" className="scroll-smooth" data-scroll-behavior="smooth">
       <body
         className={`${poppins.variable} ${abeeZee.variable} ${poppins.className} min-h-screen bg-[#ffffff] font-sans text-neutral-900 antialiased`}
       >
-        <AuthSessionProvider>
+        <AuthSessionProvider session={session}>
           <RouteProgressBar />
           {children}
         </AuthSessionProvider>

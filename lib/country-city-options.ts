@@ -1,6 +1,10 @@
 /**
  * Country + city suggestions for profile setup (`<datalist>` + free text).
- * {@link citiesForCountry} matches country case-insensitively; unknown countries get {@link GENERIC_MAJOR_CITIES}.
+ * {@link citiesForCountry} matches country case-insensitively and returns ONLY cities of that country.
+ * Unknown countries get an empty list so users must pick "Other (not in list)" and type their city manually —
+ * this prevents cities from the wrong country bleeding into the dropdown. The inline trailing "Other" entry
+ * present in each per-country array is filtered out at read time (the UI already surfaces its own "Other
+ * (not in list)" escape hatch below the list).
  */
 
 const COUNTRIES_UNSORTED = [
@@ -481,11 +485,17 @@ const CITY_OPTIONS_BY_COUNTRY: Readonly<Record<string, readonly string[]>> = {
   Ireland: IE_CITIES,
 };
 
+/**
+ * Cities that belong to `country` ONLY. No generic/global fallback — picking "France" never surfaces
+ * Mumbai or Tokyo. If the country has no curated list (or is blank), returns `[]`; the combobox then
+ * shows its empty-state hint and the "Other (not in list)" button lets users type their own city.
+ * The literal "Other" option embedded in each per-country array is dropped here — the UI owns that flow.
+ */
 export function citiesForCountry(country: string): string[] {
   const t = country.trim();
-  if (!t) return [...GENERIC_MAJOR_CITIES];
+  if (!t) return [];
   const key = Object.keys(CITY_OPTIONS_BY_COUNTRY).find((k) => k.toLowerCase() === t.toLowerCase());
   const list = key ? CITY_OPTIONS_BY_COUNTRY[key] : undefined;
-  if (list?.length) return [...list];
-  return [...GENERIC_MAJOR_CITIES];
+  if (!list?.length) return [];
+  return list.filter((c) => c.toLowerCase() !== "other");
 }

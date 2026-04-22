@@ -1,3 +1,5 @@
+import { Prisma } from "@prisma/client";
+
 import { auth } from "@/auth";
 import { getActiveUserWhere } from "@/lib/user-active";
 import {
@@ -50,14 +52,6 @@ export async function PATCH(req: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const alive = await prisma.user.findFirst({
-    where: { id: session.user.id, ...getActiveUserWhere() },
-    select: { id: true },
-  });
-  if (!alive) {
-    return NextResponse.json({ error: "Account closed." }, { status: 403 });
-  }
-
   const body = (await req.json()) as ProfilePayload;
 
   const data: Record<string, unknown> = {};
@@ -99,21 +93,36 @@ export async function PATCH(req: Request) {
     return NextResponse.json({ ok: true });
   }
 
-  await prisma.user.update({
-    where: { id: session.user.id },
-    data,
-  });
+  /**
+   * Single DB round-trip: combine the previously-separate "is user still active?" probe,
+   * the actual UPDATE, and the "what role is this now?" read into one statement. Profile
+   * setup auto-saves fire on every keystroke, so collapsing 3 sequential queries (each one
+   * a full Postgres round-trip on Neon/Supabase) makes saves feel instant.
+   *
+   * P2025 = record to update not found — happens when the account is soft-deleted (the
+   * `accountDeletedAt: null` filter below excludes it) or the user row was removed out of
+   * band. Map it to 403 to match the old "Account closed." response.
+   */
+  let updated: { role: string | null };
+  try {
+    updated = await prisma.user.update({
+      where: { id: session.user.id, ...getActiveUserWhere() },
+      data,
+      select: { role: true },
+    });
+  } catch (err) {
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2025") {
+      return NextResponse.json({ error: "Account closed." }, { status: 403 });
+    }
+    throw err;
+  }
 
+  /** All cache invalidations are fire-and-forget so they never block the HTTP response. */
   invalidateStudentDashboard(session.user.id);
   if (body.mentorAvailabilityJson !== undefined) {
     void delKeys(mentorMonthAvailabilityKeysForMentor(session.user.id));
   }
-
-  const roleAfter = await prisma.user.findUnique({
-    where: { id: session.user.id },
-    select: { role: true },
-  });
-  if (roleAfter?.role === "mentor") {
+  if (updated.role === "mentor") {
     invalidatePublicMentorsList();
     invalidatePublicMentorProfile(session.user.id);
   }
