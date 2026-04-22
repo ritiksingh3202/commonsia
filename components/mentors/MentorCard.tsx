@@ -31,16 +31,18 @@ export function MentorCard({
   const extraTagCount = mentor.tags.length - visibleTags.length;
 
   /**
-   * Fixed desktop height (`md:h-[320px]`) — combined with fixed photo column width in the
-   * photo div below — pins every mentor card to the exact same length × width regardless of
-   * where it's rendered (`/mentors` directory, profile page "more mentors", home spotlight…)
-   * or how much content a mentor has filled in. On mobile we keep a flexible min-height so
-   * varying expertise lists don't create awkward gaps when the layout stacks vertically.
+   * Each card grows to fit its content (long expertise lists can wrap onto 4-5 lines at
+   * narrow laptop widths like 1024px), but `h-full` + `items-stretch` + `auto-rows-fr` on
+   * the parent grid equalise every sibling in a row — so within any row every card ends up
+   * exactly the same length × width. We previously pinned a fixed `md:h-[320px]` here, but
+   * that clipped the "Book a session" CTA on cards with long expertise tags. Keeping a
+   * sensible `min-h` is enough: it gives short cards dignified whitespace, and long cards
+   * expand their row cleanly without hiding content under `overflow-hidden`.
    */
   const shellClass =
     layout === "spotlight"
-      ? "group relative flex h-full min-h-[17.5rem] w-full min-w-0 flex-col-reverse overflow-hidden rounded-[18px] border border-neutral-200/90 bg-white shadow-[0_16px_40px_-20px_rgba(0,0,0,0.12)] ring-1 ring-black/[0.04] sm:min-h-[19rem] md:h-[20rem] md:min-h-[20rem] md:flex-row md:items-stretch"
-      : "group relative flex h-full min-h-[280px] w-full min-w-0 flex-col-reverse overflow-hidden rounded-xl border border-neutral-200/90 bg-white shadow-sm ring-1 ring-black/[0.04] md:h-[320px] md:min-h-[320px] md:flex-row md:items-stretch";
+      ? "group relative flex h-full min-h-[17.5rem] w-full min-w-0 flex-col-reverse overflow-hidden rounded-[18px] border border-neutral-200/90 bg-white shadow-[0_16px_40px_-20px_rgba(0,0,0,0.12)] ring-1 ring-black/[0.04] sm:min-h-[19rem] md:min-h-[20rem] md:flex-row md:items-stretch"
+      : "group relative flex h-full min-h-[280px] w-full min-w-0 flex-col-reverse overflow-hidden rounded-xl border border-neutral-200/90 bg-white shadow-sm ring-1 ring-black/[0.04] md:min-h-[320px] md:flex-row md:items-stretch";
 
   /**
    * Perceived-performance pattern: a full-card invisible `<Link>` (stretched with `absolute
