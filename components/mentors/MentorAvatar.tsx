@@ -77,7 +77,12 @@ export function MentorAvatar({
             fill
             className="object-cover object-center"
             sizes={sizes ?? "(max-width:768px) 100vw, 260px"}
-            quality={95}
+            /**
+             * `quality` defaults to 75, which is the industry sweet spot for photographs.
+             * The previous `95` forced Next.js to regenerate every avatar variant at near-
+             * lossless quality — a ~240 KB card thumbnail where 75 produces ~60 KB with no
+             * visible difference on an 80–320 px element.
+             */
             priority={priority}
             onError={() => setImgFailed(true)}
           />

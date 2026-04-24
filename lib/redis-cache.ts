@@ -38,20 +38,34 @@ export const CacheKeys = {
   /** `month` is 0–11 (JavaScript month index), matching `/api/schedule/mentor-month-availability`. */
   mentorMonthAvailability: (mentorUserId: string, year: number, month: number) =>
     `${PREFIX}:monthavail:${mentorUserId}:${year}-${month}`,
-  /** Public `/mentors` grid — slim payload (no banner blobs); Redis avoids Next.js 2MB data-cache limit. */
-  publicMentorsList: () => `${PREFIX}:mentors:public-list:v4`,
+  /**
+   * Public `/mentors` grid — slim payload (no banner blobs); Redis avoids Next.js 2MB
+   * data-cache limit. Bumped to `v5` when we switched every `data:` avatar + banner to
+   * the `/api/mentors/:id/{photo,banner}` proxy so old entries (which still inlined
+   * ≤16 KB data URLs) don't linger for 5 minutes post-deploy.
+   */
+  publicMentorsList: () => `${PREFIX}:mentors:public-list:v5`,
   /**
    * Individual public mentor profile — cached JSON for `/mentors/[id]` SSR.
-   * Bump version suffix when the cached `Mentor` shape changes so stale v1 payloads
-   * (missing new fields like portfolio info) aren't served for 60s after a deploy.
+   * Bumped to `v3` when the payload stopped carrying raw `data:` URLs for `image` and
+   * `bannerImageUrl` (entries were 500 KB+ before; now <1 KB). Old v2 entries would
+   * still render correctly but defeat the perf win for the first 60 s after deploy.
    */
-  publicMentorProfile: (id: string) => `${PREFIX}:mentors:public-profile:v2:${id}`,
+  publicMentorProfile: (id: string) => `${PREFIX}:mentors:public-profile:v3:${id}`,
   /** Public booking totals shown on a mentor's profile (completed sessions + minutes). */
   publicMentorBookingStats: (id: string) =>
     `${PREFIX}:mentors:public-booking-stats:v1:${id}`,
   /** Binary mentor photo bytes keyed by content-hash version from the URL's `?v=` param. */
   mentorPhotoBlob: (id: string, version: string) =>
     `${PREFIX}:mentors:photo:${id}:${version}`,
+  /**
+   * Binary mentor banner (cover) bytes keyed by content-hash version. Same cache-busting
+   * pattern as `mentorPhotoBlob`: when the mentor re-uploads a cover the `?v=` token
+   * changes, so the new URL misses this key and re-reads from Postgres. Keeps Redis + the
+   * browser CDN perfectly coherent without a manual invalidation.
+   */
+  mentorBannerBlob: (id: string, version: string) =>
+    `${PREFIX}:mentors:banner:${id}:${version}`,
   /** Short-lived NX lock to reduce double-booking the same mentor slot (see `tryAcquireSlotBookingLock`). */
   bookingSlotLock: (mentorUserId: string, startIso: string) =>
     `${PREFIX}:lock:slot:${mentorUserId}:${startIso}`,
@@ -74,6 +88,8 @@ export const CacheTtl = {
   publicMentorBookingStats: 90,
   /** Mentor photo blob — URL is content-hashed, so entries are immutable for their TTL window. */
   mentorPhotoBlob: 60 * 60 * 24 * 7,
+  /** Mentor banner blob — same immutability contract as the photo blob. */
+  mentorBannerBlob: 60 * 60 * 24 * 7,
 } as const;
 
 /** CDN / browser hint for schedule JSON (pairs with removing `cache: "no-store"` on the client). */

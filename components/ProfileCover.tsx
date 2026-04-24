@@ -48,9 +48,18 @@ export function ProfileCover({
 
   /** Default asset must use a plain <img>: Next/Image + optimizer can fail on `/file.png?v=` and hid the cover until a custom upload “fixed” it. */
   const isDefaultCover = isDefaultProfileCoverPath(imageSrc);
+  /**
+   * Banner proxy routes (`/api/mentors/:id/banner?v=...`) already serve pre-compressed
+   * JPEGs behind an immutable 1-year cache + ETag — pushing them through Next's image
+   * optimizer just adds an extra hop (`/_next/image?url=/api/mentors/...`) that
+   * re-encodes bytes we already sized on upload. Pipe them straight to the browser via
+   * the plain `<img>` branch below instead.
+   */
+  const isApiProxyPath = imageSrc.startsWith("/api/mentors/");
   const useNextImage =
     showImage &&
     !isDefaultCover &&
+    !isApiProxyPath &&
     !isDataOrBlobUrl(imageSrc) &&
     !isRemoteHttpUrl(imageSrc) &&
     imageSrc.startsWith("/");

@@ -126,15 +126,22 @@ type MentorRow = {
   portfolioVisibleToOthers?: boolean;
 };
 
-/** Avoid shipping huge base64 avatars on the `/mentors` grid (cards use a placeholder instead). */
+/**
+ * Historic cap for stripping oversized `data:` avatars from the cached list payload. Kept
+ * public for back-compat with `trimLargeDataUrlField` users (student dashboard, etc.), but
+ * the mentor list + profile pages now *always* route `data:` avatars through the photo
+ * proxy regardless of size (see `mapRowToMentor`) — so no base64 blob ever reaches the
+ * browser as HTML. Leaving the constant in place keeps existing imports working.
+ */
 export const MAX_AVATAR_DATA_URL_CHARS = 16_000;
 
 /**
- * Short content-derived tag for cache-busting the photo proxy URL.
+ * Short content-derived tag for cache-busting the photo / banner proxy URLs.
  *
- * When a mentor re-uploads their avatar the `image` data-URL bytes change, so the `?v=` query
- * flips and browsers fetch fresh bytes instead of serving a stale 2-minute CDN/browser cache.
- * Uses a cheap character-based hash — avoids sha256 of multi-MB strings on every directory render.
+ * When a mentor re-uploads their avatar (or banner) the stored `data:` URL bytes change,
+ * so the `?v=` query flips and browsers fetch fresh bytes instead of serving a stale
+ * cache. Uses a cheap character-based hash — avoids sha256 of multi-MB strings on every
+ * directory render.
  */
 function imageVersionTag(rawImg: string): string {
   let h = 5381;
@@ -243,7 +250,14 @@ function buildSummary(u: MentorRow): string {
 
 function mapRowToMentor(
   u: MentorRow,
-  opts?: { /** Profile page: keep large data-URL avatars; list/grid strips them to save cache size. */
+  opts?: {
+    /**
+     * Deprecated knob — kept to avoid churning every caller. Previously gated whether we
+     * inlined the raw `data:` avatar in the cached Mentor payload; today we *always*
+     * route `data:` URLs through the photo proxy, so this flag no longer affects the
+     * output. Plan to remove once the remaining `allowLargeDataUrlAvatar: true` sites
+     * are cleaned up.
+     */
     allowLargeDataUrlAvatar?: boolean;
     monthlyConsumed?: Map<string, boolean>;
   },
@@ -256,22 +270,30 @@ function mapRowToMentor(
    */
   const rawImgSource = u.image?.trim() ?? "";
   const rawImg = isUnreliableExternalImageUrl(rawImgSource) ? "" : rawImgSource;
-  const listSafeImg =
-    opts?.allowLargeDataUrlAvatar || !rawImg.startsWith("data:") || rawImg.length <= MAX_AVATAR_DATA_URL_CHARS
-      ? rawImg
-      : "";
 
-  /** Large uploads are omitted from cached JSON; cards load the same bytes via this URL (see `app/api/mentors/[id]/photo`). */
-  const useAvatarProxy =
-    Boolean(rawImg) &&
-    !opts?.allowLargeDataUrlAvatar &&
-    rawImg.startsWith("data:") &&
-    rawImg.length > MAX_AVATAR_DATA_URL_CHARS;
-
-  /** `?v={hash}` busts the browser/CDN cache the instant the mentor re-uploads, so cards update live. */
-  const cardImageSrc = useAvatarProxy
+  /**
+   * Always route `data:` URLs through the avatar proxy, regardless of size. Historically
+   * the grid inlined anything ≤ 16 KB and the profile page inlined the raw data URL for
+   * *any* size — which meant a mentor with a 500 KB JPEG profile photo shipped ~680 KB of
+   * base64 text straight into the SSR HTML of `/mentors/[id]`. With the proxy the HTML
+   * only carries a ~40-char URL and the browser pulls the bytes via an immutable, CDN-
+   * cacheable GET (see `app/api/mentors/[id]/photo`). HTTPS avatars (OAuth / LinkedIn
+   * CDN) still pass through unchanged.
+   */
+  const isDataUrlAvatar = rawImg.startsWith("data:");
+  const avatarSrc = isDataUrlAvatar
     ? `/api/mentors/${u.id}/photo?v=${imageVersionTag(rawImg)}`
-    : listSafeImg;
+    : rawImg;
+
+  /**
+   * Same treatment for the cover banner. Banners are up to 500 KB by policy, so inlining
+   * was roughly equivalent to sending a second hero image every page load. The new
+   * `/api/mentors/:id/banner` route serves the bytes with a 1-year immutable cache.
+   */
+  const rawBanner = u.bannerImageUrl?.trim() ?? "";
+  const bannerSrc = rawBanner.startsWith("data:")
+    ? `/api/mentors/${u.id}/banner?v=${imageVersionTag(rawBanner)}`
+    : rawBanner || null;
 
   const tags = expertiseTags(u.mentorExpertise);
   const monthlyLookup: NextSlotMonthlyConsumedLookup | undefined = opts?.monthlyConsumed
@@ -287,14 +309,14 @@ function mapRowToMentor(
     tags,
     availabilityPattern,
     slot,
-    image: heroImage(cardImageSrc || null),
+    image: heroImage(avatarSrc || null),
     hasProfilePhoto: photo,
     linkedUserId: u.id,
     summary: buildSummary(u),
     experienceLines: buildExperienceLines(u),
     linkedinUrl: u.linkedinUrl?.trim() || null,
     certifications: u.mentorCertifications?.trim() || null,
-    bannerImageUrl: u.bannerImageUrl?.trim() || null,
+    bannerImageUrl: bannerSrc,
     onboardingComplete: u.mentorOnboardingComplete,
     yearsExperience:
       normalizeMentorYearsBand(u.mentorYearsExperience) || u.mentorYearsExperience?.trim() || null,
@@ -482,7 +504,7 @@ export async function getPublicMentorById(param: string): Promise<Mentor | null>
       [{ id, mentorAvailabilityJson: u.mentorAvailabilityJson }],
       bookings,
     );
-    return mapRowToMentor(u as MentorRow, { allowLargeDataUrlAvatar: true, monthlyConsumed });
+    return mapRowToMentor(u as MentorRow, { monthlyConsumed });
   }, { label: "getPublicMentorById" });
   if (mentor) {
     try {

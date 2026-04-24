@@ -70,12 +70,13 @@ const nextConfig: NextConfig = {
     : {}),
   images: {
     /**
-     * Next.js 16 defaults the allowed quality list to `[75]`. Mentor avatars intentionally
-     * request `quality={95}` in `MentorAvatar.tsx` (card photos are small but prominent, so
-     * sharper JPEGs are worth the bytes) — without explicitly allowing 95 here, Next logs a
-     * noisy `images.qualities` warning for every avatar and falls back to 75.
+     * Next.js 16 defaults the allowed quality list to `[75]`. We keep the default —
+     * `MentorAvatar` used to request `quality={95}` for card thumbnails, but the extra
+     * bytes (~3–4× the file size) were invisible at the sizes we actually render. Any
+     * new surface that legitimately needs a higher-quality variant should be added here
+     * explicitly rather than sprinkled across components.
      */
-    qualities: [75, 95],
+    qualities: [75],
     /**
      * Cap optimized-image widths well below Next's defaults ([…1920, 2048, 3840]).
      *
