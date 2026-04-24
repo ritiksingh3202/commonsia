@@ -12,6 +12,7 @@ import { resolveAuthSecret, warnIfUsingEphemeralDevAuthSecret } from "@/lib/auth
 import { isDevRequestHost } from "@/lib/dev-request-host";
 import { getGoogleOAuthClient, getLinkedInOAuthClient } from "@/lib/oauth-credentials";
 import { prisma } from "@/lib/prisma";
+import { highResProfileImageUrl } from "@/lib/profile-image-url";
 
 /**
  * OAuth (Auth.js v5):
@@ -70,6 +71,19 @@ function cookieConfig(useSecureCookies: boolean) {
 const googleOAuth = getGoogleOAuthClient();
 const linkedinOAuth = getLinkedInOAuthClient();
 
+/**
+ * OAuth providers send thumbnails in `picture` by default — LinkedIn `shrink_100_100` (100×100) and
+ * Google `=s96-c` (96×96). Persisting those as `User.image` makes retina avatars look blurry on
+ * the 200–320 px card thumbnails and the profile hero. `highResProfileImageUrl` rewrites the URL
+ * to the 800 px variant before the PrismaAdapter writes it to the DB.
+ */
+function pickHighResPicture(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  return highResProfileImageUrl(trimmed);
+}
+
 const oauthProviders = [
   ...(googleOAuth
     ? [
@@ -88,6 +102,14 @@ const oauthProviders = [
               scope: "openid email profile",
             },
           },
+          profile(profile) {
+            return {
+              id: profile.sub,
+              name: profile.name ?? null,
+              email: profile.email ?? null,
+              image: pickHighResPicture(profile.picture),
+            };
+          },
         }),
       ]
     : []),
@@ -97,6 +119,20 @@ const oauthProviders = [
           clientId: linkedinOAuth.clientId,
           clientSecret: linkedinOAuth.clientSecret,
           allowDangerousEmailAccountLinking: true,
+          /**
+           * LinkedIn OIDC returns `picture` as a signed `media.licdn.com` URL with a time-limited
+           * signature (`?e=…&v=beta&t=…`). The default Auth.js profile() only maps `picture → image`
+           * with no upscaling — it saves the 100×100 thumbnail, which looks fuzzy on retina cards.
+           * We upgrade to the 800×800 variant here so new signups get a sharp avatar out of the box.
+           */
+          profile(profile) {
+            return {
+              id: profile.sub,
+              name: profile.name ?? null,
+              email: profile.email ?? null,
+              image: pickHighResPicture(profile.picture),
+            };
+          },
         }),
       ]
     : []),
@@ -167,14 +203,58 @@ export const { handlers, auth, signIn, signOut } = NextAuth((req) => {
     },
     /** Set `AUTH_DEBUG=1` in Vercel temporarily to log OAuth details (then remove). */
     debug: process.env.AUTH_DEBUG === "1",
-    events:
-      process.env.AUTH_DEBUG === "1"
-        ? {
-            signIn({ user, account }) {
-              console.log("[auth][debug] signIn", { userId: user?.id, provider: account?.provider });
-            },
+    events: {
+      async signIn({ user, account, profile }) {
+        if (process.env.AUTH_DEBUG === "1") {
+          console.log("[auth][debug] signIn", { userId: user?.id, provider: account?.provider });
+        }
+
+        /**
+         * Keep the stored `User.image` fresh from OAuth on every sign-in.
+         *
+         * This fixes two distinct production bugs for LinkedIn (and defensively for Google):
+         *
+         * 1. **Account linking.** `PrismaAdapter.linkAccount` ONLY inserts an `Account` row — it
+         *    never updates `User.image`. So a user who signs up with email+password first and
+         *    later clicks “Continue with LinkedIn” keeps a null `image` forever, even though
+         *    LinkedIn is returning a perfectly good picture in the OIDC userinfo response.
+         *
+         * 2. **Signed URL expiry.** LinkedIn’s `media.licdn.com` picture URLs carry a time-limited
+         *    `?e=…&t=…` signature. The URL we save at signup eventually expires; re-syncing on
+         *    every sign-in guarantees we always hold a currently-valid URL.
+         *
+         * We never overwrite a user-uploaded photo (`data:` URL) — only sync when the account
+         * has no custom photo yet, or when the previous OAuth URL has drifted.
+         */
+        if (!user?.id || !account) return;
+        if (account.provider !== "linkedin" && account.provider !== "google") return;
+
+        const rawPicture = (profile as Record<string, unknown> | null | undefined)?.picture;
+        const nextImage = pickHighResPicture(rawPicture);
+        if (!nextImage) return;
+
+        try {
+          const existing = await prisma.user.findUnique({
+            where: { id: user.id },
+            select: { image: true },
+          });
+          /** User has uploaded a custom avatar (data URL proxied via /api/mentors/:id/photo) — never clobber. */
+          const hasUserUploadedPhoto =
+            typeof existing?.image === "string" && existing.image.trim().startsWith("data:");
+          if (hasUserUploadedPhoto) return;
+
+          if (existing?.image !== nextImage) {
+            await prisma.user.update({
+              where: { id: user.id },
+              data: { image: nextImage },
+            });
           }
-        : undefined,
+        } catch (e) {
+          /** Never block sign-in on an image sync failure — log & move on. */
+          console.error("[auth][signIn] OAuth image sync failed:", e);
+        }
+      },
+    },
     session: {
       /** DB adapter defaults to DB sessions, but Credentials requires JWT (@auth/core). Keep payloads tiny (see `jwt`). */
       strategy: "jwt",

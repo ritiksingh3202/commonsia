@@ -8,10 +8,12 @@ import {
 } from "@/lib/mentor-slug";
 import { buildMonthlyWeekdayConsumedMap } from "@/lib/mentor-monthly-booking";
 import { formatNextAvailableSlotLine, type NextSlotMonthlyConsumedLookup } from "@/lib/mentor-next-slot";
+import { Prisma } from "@prisma/client";
+
 import { CacheKeys, CacheTtl, delKeys, readJsonCache, writeJsonCacheEntry } from "@/lib/redis-cache";
 import { withPoolFallback } from "@/lib/db-resilient";
 import { prisma } from "@/lib/prisma";
-import { getActiveUserWhere } from "@/lib/user-active";
+import { getActiveUserWhere, prismaGeneratedClientHasAccountDeletedAt } from "@/lib/user-active";
 
 /** Public mentor shape for directory cards + profile pages. */
 export type Mentor = {
@@ -352,21 +354,107 @@ function mapRowToMentor(
  *   we retry the same query through `prismaDirect` (session pool on 5432, independent pool),
  *   so a saturation event doesn't translate into an empty grid.
  */
+/**
+ * Directory query: return the scalar mentor fields plus the `image` column ONLY when it's an
+ * HTTPS URL. Base64 `data:` URLs are stripped in SQL and replaced with a 10-char md5 prefix;
+ * the `mapRowToMentor` below then routes that hash through the `/api/mentors/:id/photo` proxy
+ * without ever transferring the bytes over the wire.
+ *
+ * This is the fix for a performance bug where most mentors stored 100–700 KB base64 avatars
+ * directly in `User.image`. A plain `findMany` dragged multiple MB across the Supabase
+ * connection on every cache miss — measured at ~27 s per query on the dev link.
+ */
+type RawMentorListRow = {
+  id: string;
+  name: string | null;
+  email: string | null;
+  /** HTTPS URL (OAuth avatar) when non-data. NULL when source was a `data:` URL or empty. */
+  image: string | null;
+  /** 10-char md5 prefix of the raw `data:` URL — feeds the proxy `?v=` cache-buster. */
+  imageDataHash: string | null;
+  bio: string | null;
+  mentorTitle: string | null;
+  mentorCompany: string | null;
+  mentorYearsExperience: string | null;
+  mentorExpertise: unknown;
+  mentorMentorshipFocus: string | null;
+  mentorCertifications: string | null;
+  mentorAvailabilityJson: unknown;
+  mentorOnboardingComplete: boolean;
+  linkedinUrl: string | null;
+};
+
+/** Shape returned by the per-mentor profile `$queryRaw` in `getPublicMentorById`. */
+type RawMentorProfileRow = RawMentorListRow & {
+  /** HTTPS URL when non-data banner; NULL when source was `data:` or empty. */
+  bannerImageUrl: string | null;
+  /** 10-char md5 prefix of the raw `data:` banner — feeds `/api/mentors/:id/banner?v=`. */
+  bannerImageDataHash: string | null;
+  portfolioUrl: string | null;
+  portfolioFileName: string | null;
+  portfolioVisibleToOthers: boolean;
+};
+
 async function fetchPublicMentorsFromDb(): Promise<Mentor[]> {
+  const includeSoftDeleteFilter = prismaGeneratedClientHasAccountDeletedAt();
+  const softDeleteClause = includeSoftDeleteFilter
+    ? Prisma.sql`AND "accountDeletedAt" IS NULL`
+    : Prisma.empty;
   const rows = await withPoolFallback(
     (client) =>
-      client.user.findMany({
-        where: { ...getActiveUserWhere(), role: "mentor", mentorOnboardingComplete: true },
-        orderBy: [{ name: "asc" }],
-        select: mentorSelectDirectory,
-      }),
+      client.$queryRaw<RawMentorListRow[]>`
+        SELECT
+          "id", "name", "email", "bio",
+          "mentorTitle", "mentorCompany", "mentorYearsExperience",
+          "mentorExpertise", "mentorMentorshipFocus", "mentorCertifications",
+          "mentorAvailabilityJson", "mentorOnboardingComplete", "linkedinUrl",
+          CASE
+            WHEN "image" LIKE 'data:%' THEN NULL
+            ELSE "image"
+          END AS "image",
+          CASE
+            WHEN "image" LIKE 'data:%' THEN substr(md5("image"), 1, 10)
+            ELSE NULL
+          END AS "imageDataHash"
+        FROM "User"
+        WHERE "role" = 'mentor'
+          AND "mentorOnboardingComplete" = true
+          ${softDeleteClause}
+        ORDER BY "name" ASC
+      `,
     { label: "fetchPublicMentorsFromDb" },
   );
-  /** No `monthlyConsumed` — the list slot line is informational; real caps are enforced on book. */
-  return rows.map((u) =>
-    mapRowToMentor({ ...(u as MentorRow), bannerImageUrl: null }, { monthlyConsumed: undefined }),
-  );
+  /**
+   * No `monthlyConsumed` — the list slot line is informational; real caps are enforced on book.
+   *
+   * When the SQL returned a `data:` avatar, `image` is NULL and `imageDataHash` carries the
+   * 10-char md5 prefix. We feed `mapRowToMentor` a tiny synthetic `data:proxy;v=<hash>` marker so
+   * its existing `data:` → proxy-URL branch runs unchanged and the proxy `?v=` hash still flips
+   * when the mentor re-uploads their photo (md5 of the new JPEG ≠ md5 of the old one).
+   */
+  return rows.map((u) => {
+    const syntheticImage =
+      u.image ?? (u.imageDataHash ? `data:proxy;v=${u.imageDataHash}` : null);
+    return mapRowToMentor(
+      {
+        ...(u as unknown as MentorRow),
+        image: syntheticImage,
+        bannerImageUrl: null,
+      },
+      { monthlyConsumed: undefined },
+    );
+  });
 }
+
+/**
+ * Single-flight dedup for the mentor-list DB fetch.
+ *
+ * When the Redis cache is cold and N requests arrive simultaneously, only ONE runs the
+ * Postgres query; the others await the same promise and share the result. Without this,
+ * every concurrent cache-miss fires its own `$queryRaw` against Supabase, amplifying a
+ * single slow cold-start into a multi-request stampede.
+ */
+let __inflightFetchPublicMentors: Promise<Mentor[]> | null = null;
 
 /**
  * Cached in Redis (not Next data cache) so large mentor sets stay under Next's 2MB limit.
@@ -391,19 +479,36 @@ export async function getPublicMentors(): Promise<Mentor[]> {
       await delKeys([key]);
     }
     try {
-      list = await fetchPublicMentorsFromDb();
+      /**
+       * Single-flight: if another request is already running the DB + Redis-write flow, attach to
+       * its promise and share the result — no extra `$queryRaw`, no extra Redis SET.
+       */
+      if (__inflightFetchPublicMentors) {
+        list = await __inflightFetchPublicMentors;
+      } else {
+        const inflight = (async (): Promise<Mentor[]> => {
+          try {
+            const fresh = await fetchPublicMentorsFromDb();
+            if (Array.isArray(fresh) && fresh.length > 0) {
+              try {
+                await writeJsonCacheEntry(key, fresh, CacheTtl.publicMentorsList);
+              } catch {
+                /* best-effort cache write */
+              }
+            }
+            return fresh;
+          } finally {
+            /** Release the slot only after the write attempt so joiners never see a stale cache. */
+            __inflightFetchPublicMentors = null;
+          }
+        })();
+        __inflightFetchPublicMentors = inflight;
+        list = await inflight;
+      }
     } catch (err) {
       console.warn("[getPublicMentors] DB load failed; falling back to stale Redis (may be empty).", err);
       const stale = await readJsonCache<Mentor[]>(key);
       list = Array.isArray(stale) ? stale : [];
-    }
-    if (Array.isArray(list) && list.length > 0) {
-      /** Only persist non-empty results — an empty list is almost always a symptom, not truth. */
-      try {
-        await writeJsonCacheEntry(key, list, CacheTtl.publicMentorsList);
-      } catch {
-        /* best-effort cache write */
-      }
     }
   }
 
@@ -486,25 +591,77 @@ export async function getPublicMentorById(param: string): Promise<Mentor | null>
   const cached = await readJsonCache<Mentor>(cacheKey);
   if (cached) return cached;
 
+  const includeSoftDeleteFilter = prismaGeneratedClientHasAccountDeletedAt();
+  const softDeleteClause = includeSoftDeleteFilter
+    ? Prisma.sql`AND "accountDeletedAt" IS NULL`
+    : Prisma.empty;
+
   const mentor = await withPoolFallback(async (client) => {
     const since = new Date();
     since.setMonth(since.getMonth() - 6);
-    const [u, bookings] = await Promise.all([
-      client.user.findFirst({
-        where: { ...getActiveUserWhere(), id, role: "mentor", mentorOnboardingComplete: true },
-        select: mentorSelectFull,
-      }),
+    /**
+     * Same base64-stripping trick as `fetchPublicMentorsFromDb`: return the `image` and
+     * `bannerImageUrl` columns only when they are HTTPS URLs, plus a short md5 prefix when
+     * they are `data:` URLs. Keeps the profile-page query under a few KB instead of dragging
+     * ~1 MB (500 KB avatar + 500 KB banner) across the Supabase connection per open.
+     */
+    const [rows, bookings] = await Promise.all([
+      client.$queryRaw<Array<RawMentorProfileRow>>`
+        SELECT
+          "id", "name", "email", "bio",
+          "mentorTitle", "mentorCompany", "mentorYearsExperience",
+          "mentorExpertise", "mentorMentorshipFocus", "mentorCertifications",
+          "mentorAvailabilityJson", "mentorOnboardingComplete", "linkedinUrl",
+          "portfolioUrl", "portfolioFileName", "portfolioVisibleToOthers",
+          CASE
+            WHEN "image" LIKE 'data:%' THEN NULL
+            ELSE "image"
+          END AS "image",
+          CASE
+            WHEN "image" LIKE 'data:%' THEN substr(md5("image"), 1, 10)
+            ELSE NULL
+          END AS "imageDataHash",
+          CASE
+            WHEN "bannerImageUrl" LIKE 'data:%' THEN NULL
+            ELSE "bannerImageUrl"
+          END AS "bannerImageUrl",
+          CASE
+            WHEN "bannerImageUrl" LIKE 'data:%' THEN substr(md5("bannerImageUrl"), 1, 10)
+            ELSE NULL
+          END AS "bannerImageDataHash"
+        FROM "User"
+        WHERE "id" = ${id}
+          AND "role" = 'mentor'
+          AND "mentorOnboardingComplete" = true
+          ${softDeleteClause}
+        LIMIT 1
+      `,
       client.mentoringBooking.findMany({
         where: { mentorId: id, startAt: { gte: since } },
         select: { mentorId: true, startAt: true },
       }),
     ]);
+    const u = rows[0] ?? null;
     if (!u) return null;
     const monthlyConsumed = buildMonthlyWeekdayConsumedMap(
       [{ id, mentorAvailabilityJson: u.mentorAvailabilityJson }],
       bookings,
     );
-    return mapRowToMentor(u as MentorRow, { monthlyConsumed });
+    /** Re-hydrate synthetic `data:proxy;v=<hash>` markers so `mapRowToMentor` routes both
+     *  the avatar and banner through their proxy routes with a stable cache-busting `?v=`. */
+    const syntheticImage =
+      u.image ?? (u.imageDataHash ? `data:proxy;v=${u.imageDataHash}` : null);
+    const syntheticBanner =
+      u.bannerImageUrl ??
+      (u.bannerImageDataHash ? `data:proxy;v=${u.bannerImageDataHash}` : null);
+    return mapRowToMentor(
+      {
+        ...(u as unknown as MentorRow),
+        image: syntheticImage,
+        bannerImageUrl: syntheticBanner,
+      },
+      { monthlyConsumed },
+    );
   }, { label: "getPublicMentorById" });
   if (mentor) {
     try {
