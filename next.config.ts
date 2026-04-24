@@ -76,12 +76,33 @@ const nextConfig: NextConfig = {
      * noisy `images.qualities` warning for every avatar and falls back to 75.
      */
     qualities: [75, 95],
+    /**
+     * Cap optimized-image widths well below Next's defaults ([…1920, 2048, 3840]).
+     *
+     * The built-in image optimizer picks the smallest `deviceSizes` value that is ≥ the
+     * effective display width from the component's `sizes` prop. If `sizes` is missing or
+     * over-estimates (e.g. `100vw` on a laptop), Next reaches for 3840px — a 4K asset
+     * served to every visitor regardless of their screen. The largest raster we actually
+     * render full-bleed is the `/home_assets/steps.png` hero, which caps at ~1200px on a
+     * 2× retina display — 1920 leaves generous headroom, 2048/3840 just burns bandwidth.
+     *
+     * Tightening `imageSizes` (used when `sizes` is smaller than the smallest device size,
+     * e.g. avatar thumbnails) mirrors the change: small UI images cap at 384px instead of
+     * the default 384, which is already reasonable — we keep the default here.
+     *
+     * Safe to adjust: values only affect which widths the optimizer will generate on
+     * demand. No change to source assets; `<Image>` with a correct `sizes` prop still
+     * picks the right candidate, just from a smaller menu.
+     */
+    deviceSizes: [640, 750, 828, 1080, 1200, 1920],
+    imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
+    /**
+     * Prefer AVIF (smaller) then WebP. The optimizer already serves the best one the
+     * browser can decode — adding AVIF shaves ~25–35% off JPEG/PNG payloads on Chromium
+     * & Safari 16+, with a safe WebP fallback for anything else.
+     */
+    formats: ["image/avif", "image/webp"],
     remotePatterns: [
-      {
-        protocol: "https",
-        hostname: "www.figma.com",
-        pathname: "/api/mcp/asset/**",
-      },
       /** OAuth avatars (LinkedIn / Google) — optimized with high-res URL hints in MentorAvatar */
       { protocol: "https", hostname: "media.licdn.com", pathname: "/**" },
       { protocol: "https", hostname: "lh3.googleusercontent.com", pathname: "/**" },

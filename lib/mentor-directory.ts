@@ -155,6 +155,27 @@ export function trimLargeDataUrlField(value: string | null | undefined): string 
   return v;
 }
 
+/**
+ * Legacy test / design-handoff rows occasionally stored `www.figma.com/api/mcp/asset/<uuid>`
+ * as the mentor avatar. Figma's MCP asset endpoint is not a production CDN: it's slow, rate
+ * limited, auth gated, and can go away without notice — rendering from it in the directory
+ * blocks the browser on third‑party latency and causes visible image fails when Figma is
+ * unreachable. Treat those URLs as "no photo" so the card falls back to the initials avatar
+ * (WhatsApp-style coloured circle) instead of hanging on a broken request.
+ */
+function isUnreliableExternalImageUrl(url: string): boolean {
+  const s = url.trim();
+  if (!s) return false;
+  try {
+    const u = new URL(s);
+    const host = u.hostname.toLowerCase();
+    if (host === "www.figma.com" || host.endsWith(".figma.com")) return true;
+  } catch {
+    /* non-URL values (data URLs, relative paths) are fine */
+  }
+  return false;
+}
+
 function displayName(name: string | null, email: string | null): string {
   const n = name?.trim();
   if (n) return n;
@@ -227,7 +248,14 @@ function mapRowToMentor(
     monthlyConsumed?: Map<string, boolean>;
   },
 ): Mentor {
-  const rawImg = u.image?.trim() ?? "";
+  /**
+   * Drop any `figma.com` / other unreliable third-party image URLs before they become part
+   * of the cached Mentor payload — the card then renders an initials avatar instead of
+   * blocking on a slow/broken external fetch. See `isUnreliableExternalImageUrl` for the
+   * rationale.
+   */
+  const rawImgSource = u.image?.trim() ?? "";
+  const rawImg = isUnreliableExternalImageUrl(rawImgSource) ? "" : rawImgSource;
   const listSafeImg =
     opts?.allowLargeDataUrlAvatar || !rawImg.startsWith("data:") || rawImg.length <= MAX_AVATAR_DATA_URL_CHARS
       ? rawImg
@@ -358,6 +386,30 @@ export async function getPublicMentors(): Promise<Mentor[]> {
   }
 
   if (!Array.isArray(list)) list = [];
+  /**
+   * Defensive dedup by mentor id. The DB schema makes duplicates effectively impossible,
+   * but a botched cache write (e.g. two overlapping requests serializing the same list
+   * and a third reading a partially-concatenated value) or a future bug could produce a
+   * repeated entry. Rendering the same card N times is the single most noticeable visual
+   * regression we can cause on `/mentors`, so it's worth the O(n) safety net.
+   */
+  if (list.length > 1) {
+    const seen = new Set<string>();
+    const deduped: Mentor[] = [];
+    for (const m of list) {
+      if (seen.has(m.id)) continue;
+      seen.add(m.id);
+      deduped.push(m);
+    }
+    if (deduped.length !== list.length) {
+      console.warn(
+        `[getPublicMentors] Dropped ${list.length - deduped.length} duplicate mentor entr${
+          list.length - deduped.length === 1 ? "y" : "ies"
+        } from cached/fetched list.`,
+      );
+      list = deduped;
+    }
+  }
   if (process.env.NODE_ENV === "development") {
     console.info(`[perf] getPublicMentors ${Date.now() - t0}ms (${list.length} mentors)`);
   }
