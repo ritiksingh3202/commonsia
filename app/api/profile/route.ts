@@ -1,6 +1,15 @@
 import { Prisma } from "@prisma/client";
 
 import { auth } from "@/auth";
+import {
+  COVER_IMAGE_SIZE_LABEL,
+  MAX_COVER_IMAGE_BYTES,
+  MAX_PROFILE_IMAGE_BYTES,
+  PROFILE_IMAGE_SIZE_LABEL,
+  dataUrlByteLength,
+  formatBytesShort,
+  isDataUrl,
+} from "@/lib/profile-image-limits";
 import { getActiveUserWhere } from "@/lib/user-active";
 import {
   delKeys,
@@ -11,6 +20,43 @@ import {
 } from "@/lib/redis-cache";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
+
+/**
+ * Validate an incoming profile/cover image value against the shared upload cap.
+ *
+ * Intentionally skips:
+ *   - `undefined` — the client didn't touch this field.
+ *   - `null` or empty string — the user is clearing their photo.
+ *   - `http(s)` URLs — OAuth providers (Google, LinkedIn) and existing CDN
+ *     references for mentors; those are already bounded by the remote host.
+ *
+ * Only `data:` URLs produced by our client cropper/compressor hit the size
+ * check. This preserves the promise that *existing* users keep their photos
+ * regardless of how large they were encoded historically — nothing is
+ * validated on read, only on write.
+ */
+function validateImagePayload(
+  value: unknown,
+  kind: "profile" | "cover",
+): { ok: true } | { ok: false; error: string } {
+  if (value === undefined || value === null) return { ok: true };
+  if (typeof value !== "string") return { ok: false, error: "Invalid image value" };
+  const s = value.trim();
+  if (!s) return { ok: true };
+  if (/^https?:\/\//i.test(s)) return { ok: true };
+  if (!isDataUrl(s)) return { ok: false, error: "Unsupported image format" };
+
+  const cap = kind === "profile" ? MAX_PROFILE_IMAGE_BYTES : MAX_COVER_IMAGE_BYTES;
+  const label = kind === "profile" ? PROFILE_IMAGE_SIZE_LABEL : COVER_IMAGE_SIZE_LABEL;
+  const bytes = dataUrlByteLength(s);
+  if (bytes > cap) {
+    return {
+      ok: false,
+      error: `${kind === "profile" ? "Profile photo" : "Cover image"} must be ${label} or smaller (received ${formatBytesShort(bytes)}).`,
+    };
+  }
+  return { ok: true };
+}
 
 export type ProfilePayload = {
   name?: string | null;
@@ -53,6 +99,26 @@ export async function PATCH(req: Request) {
   }
 
   const body = (await req.json()) as ProfilePayload;
+
+  /**
+   * Size-gate both image fields *before* we touch Prisma. `data:` URLs written
+   * by the client cropper are capped at 500 KB of decoded bytes; http(s) URLs
+   * (OAuth avatars, CDN banners) and nulls (photo removal) bypass the check.
+   * This means a stale image stored long before this cap existed still works
+   * on read, but the moment a user re-uploads they land under the new limit.
+   */
+  if (body.image !== undefined) {
+    const check = validateImagePayload(body.image, "profile");
+    if (!check.ok) {
+      return NextResponse.json({ error: check.error }, { status: 413 });
+    }
+  }
+  if (body.bannerImageUrl !== undefined) {
+    const check = validateImagePayload(body.bannerImageUrl, "cover");
+    if (!check.ok) {
+      return NextResponse.json({ error: check.error }, { status: 413 });
+    }
+  }
 
   const data: Record<string, unknown> = {};
 
