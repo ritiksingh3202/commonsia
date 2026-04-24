@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { MentorAvatar } from "@/components/mentors/MentorAvatar";
 import { MentorCard } from "@/components/mentors/MentorCard";
@@ -13,8 +13,24 @@ import { LinkedInGlyph, SocialIconButton } from "@/components/profile/ProfileSoc
 import { avatarColorsFromSeed } from "@/lib/avatar-initials";
 import { formatMentoringMinutesLong } from "@/lib/format-mentoring-minutes";
 import type { Mentor } from "@/lib/mentor-directory";
+import { NO_UPCOMING_AVAILABILITY_LABEL } from "@/lib/mentor-next-slot";
 import { profileCoverDisplaySrc } from "@/lib/profile-cover";
 import type { PublicMentorReview } from "@/lib/mentor-reviews";
+
+/**
+ * Poll the mentor's live next-available slot from `/api/mentors/:id/next-slot` every
+ * `NEXT_SLOT_POLL_MS`. Picked at 45s so the label moves forward within the same session
+ * if a slot starts or gets booked while the student is reading the page, without
+ * generating noticeable network chatter. The tab `visibilitychange` listener below
+ * also forces a refresh the moment the student refocuses the tab after being away.
+ */
+const NEXT_SLOT_POLL_MS = 45_000;
+
+function stripNextAvailablePrefix(label: string): string {
+  const s = label.trim();
+  if (!s) return s;
+  return s.replace(/^next\s+available\s*:?\s*/i, "").trim() || s;
+}
 
 const expertisePill = "mentor-tag-expertise-pill";
 
@@ -84,6 +100,103 @@ export function PublicMentorProfile({
   const [tab, setTab] = useState<Tab>("overview");
   const [reviewIdx, setReviewIdx] = useState(0);
   const [similarIdx, setSimilarIdx] = useState(0);
+
+  /**
+   * Live "next available" label.
+   *
+   * Seeded from the SSR-computed `mentor.slot` so the first paint shows real content
+   * (no spinner for users who never stay on the page long enough to poll). The client
+   * then re-asks `/api/mentors/:id/next-slot` every `NEXT_SLOT_POLL_MS` so the label
+   * advances as real time progresses — e.g. once "Today · 10:00 AM" has already passed,
+   * the backend recomputes and we flip to the next candidate slot without requiring a
+   * full page reload or depending on the 60s ISR revalidation window.
+   */
+  const [liveSlot, setLiveSlot] = useState<string>(mentor.slot);
+  const [livePattern, setLivePattern] = useState<string>(mentor.availabilityPattern);
+
+  /** Guard against race conditions when an in-flight fetch resolves after unmount. */
+  const lastSlotRequestTokenRef = useRef(0);
+
+  useEffect(() => {
+    /**
+     * Reset visible label whenever we navigate between mentor profiles. Next.js reuses
+     * this component across `/mentors/[id]` transitions (same route layout, different
+     * param), so `useState(mentor.slot)` only seeds on first mount — without this reset
+     * the previous mentor's slot would linger for up to one poll interval.
+     */
+    /* eslint-disable react-hooks/set-state-in-effect -- mirror props into state on mentor id change (same pattern as MentorsPage) */
+    setLiveSlot(mentor.slot);
+    setLivePattern(mentor.availabilityPattern);
+    /* eslint-enable react-hooks/set-state-in-effect */
+  }, [mentor.id, mentor.slot, mentor.availabilityPattern]);
+
+  useEffect(() => {
+    /** No mentor id means this is a marketing card without a real user — skip polling. */
+    if (!mentor.id) return;
+
+    let cancelled = false;
+    const abort = new AbortController();
+
+    async function refresh() {
+      const token = ++lastSlotRequestTokenRef.current;
+      try {
+        const res = await fetch(`/api/mentors/${encodeURIComponent(mentor.id)}/next-slot`, {
+          cache: "no-store",
+          signal: abort.signal,
+          headers: { accept: "application/json" },
+        });
+        if (!res.ok) return;
+        const data = (await res.json()) as {
+          slot?: unknown;
+          availabilityPattern?: unknown;
+        };
+        /**
+         * Drop this response if another refresh has started since we fired (e.g. user
+         * alt-tabbed and triggered a visibility refresh while the interval fetch was
+         * mid-flight). Without the token check we could flash an older value over a newer
+         * one simply because network order didn't match request order.
+         */
+        if (cancelled || token !== lastSlotRequestTokenRef.current) return;
+        if (typeof data.slot === "string" && data.slot.trim().length > 0) {
+          setLiveSlot(data.slot);
+        }
+        if (typeof data.availabilityPattern === "string") {
+          setLivePattern(data.availabilityPattern);
+        }
+      } catch {
+        /**
+         * Network failures (offline, 503, aborted poll after navigation) should never
+         * blank out the last-good label — just keep what's already rendered and try
+         * again at the next tick.
+         */
+      }
+    }
+
+    /** Poll immediately on mount so stale SSR labels correct within the first ~500ms of view. */
+    void refresh();
+    const interval = window.setInterval(() => {
+      /** Skip work while the tab is hidden — browsers throttle us anyway and it wastes mobile battery. */
+      if (document.visibilityState === "visible") void refresh();
+    }, NEXT_SLOT_POLL_MS);
+
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") void refresh();
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
+
+    return () => {
+      cancelled = true;
+      abort.abort();
+      window.clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
+  }, [mentor.id]);
+
+  const nextSlotDisplay = useMemo(() => {
+    const raw = liveSlot?.trim() || NO_UPCOMING_AVAILABILITY_LABEL;
+    const hasUpcoming = raw !== NO_UPCOMING_AVAILABILITY_LABEL;
+    return { raw, hasUpcoming, headline: hasUpcoming ? stripNextAvailablePrefix(raw) : raw };
+  }, [liveSlot]);
 
   const similar = useMemo(() => similarMentors.filter((m) => m.id !== mentor.id), [mentor.id, similarMentors]);
 
@@ -287,7 +400,67 @@ export function PublicMentorProfile({
               ) : null}
             </div>
 
-            <aside className="h-fit rounded-[14px] border border-black/10 bg-white p-4 shadow-sm sm:p-5">
+            <aside className="flex h-fit flex-col gap-4">
+              {/**
+               * Next Available — placed just above the Statistics card per spec. Seeded from
+               * SSR (`mentor.slot`) and kept current by a 45s poll against
+               * `/api/mentors/:id/next-slot`, plus an immediate refresh on tab re-focus.
+               *
+               * UX: show the bare date/time as the primary line (removes the repeated
+               * "Next available:" prefix from the server label so the hierarchy reads "NEXT
+               * AVAILABLE" → "Friday, 10:00 AM" → pattern). Anonymous viewers still see the
+               * value — it's already public on the mentor cards.
+               */}
+              <section
+                aria-label="Next available session"
+                className="rounded-[14px] border border-black/10 bg-white p-4 shadow-sm sm:p-5"
+              >
+                <div className="flex items-start gap-3">
+                  <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                    <CalendarClockIcon className="size-5" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <h2 className="text-[11px] font-semibold uppercase tracking-wider text-primary">
+                        Next Available
+                      </h2>
+                      {nextSlotDisplay.hasUpcoming ? (
+                        <span
+                          className="inline-flex size-1.5 shrink-0 rounded-full bg-emerald-500 motion-safe:animate-pulse"
+                          aria-hidden
+                        />
+                      ) : null}
+                    </div>
+                    <p
+                      className="mt-1 break-words text-[15px] font-semibold leading-snug text-[#0a0a0a] sm:text-base"
+                      aria-live="polite"
+                    >
+                      {nextSlotDisplay.headline}
+                    </p>
+                    {livePattern?.trim() ? (
+                      <p className="mt-1 truncate text-[11px] text-neutral-500">{livePattern}</p>
+                    ) : null}
+                  </div>
+                </div>
+                <div className="mt-4 border-t border-black/[0.06] pt-3">
+                  <Link
+                    href={scheduleHref}
+                    aria-disabled={!nextSlotDisplay.hasUpcoming}
+                    className={
+                      nextSlotDisplay.hasUpcoming
+                        ? "inline-flex w-full items-center justify-center rounded-full bg-primary px-4 py-2.5 text-[13px] font-semibold text-white shadow-sm transition hover:bg-primary/90"
+                        : "inline-flex w-full items-center justify-center rounded-full bg-neutral-100 px-4 py-2.5 text-[13px] font-semibold text-neutral-500"
+                    }
+                    onClick={(e) => {
+                      if (!nextSlotDisplay.hasUpcoming) e.preventDefault();
+                    }}
+                  >
+                    {nextSlotDisplay.hasUpcoming ? "Book this slot" : "No upcoming slots"}
+                  </Link>
+                </div>
+              </section>
+
+              <section className="rounded-[14px] border border-black/10 bg-white p-4 shadow-sm sm:p-5">
               <h2 className="text-base font-semibold text-[#0a0a0a]">Statistics</h2>
               <p className="mb-4 text-[11px] text-[#9ca3af]">
                 Totals from completed sessions booked on Commonsia (past end time).
@@ -319,6 +492,7 @@ export function PublicMentorProfile({
                   </div>
                 </div>
               </div>
+              </section>
             </aside>
           </div>
         ) : null}
@@ -482,6 +656,26 @@ function ChatBubbleIcon({ className }: { className?: string }) {
         strokeLinecap="round"
         strokeLinejoin="round"
       />
+    </svg>
+  );
+}
+
+function CalendarClockIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M21 10V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h7" />
+      <path d="M16 2v4M8 2v4M3 10h18" />
+      <circle cx="17.5" cy="17.5" r="4.5" />
+      <path d="M17.5 15.25v2.25l1.5 1" />
     </svg>
   );
 }
