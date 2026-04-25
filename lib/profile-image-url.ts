@@ -1,21 +1,26 @@
 /**
  * OAuth providers often persist small avatar URLs (e.g. LinkedIn `shrink_100_100`, Google `=s96-c`).
- * Upscale hints in the URL so the browser / image optimizer load a sharper source when displayed larger.
+ * Bump small thumbs to a modest edge size so `next/image` and `<img>` don’t have to work from
+ * postage stamps — but avoid the old 800px default, which made the optimizer pull huge sources
+ * for 80–320px UI (wasted bandwidth and CPU on every card/profile).
  */
-export function highResProfileImageUrl(url: string): string {
+export function highResProfileImageUrl(url: string, maxEdge: number = 400): string {
   const u = url.trim();
   if (!u) return u;
+
+  /** Clamp so callers can ask e.g. 256 for a tiny home testimonial without extreme values. */
+  const cap = Math.min(Math.max(Math.floor(maxEdge), 48), 800);
 
   try {
     const parsed = new URL(u);
     const host = parsed.hostname.toLowerCase();
 
     if (host === "media.licdn.com" || host.endsWith(".licdn.com")) {
-      return upgradeLinkedInCdnUrl(u);
+      return upgradeLinkedInCdnUrl(u, cap);
     }
 
     if (host.endsWith("googleusercontent.com") || host === "lh3.googleusercontent.com") {
-      return upgradeGoogleUserContentUrl(u);
+      return upgradeGoogleUserContentUrl(u, cap);
     }
   } catch {
     // Invalid URL — return as-is (e.g. relative paths handled elsewhere)
@@ -24,24 +29,25 @@ export function highResProfileImageUrl(url: string): string {
   return u;
 }
 
-function upgradeLinkedInCdnUrl(url: string): string {
-  // e.g. profile-displayphoto-shrink_100_100 → 800px artifact (sharp on retina cards)
-  let out = url.replace(/profile-displayphoto-shrink_\d+_\d+/g, "profile-displayphoto-shrink_800_800");
-  // Some paths use /shrink_W_H/ only for small thumbs — bump those, leave larger assets alone
+function upgradeLinkedInCdnUrl(url: string, maxEdge: number): string {
+  const edge = String(maxEdge);
+  let out = url.replace(
+    /profile-displayphoto-shrink_\d+_\d+/g,
+    `profile-displayphoto-shrink_${edge}_${edge}`,
+  );
   out = out.replace(/\/shrink_(\d+)_(\d+)\//g, (match, w: string, h: string) => {
     const a = Number(w);
     const b = Number(h);
-    if (a <= 200 && b <= 200) return "/shrink_800_800/";
+    if (a <= 200 && b <= 200) return `/shrink_${edge}_${edge}/`;
     return match;
   });
   return out;
 }
 
-function upgradeGoogleUserContentUrl(url: string): string {
-  // Size token is usually ...=s96-c or ...=s96 at end of path / before & — bump small thumbs only
+function upgradeGoogleUserContentUrl(url: string, maxEdge: number): string {
   return url.replace(/=s(\d+)(-c)?(?=&|$|#)/gi, (match, sizeStr: string, crop: string | undefined) => {
     const n = Number(sizeStr);
-    if (n >= 400) return match;
-    return crop ? "=s800-c" : "=s800";
+    if (n >= maxEdge) return match;
+    return crop ? `=s${maxEdge}-c` : `=s${maxEdge}`;
   });
 }

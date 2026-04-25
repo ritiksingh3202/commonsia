@@ -59,7 +59,9 @@ export function MentorAvatar({
   const [imgFailed, setImgFailed] = useState(false);
   const initials = initialsFromDisplayName(name);
   const colors = avatarColorsFromSeed(name);
-  const displaySrc = useMemo(() => highResProfileImageUrl(imageUrl), [imageUrl]);
+  /** Card band is ≤320px wide; profile hero is ~184px. Keep CDN sources aligned so `next/image` does not over-fetch. */
+  const maxEdge = variant === "profile" ? 400 : 320;
+  const displaySrc = useMemo(() => highResProfileImageUrl(imageUrl, maxEdge), [imageUrl, maxEdge]);
   const showPhoto = hasProfilePhoto && imageUrl.trim().length > 0 && !imgFailed;
   const local = showPhoto && isLocalPublicPath(displaySrc);
   const remoteNext = showPhoto && !local && shouldOptimizeRemoteWithNext(displaySrc);
@@ -76,7 +78,12 @@ export function MentorAvatar({
             alt=""
             fill
             className="object-cover object-center"
-            sizes={sizes ?? "(max-width:768px) 100vw, 260px"}
+            sizes={
+              sizes ??
+              (variant === "profile"
+                ? "(max-width:640px) 42vw, 184px"
+                : "(max-width:768px) 96vw, 320px")
+            }
             /**
              * `quality` defaults to 75, which is the industry sweet spot for photographs.
              * The previous `95` forced Next.js to regenerate every avatar variant at near-
@@ -84,6 +91,7 @@ export function MentorAvatar({
              * visible difference on an 80–320 px element.
              */
             priority={priority}
+            loading={priority ? "eager" : "lazy"}
             onError={() => setImgFailed(true)}
           />
         ) : (

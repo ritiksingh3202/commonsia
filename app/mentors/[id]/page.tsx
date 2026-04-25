@@ -3,9 +3,9 @@ import { notFound } from "next/navigation";
 
 import { auth } from "@/auth";
 import { PublicMentorProfile } from "@/components/mentors/PublicMentorProfile";
-import { getPublicMentorById, getSimilarMentorsForProfile } from "@/lib/mentor-directory";
+import { getPublicMentorById, getPublicMentors, getSimilarMentorsForProfile } from "@/lib/mentor-directory";
 import { getMentorBookingStats } from "@/lib/mentor-dashboard-stats";
-import { mentorProfileHref } from "@/lib/mentor-slug";
+import { mentorProfileHref, mentorProfileSlug } from "@/lib/mentor-slug";
 import { getPublicReviewsForMentor } from "@/lib/mentor-reviews";
 import { prisma } from "@/lib/prisma";
 import { getActiveUserWhere } from "@/lib/user-active";
@@ -28,6 +28,20 @@ type Props = { params: Promise<{ id: string }> };
  * between "click and wait" and "click and it's there".
  */
 export const revalidate = 60;
+
+/**
+ * Pre-render canonical slug URLs at build time so the first request after deploy is a static
+ * shell (faster TTFB than a fully cold server render). Legacy raw CUID paths stay valid via
+ * `dynamicParams` (default true) and on-demand generation.
+ */
+export async function generateStaticParams() {
+  try {
+    const mentors = await getPublicMentors();
+    return mentors.map((m) => ({ id: mentorProfileSlug(m) }));
+  } catch {
+    return [];
+  }
+}
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;

@@ -75,13 +75,14 @@ const linkedinOAuth = getLinkedInOAuthClient();
  * OAuth providers send thumbnails in `picture` by default — LinkedIn `shrink_100_100` (100×100) and
  * Google `=s96-c` (96×96). Persisting those as `User.image` makes retina avatars look blurry on
  * the 200–320 px card thumbnails and the profile hero. `highResProfileImageUrl` rewrites the URL
- * to the 800 px variant before the PrismaAdapter writes it to the DB.
+ * to a ~400px max-edge variant before the PrismaAdapter writes it to the DB (enough for 2× retina
+ * at card width without storing 800px sources).
  */
 function pickHighResPicture(value: unknown): string | null {
   if (typeof value !== "string") return null;
   const trimmed = value.trim();
   if (!trimmed) return null;
-  return highResProfileImageUrl(trimmed);
+  return highResProfileImageUrl(trimmed, 400);
 }
 
 const oauthProviders = [

@@ -9,6 +9,7 @@ import {
 import { buildMonthlyWeekdayConsumedMap } from "@/lib/mentor-monthly-booking";
 import { formatNextAvailableSlotLine, type NextSlotMonthlyConsumedLookup } from "@/lib/mentor-next-slot";
 import { Prisma } from "@prisma/client";
+import { cache } from "react";
 
 import { CacheKeys, CacheTtl, delKeys, readJsonCache, writeJsonCacheEntry } from "@/lib/redis-cache";
 import { withPoolFallback } from "@/lib/db-resilient";
@@ -464,7 +465,7 @@ let __inflightFetchPublicMentors: Promise<Mentor[]> | null = null;
  * If the cached payload is empty (from an older version or another region) we also retry
  * the DB once — so the site self-heals on the next request instead of waiting for TTL.
  */
-export async function getPublicMentors(): Promise<Mentor[]> {
+async function getPublicMentorsImpl(): Promise<Mentor[]> {
   const key = CacheKeys.publicMentorsList();
   const t0 = Date.now();
   let list: Mentor[];
@@ -544,6 +545,15 @@ export async function getPublicMentors(): Promise<Mentor[]> {
 }
 
 /**
+ * Request-scoped memoized wrapper.
+ *
+ * In dev (and in any environment where Redis is far / slow), multiple internal callers can
+ * otherwise pay the Upstash round-trip several times per request (slug resolution, similar mentors,
+ * `generateStaticParams`, etc.). `cache()` dedupes those calls within the same render pass.
+ */
+export const getPublicMentors = cache(getPublicMentorsImpl);
+
+/**
  * Resolve a URL param (raw CUID or `name-slug-xxxxxx` slug) to the real mentor id.
  *
  * We reuse the Redis-cached `/mentors` list here, so a slug visit is almost always a single
@@ -583,13 +593,15 @@ async function resolveMentorParamToId(param: string): Promise<string | null> {
  *   - Pool-aware fallback: if the primary pgbouncer pool throws, we retry the pair on the
  *     session pool via `prismaDirect` so a saturation blip doesn't 404 the page.
  */
-export async function getPublicMentorById(param: string): Promise<Mentor | null> {
+async function getPublicMentorByIdImpl(param: string): Promise<Mentor | null> {
   const id = await resolveMentorParamToId(param);
   if (!id) return null;
 
   const cacheKey = CacheKeys.publicMentorProfile(id);
   const cached = await readJsonCache<Mentor>(cacheKey);
-  if (cached) return cached;
+  if (cached) {
+    return cached;
+  }
 
   const includeSoftDeleteFilter = prismaGeneratedClientHasAccountDeletedAt();
   const softDeleteClause = includeSoftDeleteFilter
@@ -672,6 +684,9 @@ export async function getPublicMentorById(param: string): Promise<Mentor | null>
   }
   return mentor;
 }
+
+/** Request-scoped memoized wrapper (dedupes page + metadata reads of the same mentor). */
+export const getPublicMentorById = cache(getPublicMentorByIdImpl);
 
 /**
  * Suggest mentors overlapping the current profile’s expertise and (when logged in as a student)

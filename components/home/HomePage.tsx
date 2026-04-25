@@ -363,7 +363,7 @@ export function HomePage({ testimonials }: { testimonials: HomeTestimonialCard[]
                       {s.imageUrl ? (
                         // eslint-disable-next-line @next/next/no-img-element -- profile avatars may be data URLs or arbitrary hosts
                         <img
-                          src={highResProfileImageUrl(s.imageUrl)}
+                          src={highResProfileImageUrl(s.imageUrl, 128)}
                           alt=""
                           className="size-full object-cover object-center"
                         />
