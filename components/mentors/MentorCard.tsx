@@ -29,6 +29,7 @@ export function MentorCard({
   const profileHref = mentorProfileHref(mentor);
   const visibleTags = mentor.tags.slice(0, MAX_SKILL_TAGS_ON_CARD);
   const extraTagCount = mentor.tags.length - visibleTags.length;
+  const locationLabel = [mentor.city, mentor.country].filter((x) => (x ?? "").trim().length > 0).join(", ");
 
   /**
    * Pin every desktop card to the same height so cards match across rows (not just within a
@@ -78,6 +79,11 @@ export function MentorCard({
             <p className="break-words text-[11px] font-medium leading-snug text-neutral-600 sm:text-xs">
               {mentor.role}
             </p>
+            {locationLabel ? (
+              <p className="break-words text-[11px] font-medium leading-snug text-neutral-500 sm:text-xs">
+                {locationLabel}
+              </p>
+            ) : null}
           </div>
           <div className="min-h-[2.5rem]">
             {mentor.tags.length > 0 ? (

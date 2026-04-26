@@ -18,6 +18,8 @@ const DEMO_STUDENT: StudentProfileUser = {
   university: "IIT Roorkee",
   yearOfStudy: "5th Year",
   major: "B Arch",
+  country: "India",
+  city: "Roorkee",
   interests: [
     "Urban Design",
     "Public Spaces",

@@ -238,6 +238,10 @@ export function PublicMentorProfile({
 
   const coverTint = mentor.hasProfilePhoto ? undefined : avatarColorsFromSeed(mentor.name).bg;
   const coverSrc = profileCoverDisplaySrc(mentor.bannerImageUrl);
+  const locationLabel = useMemo(
+    () => [mentor.city, mentor.country].filter((x) => (x ?? "").trim().length > 0).join(", "),
+    [mentor.city, mentor.country],
+  );
 
   return (
     <div className="bg-white pb-16">
@@ -275,6 +279,11 @@ export function PublicMentorProfile({
                   <p className="mx-auto max-w-xl text-[13px] italic leading-relaxed text-[#5c5c66] sm:text-sm lg:mx-0">
                     {mentor.role}
                   </p>
+                  {locationLabel ? (
+                    <p className="mx-auto max-w-xl text-[12px] leading-relaxed text-neutral-500 sm:text-[13px] lg:mx-0">
+                      {locationLabel}
+                    </p>
+                  ) : null}
                 </div>
                 {mentor.bio?.trim() ? (
                   <p className="mx-auto max-w-2xl text-center text-[13px] leading-relaxed text-[#3e3e3e] sm:text-sm lg:mx-0 lg:text-left lg:col-start-1 lg:row-start-2">

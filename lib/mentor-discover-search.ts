@@ -33,6 +33,8 @@ export function mentorSearchHaystack(m: Mentor): string {
   return [
     m.name,
     m.role,
+    m.city ?? "",
+    m.country ?? "",
     m.summary,
     m.bio ?? "",
     ...m.tags,

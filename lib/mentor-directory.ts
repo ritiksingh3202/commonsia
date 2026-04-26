@@ -22,6 +22,9 @@ export type Mentor = {
   name: string;
   /** Title + company, e.g. "Assistant Professor, CEPT" */
   role: string;
+  /** Location captured during onboarding. */
+  country: string | null;
+  city: string | null;
   tags: string[];
   /** Short rhythm label from saved availability (e.g. "Weekends · IST"). */
   availabilityPattern: string;
@@ -114,6 +117,8 @@ type MentorRow = {
   email: string | null;
   image: string | null;
   bio: string | null;
+  country: string | null;
+  city: string | null;
   mentorTitle: string | null;
   mentorCompany: string | null;
   mentorYearsExperience: string | null;
@@ -309,6 +314,8 @@ function mapRowToMentor(
     id: u.id,
     name: displayName(u.name, u.email),
     role: formatRoleLine(u.mentorTitle, u.mentorCompany),
+    country: u.country?.trim() || null,
+    city: u.city?.trim() || null,
     tags,
     availabilityPattern,
     slot,
@@ -374,6 +381,8 @@ type RawMentorListRow = {
   /** 10-char md5 prefix of the raw `data:` URL — feeds the proxy `?v=` cache-buster. */
   imageDataHash: string | null;
   bio: string | null;
+  country: string | null;
+  city: string | null;
   mentorTitle: string | null;
   mentorCompany: string | null;
   mentorYearsExperience: string | null;
@@ -405,7 +414,7 @@ async function fetchPublicMentorsFromDb(): Promise<Mentor[]> {
     (client) =>
       client.$queryRaw<RawMentorListRow[]>`
         SELECT
-          "id", "name", "email", "bio",
+          "id", "name", "email", "bio", "country", "city",
           "mentorTitle", "mentorCompany", "mentorYearsExperience",
           "mentorExpertise", "mentorMentorshipFocus", "mentorCertifications",
           "mentorAvailabilityJson", "mentorOnboardingComplete", "linkedinUrl",
@@ -620,7 +629,7 @@ async function getPublicMentorByIdImpl(param: string): Promise<Mentor | null> {
     const [rows, bookings] = await Promise.all([
       client.$queryRaw<Array<RawMentorProfileRow>>`
         SELECT
-          "id", "name", "email", "bio",
+          "id", "name", "email", "bio", "country", "city",
           "mentorTitle", "mentorCompany", "mentorYearsExperience",
           "mentorExpertise", "mentorMentorshipFocus", "mentorCertifications",
           "mentorAvailabilityJson", "mentorOnboardingComplete", "linkedinUrl",

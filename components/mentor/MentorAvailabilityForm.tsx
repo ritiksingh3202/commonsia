@@ -266,6 +266,9 @@ export function MentorAvailabilityForm({ initialJson, mentorOnboardingComplete }
   const [autoSaveState, setAutoSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [mandatoryExitOpen, setMandatoryExitOpen] = useState(false);
   const skipFirstAutoSave = useRef(true);
+  const saveInFlightRef = useRef(false);
+  const autosaveTimerRef = useRef<number | null>(null);
+  const blockAutosaveRef = useRef(false);
 
   useEffect(() => {
     const merged = mergeAvailability(initialJson);
@@ -605,8 +608,9 @@ export function MentorAvailabilityForm({ initialJson, mentorOnboardingComplete }
       skipFirstAutoSave.current = false;
       return;
     }
+    if (blockAutosaveRef.current || saveInFlightRef.current) return;
     let cancelled = false;
-    const timer = window.setTimeout(async () => {
+    autosaveTimerRef.current = window.setTimeout(async () => {
       try {
         setAutoSaveState("saving");
         const av = buildPayload();
@@ -631,13 +635,23 @@ export function MentorAvailabilityForm({ initialJson, mentorOnboardingComplete }
     }, 1600);
     return () => {
       cancelled = true;
-      window.clearTimeout(timer);
+      if (autosaveTimerRef.current) window.clearTimeout(autosaveTimerRef.current);
+      autosaveTimerRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- autosavePayloadKey mirrors buildPayload inputs
   }, [autosavePayloadKey]);
 
   const save = async () => {
+    if (saveInFlightRef.current) {
+      return;
+    }
     if (!validate()) return;
+    saveInFlightRef.current = true;
+    blockAutosaveRef.current = true;
+    if (autosaveTimerRef.current) {
+      window.clearTimeout(autosaveTimerRef.current);
+      autosaveTimerRef.current = null;
+    }
     setSaving(true);
     try {
       const av = buildPayload();
@@ -659,6 +673,8 @@ export function MentorAvailabilityForm({ initialJson, mentorOnboardingComplete }
       window.alert("Could not save availability. Try again.");
     } finally {
       setSaving(false);
+      saveInFlightRef.current = false;
+      blockAutosaveRef.current = false;
     }
   };
 

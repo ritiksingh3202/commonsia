@@ -48,6 +48,7 @@ export function StudentProfileHero({ user: initial }: Props) {
   const interests = parseInterests(user.interests);
   const software = parseSoftwarePills(user.softwareSkills);
   const subtitle = formatStudentSubtitle(user);
+  const locationLabel = [user.city, user.country].filter((x) => (x ?? "").trim().length > 0).join(", ");
   const displayName = user.name?.trim() || user.email?.split("@")[0] || "Student";
   const avatarSrc = user.image?.trim() || null;
   const initials = displayName
@@ -101,6 +102,11 @@ export function StudentProfileHero({ user: initial }: Props) {
                 <p className="mt-1.5 max-w-xl text-[13px] leading-relaxed text-[#5c5c66] sm:text-sm">
                   {subtitle}
                 </p>
+                {locationLabel ? (
+                  <p className="mt-1 max-w-xl text-[12px] leading-relaxed text-neutral-500 sm:text-[13px]">
+                    {locationLabel}
+                  </p>
+                ) : null}
                 {user.bio?.trim() ? (
                   <p className="mx-auto mt-3 max-w-2xl text-[13px] leading-relaxed text-[#3e3e3e] sm:mx-0 sm:text-sm">
                     {user.bio.trim()}

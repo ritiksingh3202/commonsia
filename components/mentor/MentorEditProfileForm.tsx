@@ -862,6 +862,9 @@ export function MentorEditProfileForm({ initial }: { initial: MentorEditProfileI
                     <p className="text-[11px] leading-snug text-neutral-500">
                       We store a WhatsApp chat link. Include your country code if you type digits only.
                     </p>
+                    <p className="text-[11px] leading-snug text-neutral-400">
+                      This will not be shared with any student.
+                    </p>
                   </div>
                   <div className="min-w-0 space-y-2">
                     <label htmlFor="linkedinUrl" className={label}>

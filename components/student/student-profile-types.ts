@@ -11,6 +11,8 @@ export type StudentProfileUser = Pick<
   | "university"
   | "yearOfStudy"
   | "major"
+  | "country"
+  | "city"
   | "interests"
   | "otherInterests"
   | "softwareSkills"
@@ -38,6 +40,8 @@ export const studentProfileUserSelect = {
   university: true,
   yearOfStudy: true,
   major: true,
+  country: true,
+  city: true,
   interests: true,
   otherInterests: true,
   softwareSkills: true,

@@ -111,7 +111,9 @@ export function formatSessionBadge(startAt: Date): { label: string; className: s
 export async function getMentorBookingStats(mentorId: string): Promise<MentorBookingStats> {
   const cacheKey = CacheKeys.publicMentorBookingStats(mentorId);
   const cached = await readJsonCache<MentorBookingStats>(cacheKey);
-  if (cached) return cached;
+  if (cached) {
+    return cached;
+  }
 
   const now = new Date();
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
