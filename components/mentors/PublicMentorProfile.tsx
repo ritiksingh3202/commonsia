@@ -71,6 +71,7 @@ export function PublicMentorProfile({
   viewerSignedIn = true,
   portfolioLoginHref,
   similarMentorsPersonalized = false,
+  viewerHasPendingBookingRequest = false,
 }: {
   mentor: Mentor;
   /** Completed `MentoringBooking` rows for this mentor (end time in the past). */
@@ -96,6 +97,8 @@ export function PublicMentorProfile({
   viewerSignedIn?: boolean;
   /** `/auth/login?callbackUrl=...` back to this profile, shown to anonymous viewers. */
   portfolioLoginHref?: string;
+  /** Signed-in student already submitted a pending booking request for this mentor. */
+  viewerHasPendingBookingRequest?: boolean;
 }) {
   const [tab, setTab] = useState<Tab>("overview");
   const [reviewIdx, setReviewIdx] = useState(0);
@@ -308,12 +311,23 @@ export function PublicMentorProfile({
                         className="flex size-11 shrink-0 items-center justify-center rounded-full border-2 border-primary bg-white shadow-sm transition hover:bg-primary/5"
                       />
                     ) : null}
-                    <Link
-                      href={scheduleHref}
-                      className="inline-flex items-center rounded-xl bg-primary px-4 py-2.5 text-[13px] font-semibold text-white shadow-md ring-1 ring-primary/25 transition hover:bg-primary/90"
-                    >
-                      Book a session
-                    </Link>
+                    {viewerSignedIn && viewerHasPendingBookingRequest ? (
+                      <div className="flex max-w-[14rem] flex-col gap-1 text-right">
+                        <span className="inline-flex items-center justify-center rounded-xl border border-amber-200/90 bg-amber-50 px-4 py-2.5 text-[13px] font-semibold text-amber-950">
+                          Session requested
+                        </span>
+                        <span className="text-[11px] leading-snug text-neutral-600">
+                          We’ll email you if this mentor accepts your request.
+                        </span>
+                      </div>
+                    ) : (
+                      <Link
+                        href={scheduleHref}
+                        className="inline-flex items-center rounded-xl bg-primary px-4 py-2.5 text-[13px] font-semibold text-white shadow-md ring-1 ring-primary/25 transition hover:bg-primary/90"
+                      >
+                        Book a session
+                      </Link>
+                    )}
                   </div>
                 </div>
 
@@ -452,20 +466,32 @@ export function PublicMentorProfile({
                   </div>
                 </div>
                 <div className="mt-4 border-t border-black/[0.06] pt-3">
-                  <Link
-                    href={scheduleHref}
-                    aria-disabled={!nextSlotDisplay.hasUpcoming}
-                    className={
-                      nextSlotDisplay.hasUpcoming
-                        ? "inline-flex w-full items-center justify-center rounded-full bg-primary px-4 py-2.5 text-[13px] font-semibold text-white shadow-sm transition hover:bg-primary/90"
-                        : "inline-flex w-full items-center justify-center rounded-full bg-neutral-100 px-4 py-2.5 text-[13px] font-semibold text-neutral-500"
-                    }
-                    onClick={(e) => {
-                      if (!nextSlotDisplay.hasUpcoming) e.preventDefault();
-                    }}
-                  >
-                    {nextSlotDisplay.hasUpcoming ? "Book this slot" : "No upcoming slots"}
-                  </Link>
+                  {viewerSignedIn && viewerHasPendingBookingRequest ? (
+                    <div className="space-y-1.5 text-center">
+                      <span className="inline-flex w-full items-center justify-center rounded-full border border-amber-200/90 bg-amber-50 px-4 py-2.5 text-[13px] font-semibold text-amber-950">
+                        Session requested
+                      </span>
+                      <p className="text-[11px] leading-snug text-neutral-600">
+                        We’ll email you if this mentor accepts. You can open the calendar from your profile to see
+                        details.
+                      </p>
+                    </div>
+                  ) : (
+                    <Link
+                      href={scheduleHref}
+                      aria-disabled={!nextSlotDisplay.hasUpcoming}
+                      className={
+                        nextSlotDisplay.hasUpcoming
+                          ? "inline-flex w-full items-center justify-center rounded-full bg-primary px-4 py-2.5 text-[13px] font-semibold text-white shadow-sm transition hover:bg-primary/90"
+                          : "inline-flex w-full items-center justify-center rounded-full bg-neutral-100 px-4 py-2.5 text-[13px] font-semibold text-neutral-500"
+                      }
+                      onClick={(e) => {
+                        if (!nextSlotDisplay.hasUpcoming) e.preventDefault();
+                      }}
+                    >
+                      {nextSlotDisplay.hasUpcoming ? "Book this slot" : "No upcoming slots"}
+                    </Link>
+                  )}
                 </div>
               </section>
 

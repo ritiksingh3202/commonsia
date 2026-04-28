@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 
 import {
   WEEKEND_TIME_PRESETS,
@@ -140,17 +140,6 @@ export function MentorSchedulePanel({
     sat: (weeklySlots.sat?.length ?? 0) > 0,
     sun: (weeklySlots.sun?.length ?? 0) > 0,
   }));
-
-  const prevScheduleKind = useRef(kind);
-  useEffect(() => {
-    if (kind === "weekends" && prevScheduleKind.current !== "weekends") {
-      setWeekendArmed({
-        sat: (weeklySlots.sat?.length ?? 0) > 0,
-        sun: (weeklySlots.sun?.length ?? 0) > 0,
-      });
-    }
-    prevScheduleKind.current = kind;
-  }, [kind, weeklySlots.sat, weeklySlots.sun]);
   const cells = calendarCells(calendarViewYear, calendarViewMonth);
   const selectedDates = Object.keys(specificDatesSlots).sort();
   const selectedCount = selectedDates.length;
@@ -196,7 +185,15 @@ export function MentorSchedulePanel({
               <button
                 key={card.kind}
                 type="button"
-                onClick={() => onKindChange(card.kind)}
+                onClick={() => {
+                  if (card.kind === "weekends" && kind !== "weekends") {
+                    setWeekendArmed({
+                      sat: (weeklySlots.sat?.length ?? 0) > 0,
+                      sun: (weeklySlots.sun?.length ?? 0) > 0,
+                    });
+                  }
+                  onKindChange(card.kind);
+                }}
                 className={cx(
                   "flex flex-col rounded-xl border-2 p-4 text-left transition-colors",
                   sel

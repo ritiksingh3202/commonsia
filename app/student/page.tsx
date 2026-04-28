@@ -4,7 +4,6 @@ import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { StudentDashboard } from "@/components/student/StudentDashboard";
 import { StudentDashboardDbUnavailable } from "@/components/student/StudentDashboardDbUnavailable";
-import { getGoogleCalendarRefreshTokenForUser } from "@/lib/google-calendar-oauth-client";
 import { DatabaseUnavailableError, isPrismaConnectionError } from "@/lib/prisma-errors";
 import { prisma } from "@/lib/prisma";
 import { getStudentDashboardPayload } from "@/lib/student-dashboard-data";
@@ -57,6 +56,7 @@ export default async function StudentHomePage() {
     university: user.university,
     yearOfStudy: user.yearOfStudy,
     major: user.major,
+    whatsappUrl: user.whatsappUrl,
     phone: user.phone,
     interests: user.interests,
     otherInterests: user.otherInterests,
@@ -67,20 +67,8 @@ export default async function StudentHomePage() {
   }
 
   let dashboardInitial;
-  let googleCalendarConnected = false;
   try {
-    const [dash, gCal] = await Promise.all([
-      getStudentDashboardPayload(session.user.id),
-      (async (): Promise<boolean> => {
-        try {
-          return !!(await getGoogleCalendarRefreshTokenForUser(session.user.id));
-        } catch {
-          return false;
-        }
-      })(),
-    ]);
-    dashboardInitial = dash;
-    googleCalendarConnected = gCal;
+    dashboardInitial = await getStudentDashboardPayload(session.user.id);
   } catch (e) {
     if (e instanceof DatabaseUnavailableError) {
       return <StudentDashboardDbUnavailable />;
@@ -100,11 +88,5 @@ export default async function StudentHomePage() {
     bannerImageUrl: trimLargeDataUrlField(dashboardUserRaw.bannerImageUrl),
     portfolioFileDataUrl: trimLargeDataUrlField(dashboardUserRaw.portfolioFileDataUrl),
   };
-  return (
-    <StudentDashboard
-      user={dashboardUser}
-      initialDashboard={dashboardInitial}
-      googleCalendarConnected={googleCalendarConnected}
-    />
-  );
+  return <StudentDashboard user={dashboardUser} initialDashboard={dashboardInitial} />;
 }

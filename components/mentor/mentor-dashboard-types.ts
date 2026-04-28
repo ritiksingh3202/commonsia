@@ -1,4 +1,4 @@
-import type { MentorDashboardLiveData } from "@/lib/mentor-dashboard-stats";
+import type { MentorDashboardLiveData } from "@/lib/mentor-dashboard-types";
 
 export type MentorDashboardUser = {
   name: string | null;

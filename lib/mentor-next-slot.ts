@@ -21,15 +21,39 @@ function isBlocked(iso: string, av: MentorAvailabilityJson): boolean {
   return (av.blockedDates ?? []).some((b) => b.date === iso);
 }
 
+const FORMAT_WEEKDAYS = [
+  "Sunday",
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+] as const;
+const FORMAT_MONTHS_SHORT = [
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
+] as const;
+
+/** Same string on server and browser (avoids Intl / locale hydration mismatches). */
 function formatDateLabel(iso: string): string {
   const [y, m, day] = iso.split("-").map(Number);
   if (!y || !m || !day) return iso;
-  const d = new Date(y, m - 1, day);
-  return new Intl.DateTimeFormat("en-IN", {
-    weekday: "long",
-    month: "short",
-    day: "numeric",
-  }).format(d);
+  const civil = new Date(Date.UTC(y, m - 1, day, 12, 0, 0));
+  const wd = civil.getUTCDay();
+  const monthShort = FORMAT_MONTHS_SHORT[m - 1];
+  if (!monthShort) return iso;
+  return `${FORMAT_WEEKDAYS[wd]}, ${day} ${monthShort}`;
 }
 
 export type NextSlotMonthlyConsumedLookup = (year: number, monthIndex0: number) => boolean;
@@ -50,7 +74,7 @@ export function formatNextAvailableSlotLine(
   if (av.availabilityType === "specific" && av.specificDates.length > 0) {
     const kind = normalizeAvailabilityWindowKind(av.availabilityWindowKind);
     if (kind === "custom") {
-      const maxScan = 180;
+      const maxScan = 366;
       const [ty, tm, td] = todayIso.split("-").map(Number);
       if (!ty || !tm || !td) return NO_UPCOMING_AVAILABILITY_LABEL;
       for (let add = 0; add < maxScan; add++) {
@@ -86,7 +110,7 @@ export function formatNextAvailableSlotLine(
     return NO_UPCOMING_AVAILABILITY_LABEL;
   }
 
-  const maxScan = 120;
+  const maxScan = 366;
   const [ty, tm, td] = todayIso.split("-").map(Number);
   if (!ty || !tm || !td) return NO_UPCOMING_AVAILABILITY_LABEL;
 

@@ -67,7 +67,7 @@ export function RouteProgressBar() {
     const key = pathname ?? "";
     if (previousKey.current !== key) {
       previousKey.current = key;
-      finish();
+      void Promise.resolve().then(finish);
     }
   }, [pathname]);
 

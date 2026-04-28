@@ -3,7 +3,6 @@ import dynamic from "next/dynamic";
 import { redirect } from "next/navigation";
 
 import { auth } from "@/auth";
-import { getGoogleCalendarRefreshTokenForUser } from "@/lib/google-calendar-oauth-client";
 import { prisma } from "@/lib/prisma";
 
 const EditProfileForm = dynamic(
@@ -57,7 +56,5 @@ export default async function StudentEditProfilePage() {
     redirect("/auth/login?callbackUrl=/student/profile/edit");
   }
 
-  const googleCalendarConnected = !!(await getGoogleCalendarRefreshTokenForUser(session.user.id));
-
-  return <EditProfileForm user={user} googleCalendarConnected={googleCalendarConnected} />;
+  return <EditProfileForm user={user} />;
 }

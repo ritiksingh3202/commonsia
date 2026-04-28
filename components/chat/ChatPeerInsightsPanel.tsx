@@ -6,13 +6,6 @@ import { useCallback, useEffect, useState } from "react";
 
 import { LinkedInGlyph } from "@/components/profile/ProfileSocialIcons";
 
-/** Aligned with booking UI — informational labels for students. */
-const SESSION_TYPES = [
-  { name: "Quick Doubt Session", duration: "15 min" },
-  { name: "Design Discussion", duration: "30 min" },
-  { name: "Portfolio Review", duration: "45 min" },
-] as const;
-
 export type InsightsPeer = {
   id: string;
   name: string | null;
@@ -24,6 +17,8 @@ export type InsightsPeer = {
   instagramUrl: string | null;
   whatsappUrl: string | null;
   portfolioUrl: string | null;
+  /** When the peer is a mentor, from saved availability (same as booking page). */
+  mentorSessionDurationMinutes?: number | null;
 };
 
 function initials(name: string | null | undefined, email: string | null | undefined): string {
@@ -196,22 +191,22 @@ export function ChatPeerInsightsPanel({
 
         {showMentorBooking ? (
           <>
-            <div>
-              <h4 className="mb-2 font-semibold text-[#0a0a0a]">Session type</h4>
-              <div className="space-y-2">
-                {SESSION_TYPES.map((s) => (
-                  <div
-                    key={s.name}
-                    className="flex items-center justify-between rounded-lg bg-neutral-50 px-3 py-2.5"
-                  >
-                    <span className="text-sm text-[#0a0a0a]">{s.name}</span>
-                    <span className="text-sm font-semibold text-primary">{s.duration}</span>
-                  </div>
-                ))}
-              </div>
+            <div className="rounded-xl border border-black/[0.06] bg-neutral-50/80 p-3">
+              <h4 className="mb-1.5 font-semibold text-[#0a0a0a]">Booking</h4>
+              <p className="text-sm leading-relaxed text-neutral-700">
+                One-to-one sessions only. Session length is set by the mentor in their availability
+                {typeof peer.mentorSessionDurationMinutes === "number" ? (
+                  <>
+                    : <span className="font-semibold text-primary">{peer.mentorSessionDurationMinutes} minutes</span>{" "}
+                    per booking.
+                  </>
+                ) : (
+                  <> (shown on the schedule page when you pick a time).</>
+                )}
+              </p>
             </div>
             <div>
-              <h4 className="mb-2 font-semibold text-[#0a0a0a]">Available time slots</h4>
+              <h4 className="mb-2 font-semibold text-[#0a0a0a]">Open windows (next few days)</h4>
               {slotsLoading ? (
                 <p className="text-sm text-neutral-500">Loading availability…</p>
               ) : slotPreviews.length === 0 ? (

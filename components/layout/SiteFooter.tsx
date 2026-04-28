@@ -7,7 +7,7 @@ import { SITE_PHONE_DISPLAY, SITE_PHONE_TEL, SITE_WHATSAPP_URL } from "@/lib/sit
 const explore = [
   { href: "/", label: "Home" },
   { href: "/mentors", label: "Mentors" },
-  { href: "/#who-we-are", label: "Who We Are" },
+  { href: "/who-we-are", label: "Who We Are" },
   { href: "/contact", label: "Contact Us" },
   { href: "/#faq", label: "FAQs" },
   { href: "/#community", label: "Testimonials" },

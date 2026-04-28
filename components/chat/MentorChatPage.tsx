@@ -14,6 +14,8 @@ export type MentorChatPageProps = {
   availabilitySummary?: string | null;
   /** Deep-link booking to this mentor. */
   mentorUserId?: string | null;
+  /** From mentor availability JSON when `mentorUserId` is set. */
+  sessionDurationMinutes?: number | null;
 };
 
 type ChatMessage = {
@@ -69,23 +71,6 @@ const SEED_MESSAGES: ChatMessage[] = [
   },
 ];
 
-const SESSION_TYPES = [
-  { name: "Quick Doubt Session", duration: "15 min" },
-  { name: "Design Discussion", duration: "30 min" },
-  { name: "Portfolio Review", duration: "45 min" },
-] as const;
-
-const AVAILABLE_SLOTS = [
-  {
-    date: "31st March 2026 (Saturday)",
-    slots: [{ time: "5:00 PM - 5:30 PM" }, { time: "6:00 PM - 6:30 PM" }],
-  },
-  {
-    date: "1st April 2026 (Sunday)",
-    slots: [{ time: "11:00 AM - 11:30 AM" }, { time: "4:00 PM - 4:30 PM" }],
-  },
-] as const;
-
 const STUDENT_INITIALS = "JD";
 
 function formatNowTime(): string {
@@ -100,6 +85,7 @@ export function MentorChatPage({
   backHref,
   availabilitySummary = null,
   mentorUserId = null,
+  sessionDurationMinutes = null,
 }: MentorChatPageProps) {
   const { data: session } = useSession();
   const scheduleTarget = mentorUserId?.trim()
@@ -302,43 +288,30 @@ export function MentorChatPage({
             </div>
 
             <div className="min-h-0 flex-1 space-y-6 overflow-y-auto p-5 sm:p-6">
-              <div>
-                <h4 className="mb-3 font-semibold text-[#0a0a0a]">Session Type</h4>
-                <div className="space-y-2">
-                  {SESSION_TYPES.map((s) => (
-                    <div
-                      key={s.name}
-                      className="flex items-center justify-between rounded-lg bg-neutral-50 px-3 py-2.5"
-                    >
-                      <span className="text-sm text-[#0a0a0a]">{s.name}</span>
-                      <span className="text-sm font-semibold text-primary">({s.duration})</span>
-                    </div>
-                  ))}
-                </div>
+              <div className="rounded-xl border border-black/[0.06] bg-neutral-50/80 p-3">
+                <h4 className="mb-1.5 font-semibold text-[#0a0a0a]">Sessions</h4>
+                <p className="text-sm leading-relaxed text-neutral-700">
+                  Bookings are one-to-one. Session length follows this mentor’s availability settings
+                  {typeof sessionDurationMinutes === "number" ? (
+                    <>
+                      : <span className="font-semibold text-primary">{sessionDurationMinutes} minutes</span> per
+                      session.
+                    </>
+                  ) : (
+                    <> (open a mentor from their profile to see their exact length).</>
+                  )}
+                </p>
               </div>
               <div>
                 <h4 className="mb-3 font-semibold text-[#0a0a0a]">Availability</h4>
                 {availabilitySummary ? (
                   <p className="text-sm leading-relaxed text-neutral-700">{availabilitySummary}</p>
                 ) : (
-                  <div className="space-y-4">
-                    {AVAILABLE_SLOTS.map((block) => (
-                      <div key={block.date}>
-                        <p className="mb-2 text-sm font-medium text-neutral-700">{block.date}</p>
-                        <div className="space-y-2">
-                          {block.slots.map((slot) => (
-                            <button
-                              key={slot.time}
-                              type="button"
-                              className="w-full rounded-lg border border-neutral-200 bg-white py-2.5 text-center text-sm font-medium text-[#0a0a0a] transition hover:border-primary hover:bg-primary/5"
-                            >
-                              {slot.time}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                  <p className="text-sm leading-relaxed text-neutral-600">
+                    Open this chat from a mentor’s profile to see their next open time. Use{" "}
+                    <span className="font-medium text-[#0a0a0a]">Schedule a Call</span> below to pick a real slot from
+                    their calendar.
+                  </p>
                 )}
               </div>
             </div>

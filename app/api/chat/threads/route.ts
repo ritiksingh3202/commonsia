@@ -1,5 +1,6 @@
 import { auth } from "@/auth";
 import { CHAT_ACTIVE, CHAT_DECLINED, CHAT_PENDING } from "@/lib/chat-thread-status";
+import { mergeAvailabilityForSlot } from "@/lib/mentor-availability-merge";
 import { CacheKeys, CacheTtl, invalidateChatThreadsForParticipants, withJsonCache } from "@/lib/redis-cache";
 import { prisma } from "@/lib/prisma";
 import { getActiveUserWhere, prismaGeneratedClientHasAccountDeletedAt } from "@/lib/user-active";
@@ -22,6 +23,7 @@ function peerSelect() {
     instagramUrl: true,
     whatsappUrl: true,
     portfolioUrl: true,
+    mentorAvailabilityJson: true,
   } as const;
 }
 
@@ -41,6 +43,7 @@ type PeerRow = {
   instagramUrl: string | null;
   whatsappUrl: string | null;
   portfolioUrl: string | null;
+  mentorAvailabilityJson: unknown;
 };
 
 function publicPeerPayload(peer: PeerRow) {
@@ -57,10 +60,11 @@ function publicPeerPayload(peer: PeerRow) {
       instagramUrl: null,
       whatsappUrl: null,
       portfolioUrl: null,
+      mentorSessionDurationMinutes: null,
     };
   }
   const r = peer.role;
-  return {
+  const base = {
     id: peer.id,
     name: peer.name,
     email: peer.email,
@@ -75,6 +79,13 @@ function publicPeerPayload(peer: PeerRow) {
     whatsappUrl: peer.whatsappUrl,
     portfolioUrl: peer.portfolioUrl,
   };
+  if (r === "mentor") {
+    return {
+      ...base,
+      mentorSessionDurationMinutes: mergeAvailabilityForSlot(peer.mentorAvailabilityJson).sessionDurationMinutes,
+    };
+  }
+  return { ...base, mentorSessionDurationMinutes: null };
 }
 
 export async function GET() {

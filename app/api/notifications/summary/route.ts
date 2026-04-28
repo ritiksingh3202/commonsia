@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { CHAT_ACTIVE, CHAT_PENDING } from "@/lib/chat-thread-status";
 import { prisma } from "@/lib/prisma";
+import { isPrismaConnectionError } from "@/lib/prisma-errors";
 import { CacheKeys, readJsonCache, writeJsonCacheEntry } from "@/lib/redis-cache";
 
 export const runtime = "nodejs";
@@ -91,73 +92,88 @@ export async function GET() {
     };
   }>;
 
-  const [mentorPending, studentPending, studentAccepted, bookings] = await Promise.all<
-    [
-      Promise<MentorPendingRow[]>,
-      Promise<StudentPendingRow[]>,
-      Promise<StudentAcceptedRow[]>,
-      Promise<BookingRow[]>,
-    ]
-  >([
-    role === "mentor"
-      ? prisma.chatThread.findMany({
-          where: { mentorId: userId, status: CHAT_PENDING },
-          orderBy: { updatedAt: "desc" },
-          take: 12,
-          include: {
-            student: { select: { name: true, email: true } },
-            messages: {
-              orderBy: { createdAt: "desc" },
-              take: 1,
-              select: { body: true },
+  let mentorPending: MentorPendingRow[] = [];
+  let studentPending: StudentPendingRow[] = [];
+  let studentAccepted: StudentAcceptedRow[] = [];
+  let bookings: BookingRow[] = [];
+
+  try {
+    const results = await Promise.all([
+      role === "mentor"
+        ? prisma.chatThread.findMany({
+            where: { mentorId: userId, status: CHAT_PENDING },
+            orderBy: { updatedAt: "desc" },
+            take: 12,
+            include: {
+              student: { select: { name: true, email: true } },
+              messages: {
+                orderBy: { createdAt: "desc" },
+                take: 1,
+                select: { body: true },
+              },
             },
-          },
-        })
-      : Promise.resolve<MentorPendingRow[]>([]),
+          })
+        : Promise.resolve<MentorPendingRow[]>([]),
+      /**
+       * Student pending threads: only threads where the student has already posted a message are
+       * shown as "waiting". The relational `some` filter pushes that predicate into Postgres so we
+       * avoid pulling an extra row per thread and filtering in JS (as the old `include.messages`
+       * variant did).
+       */
+      role === "student"
+        ? prisma.chatThread.findMany({
+            where: {
+              studentId: userId,
+              status: CHAT_PENDING,
+              messages: { some: { senderId: userId } },
+            },
+            orderBy: { updatedAt: "desc" },
+            take: 8,
+            include: { mentor: { select: { name: true, email: true } } },
+          })
+        : Promise.resolve<StudentPendingRow[]>([]),
+      role === "student"
+        ? prisma.chatThread.findMany({
+            where: {
+              studentId: userId,
+              status: CHAT_ACTIVE,
+              mentorAcceptedAt: { gte: acceptNotifyCutoff },
+            },
+            orderBy: { mentorAcceptedAt: "desc" },
+            take: 8,
+            include: { mentor: { select: { name: true, email: true } } },
+          })
+        : Promise.resolve<StudentAcceptedRow[]>([]),
+      prisma.mentoringBooking.findMany({
+        where: {
+          ...(role === "mentor" ? { mentorId: userId } : { studentId: userId }),
+          startAt: { gte: now, lte: horizon },
+          createdAt: { gte: sessionRecency },
+        },
+        orderBy: { startAt: "asc" },
+        take: 6,
+        include: {
+          student: { select: { name: true } },
+          mentor: { select: { name: true } },
+        },
+      }),
+    ]);
+    mentorPending = results[0] as MentorPendingRow[];
+    studentPending = results[1] as StudentPendingRow[];
+    studentAccepted = results[2] as StudentAcceptedRow[];
+    bookings = results[3] as BookingRow[];
+  } catch (e) {
     /**
-     * Student pending threads: only threads where the student has already posted a message are
-     * shown as "waiting". The relational `some` filter pushes that predicate into Postgres so we
-     * avoid pulling an extra row per thread and filtering in JS (as the old `include.messages`
-     * variant did).
+     * If Postgres is temporarily unreachable (P1001/P1002/etc), do NOT 500-loop the navbar.
+     * Return an empty payload and cache it briefly to absorb repeated polls/remounts.
      */
-    role === "student"
-      ? prisma.chatThread.findMany({
-          where: {
-            studentId: userId,
-            status: CHAT_PENDING,
-            messages: { some: { senderId: userId } },
-          },
-          orderBy: { updatedAt: "desc" },
-          take: 8,
-          include: { mentor: { select: { name: true, email: true } } },
-        })
-      : Promise.resolve<StudentPendingRow[]>([]),
-    role === "student"
-      ? prisma.chatThread.findMany({
-          where: {
-            studentId: userId,
-            status: CHAT_ACTIVE,
-            mentorAcceptedAt: { gte: acceptNotifyCutoff },
-          },
-          orderBy: { mentorAcceptedAt: "desc" },
-          take: 8,
-          include: { mentor: { select: { name: true, email: true } } },
-        })
-      : Promise.resolve<StudentAcceptedRow[]>([]),
-    prisma.mentoringBooking.findMany({
-      where: {
-        ...(role === "mentor" ? { mentorId: userId } : { studentId: userId }),
-        startAt: { gte: now, lte: horizon },
-        createdAt: { gte: sessionRecency },
-      },
-      orderBy: { startAt: "asc" },
-      take: 6,
-      include: {
-        student: { select: { name: true } },
-        mentor: { select: { name: true } },
-      },
-    }),
-  ]);
+    if (isPrismaConnectionError(e)) {
+      const payload: SummaryPayload = { totalCount: 0, items: [] };
+      writeCachedSummary(userId, payload);
+      return NextResponse.json(payload, { headers: { "Cache-Control": "private, no-store" } });
+    }
+    throw e;
+  }
 
   const items: NotificationItem[] = [];
 

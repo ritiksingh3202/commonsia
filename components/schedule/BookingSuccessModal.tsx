@@ -16,11 +16,13 @@ const CONFETTI_COLORS = [
   "#f472b6",
 ];
 
-const AUTO_DISMISS_MS = 5_800;
+const DEFAULT_AUTO_DISMISS_MS = 5_800;
 
 export type BookingSuccessPayload = {
   /** When set to `request_submitted`, the student asked for a time — Commonsia confirms manually (no instant calendar book). */
   mode?: "booked" | "request_submitted";
+  /** Shorter auto-close after mentor booking requests so redirect to profile feels snappy. */
+  dismissAfterMs?: number;
   dateLine: string;
   timeLine: string;
   istHint: string | null;
@@ -41,7 +43,11 @@ export function BookingSuccessModal({
 }) {
   useEffect(() => {
     if (!open || !payload) return;
-    const t = window.setTimeout(() => onClose(), AUTO_DISMISS_MS);
+    const ms =
+      typeof payload.dismissAfterMs === "number" && payload.dismissAfterMs > 0
+        ? payload.dismissAfterMs
+        : DEFAULT_AUTO_DISMISS_MS;
+    const t = window.setTimeout(() => onClose(), ms);
     return () => window.clearTimeout(t);
   }, [open, payload, onClose]);
 
@@ -141,7 +147,7 @@ export function BookingSuccessModal({
             </h2>
             <p className="mt-1.5 text-[13px] font-medium text-emerald-700 sm:mt-2 sm:text-sm md:text-[15px]">
               {payload.mode === "request_submitted"
-                ? "We’ll confirm the time with your mentor over WhatsApp."
+                ? "We’ll email you when the mentor accepts or declines."
                 : "You did it — see you there!"}
             </p>
 
@@ -162,7 +168,7 @@ export function BookingSuccessModal({
             {payload.mode === "request_submitted" ? (
               <p className="mt-3.5 text-left text-[13px] leading-relaxed text-neutral-600 sm:mt-4 sm:text-sm">
                 {payload.softMessage?.trim() ||
-                  "Our team coordinates every mentor session. You’ll get a WhatsApp update once the mentor accepts and the final time band is set."}
+                  "Your chosen time is on hold for this mentor until they decide. Check your inbox (and spam) for updates."}
               </p>
             ) : (
               <>

@@ -95,6 +95,8 @@ model User {
   chatMessages         ChatMessage[]
   mentoringBookingsAsStudent MentoringBooking[] @relation("BookingStudent")
   mentoringBookingsAsMentor  MentoringBooking[] @relation("BookingMentor")
+  bookingRequestsAsStudent   BookingRequest[]   @relation("BookingRequestStudent")
+  bookingRequestsAsMentor    BookingRequest[]   @relation("BookingRequestMentor")
   sessionReviewsAuthored     SessionReview[]      @relation("SessionReviewStudent")
   sessionReviewsReceived     SessionReview[]      @relation("SessionReviewMentor")
 }
@@ -117,6 +119,40 @@ model MentoringBooking {
 
   @@index([studentId, startAt])
   @@index([mentorId])
+}
+
+/// Pending mentor-approval session request created from the booking UI.
+model BookingRequest {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  studentId String
+  mentorId  String
+  startAt   DateTime
+  endAt     DateTime
+
+  /// "pending" | "accepted" | "rejected" | "expired"
+  status     String   @default("pending")
+  decidedAt  DateTime?
+
+  /// SHA-256 hex of the action token (Accept/Reject). Store hash only (never the raw token).
+  actionTokenHash String @unique
+
+  /// When accepted, we create a real Calendar event and store its ids.
+  googleEventId  String?
+  googleMeetLink String? @db.Text
+
+  /// Optional note/title from student (shown in Calendar description).
+  title       String?
+  description String? @db.Text
+
+  student User @relation("BookingRequestStudent", fields: [studentId], references: [id], onDelete: Cascade)
+  mentor  User @relation("BookingRequestMentor", fields: [mentorId], references: [id], onDelete: Cascade)
+
+  @@index([mentorId, startAt])
+  @@index([studentId, createdAt])
+  @@unique([mentorId, startAt, endAt])
 }
 
 /// Student ↔ mentor DM thread. `pending` until mentor accepts (message request).

@@ -11,6 +11,9 @@ export const metadata: Metadata = {
   description: "Pick a date and time for your mentoring session on Commonsia.",
 };
 
+/** Always read latest mentor availability from DB (pairs with client `router.refresh()`). */
+export const dynamic = "force-dynamic";
+
 export default async function SchedulePage({
   searchParams,
 }: {
@@ -42,12 +45,32 @@ export default async function SchedulePage({
     }
   }
 
+  let initialHasPendingSessionRequest = false;
+  if (mentorUserId && session.user.id) {
+    let isStudent = session.user.role === "student";
+    if (!session.user.role) {
+      const viewer = await prisma.user.findUnique({
+        where: { id: session.user.id },
+        select: { role: true },
+      });
+      isStudent = viewer?.role === "student";
+    }
+    if (isStudent) {
+      const pending = await prisma.bookingRequest.findFirst({
+        where: { studentId: session.user.id, mentorId: mentorUserId, status: "pending" },
+        select: { id: true },
+      });
+      initialHasPendingSessionRequest = Boolean(pending);
+    }
+  }
+
   return (
     <MarketingShell>
       <ScheduleCallPage
         mentorUserId={mentorUserId}
         mentorDisplayName={mentorDisplayName}
         mentorAvailabilityJson={mentorAvailabilityJson}
+        initialHasPendingSessionRequest={initialHasPendingSessionRequest}
       />
     </MarketingShell>
   );

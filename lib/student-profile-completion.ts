@@ -16,7 +16,9 @@ export function computeStudentProfileCompletionPercent(user: {
   university: string | null;
   yearOfStudy: string | null;
   major: string | null;
-  phone: string | null;
+  whatsappUrl: string | null;
+  /** @deprecated Prefer whatsappUrl for contact completeness. */
+  phone?: string | null;
   interests: unknown;
   otherInterests: string | null;
   softwareSkills: string | null;
@@ -29,7 +31,7 @@ export function computeStudentProfileCompletionPercent(user: {
     Boolean(user.university?.trim()),
     Boolean(user.yearOfStudy?.trim()),
     Boolean(user.major?.trim()),
-    Boolean(user.phone?.trim()),
+    Boolean(user.whatsappUrl?.trim() || user.phone?.trim()),
     interestsOk(user.interests, user.otherInterests),
     Boolean(user.softwareSkills?.trim()),
     Boolean(user.bio?.trim()),

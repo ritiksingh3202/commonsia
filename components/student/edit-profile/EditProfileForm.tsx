@@ -19,7 +19,6 @@ import {
   architectureOthersSectionTitle,
   architecturePillBase,
 } from "@/components/shared/ArchitectureGroupedPills";
-import { SetupGoogleCalendarConnect } from "@/components/setup/SetupGoogleCalendarConnect";
 import { interestStateFromServer, interestsPayloadFromSelection } from "@/components/student/student-interest-sync";
 
 const TABS = [
@@ -115,8 +114,7 @@ function payloadFromInitialUser(u: EditProfileUser): Record<string, unknown> {
 
   return {
     name: (u.name ?? "").trim() || null,
-    phone: (u.phone ?? "").trim() || null,
-    whatsappUrl: null,
+    whatsappUrl: ((u.whatsappUrl ?? u.phone) ?? "").trim() || null,
     linkedinUrl: (u.linkedinUrl ?? "").trim() || null,
     instagramUrl: null,
     university: (u.university ?? "").trim() || null,
@@ -131,9 +129,9 @@ function payloadFromInitialUser(u: EditProfileUser): Record<string, unknown> {
   };
 }
 
-type Props = { user: EditProfileUser; googleCalendarConnected: boolean };
+type Props = { user: EditProfileUser };
 
-export function EditProfileForm({ user: initial, googleCalendarConnected }: Props) {
+export function EditProfileForm({ user: initial }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const tabParam = searchParams.get("tab");
@@ -149,7 +147,9 @@ export function EditProfileForm({ user: initial, googleCalendarConnected }: Prop
   );
 
   const [name, setName] = useState(initial.name ?? "");
-  const [phone, setPhone] = useState(initial.phone ?? "");
+  const [whatsappUrl, setWhatsappUrl] = useState(
+    () => ((initial.whatsappUrl ?? initial.phone) ?? "").trim(),
+  );
   const [linkedinUrl, setLinkedinUrl] = useState(initial.linkedinUrl ?? "");
 
   const [university, setUniversity] = useState(initial.university ?? "");
@@ -198,7 +198,7 @@ export function EditProfileForm({ user: initial, googleCalendarConnected }: Prop
 
   useEffect(() => {
     setName(initial.name ?? "");
-    setPhone(initial.phone ?? "");
+    setWhatsappUrl(((initial.whatsappUrl ?? initial.phone) ?? "").trim());
     setLinkedinUrl(initial.linkedinUrl ?? "");
     setUniversity(initial.university ?? "");
     setYearOfStudy(initial.yearOfStudy ?? "");
@@ -267,8 +267,7 @@ export function EditProfileForm({ user: initial, googleCalendarConnected }: Prop
 
     return {
       name: name.trim() || null,
-      phone: phone.trim() || null,
-      whatsappUrl: null,
+      whatsappUrl: whatsappUrl.trim() || null,
       linkedinUrl: linkedinUrl.trim() || null,
       instagramUrl: null,
       university: university.trim() || null,
@@ -283,7 +282,7 @@ export function EditProfileForm({ user: initial, googleCalendarConnected }: Prop
     };
   }, [
     name,
-    phone,
+    whatsappUrl,
     linkedinUrl,
     university,
     yearOfStudy,
@@ -347,8 +346,8 @@ export function EditProfileForm({ user: initial, googleCalendarConnected }: Prop
       setTab("personal");
       return;
     }
-    if (!phone.trim()) {
-      window.alert("Please enter your phone number.");
+    if (!whatsappUrl.trim()) {
+      window.alert("Please enter your WhatsApp number.");
       setTab("personal");
       return;
     }
@@ -579,16 +578,20 @@ export function EditProfileForm({ user: initial, googleCalendarConnected }: Prop
               </div>
             </div>
             <div>
-              <label className={label} htmlFor="edit-phone">
-                Phone number <span className="text-primary">*</span>
+              <label className={label} htmlFor="edit-whatsapp">
+                WhatsApp number <span className="text-primary">*</span>
               </label>
               <input
-                id="edit-phone"
+                id="edit-whatsapp"
+                type="tel"
                 className={field}
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="+1 (555) 000-0000"
+                value={whatsappUrl}
+                onChange={(e) => setWhatsappUrl(e.target.value)}
+                placeholder="Digits with country code, or a wa.me link"
               />
+              <p className="mt-1 text-[12px] text-[#6b7280]">
+                Include your country code if you type digits only.
+              </p>
             </div>
             <div>
               <label className={label} htmlFor="edit-linkedin">
@@ -753,12 +756,6 @@ export function EditProfileForm({ user: initial, googleCalendarConnected }: Prop
 
         {activeTab === "portfolio" && (
           <div className="space-y-5">
-            <SetupGoogleCalendarConnect
-              connected={googleCalendarConnected}
-              returnPath="/student/profile/edit?tab=portfolio"
-              required
-              description="Required for booking and calendar sync. If you signed in with Google, this may already show as connected."
-            />
             <div>
               <h2 className="text-base font-semibold text-[#0a0a0a]">Portfolio &amp; Bio</h2>
               <p className="mt-0.5 text-[13px] text-[#6b7280]">Showcase your work and tell your story.</p>

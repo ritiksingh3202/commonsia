@@ -7,7 +7,6 @@ import { CountryCityComboboxFields } from "@/components/shared/CountryCityCombob
 import { PROGRAM_OPTIONS, PROGRAM_OTHER_VALUE, YEAR_OPTIONS } from "./student-setup-constants";
 import { StudentSetupShell } from "./StudentSetupShell";
 import { setupField, setupLabel, setupRequiredStar } from "./student-ui";
-import { SetupGoogleCalendarConnect } from "@/components/setup/SetupGoogleCalendarConnect";
 import { SetupLinkedInNotice } from "@/components/setup/SetupLinkedInNotice";
 import { useProfileAutosave } from "@/hooks/useProfileAutosave";
 import type { StudentSetupUserSnapshot } from "@/lib/setup-load-user";
@@ -29,11 +28,9 @@ function programStateFromMajor(major: string | null | undefined): {
 export function StudentSetupStep1({
   initial,
   linkedInConnected,
-  googleCalendarConnected = false,
 }: {
   initial?: StudentSetupUserSnapshot;
   linkedInConnected?: boolean;
-  googleCalendarConnected?: boolean;
 }) {
   const router = useRouter();
   const { schedule: scheduleSave, cancelPending } = useProfileAutosave();
@@ -49,7 +46,9 @@ export function StudentSetupStep1({
   const [year, setYear] = useState(initial?.yearOfStudy ?? "");
   const [program, setProgram] = useState(p0);
   const [majorOther, setMajorOther] = useState(mo0);
-  const [phone, setPhone] = useState(initial?.phone ?? "");
+  const [whatsappUrl, setWhatsappUrl] = useState(
+    () => ((initial?.whatsappUrl ?? initial?.phone) ?? "").trim(),
+  );
   const [saving, setSaving] = useState(false);
 
   return (
@@ -63,7 +62,8 @@ export function StudentSetupStep1({
           </span>
         </h2>
         <p className="mb-1 text-[12px] leading-snug text-[#6b7280]">
-          Country and city can be typed or chosen from suggestions; university, year, program, and phone are required.
+          Country and city can be typed or chosen from suggestions; university, year, program, and WhatsApp number are
+          required.
         </p>
         <p className="mb-3 text-[12px] text-[#6b7280]">Changes save automatically.</p>
         <form
@@ -83,8 +83,8 @@ export function StudentSetupStep1({
               window.alert("Please enter your university or college.");
               return;
             }
-            if (!phone.trim()) {
-              window.alert("Please enter your phone number.");
+            if (!whatsappUrl.trim()) {
+              window.alert("Please enter your WhatsApp number.");
               return;
             }
             let major: string | null = null;
@@ -113,7 +113,7 @@ export function StudentSetupStep1({
                   university: university.trim() || null,
                   yearOfStudy: year.trim() || null,
                   major,
-                  phone: phone.trim() || null,
+                  whatsappUrl: whatsappUrl.trim() || null,
                 }),
               });
               if (!res.ok) {
@@ -239,32 +239,28 @@ export function StudentSetupStep1({
             )}
           </div>
           <div className="space-y-1.5">
-            <label htmlFor="phone" className={setupLabel}>
-              Phone number <span className="text-primary">*</span>
+            <label htmlFor="whatsappUrl" className={setupLabel}>
+              WhatsApp number <span className="text-primary">*</span>
             </label>
             <input
-              id="phone"
-              name="phone"
+              id="whatsappUrl"
+              name="whatsappUrl"
               type="tel"
-              value={phone}
+              value={whatsappUrl}
               onChange={(e) => {
                 const v = e.target.value;
-                setPhone(v);
-                scheduleSave({ role: "student", phone: v.trim() || null });
+                setWhatsappUrl(v);
+                scheduleSave({ role: "student", whatsappUrl: v.trim() || null });
               }}
-              placeholder="Include country code if applicable"
+              placeholder="Digits with country code, or a wa.me link"
               className={setupField}
               autoComplete="tel"
               required
             />
+            <p className="text-[11px] leading-snug text-neutral-500">
+              Used for session updates via WhatsApp. Include your country code if you type digits only.
+            </p>
           </div>
-
-          <SetupGoogleCalendarConnect
-            connected={googleCalendarConnected}
-            returnPath="/student/setup/1"
-            required
-            description="Required before you can finish profile setup (step 3). Connect now or on the last step. If you signed in with Google, this may already show as connected."
-          />
 
           <button type="submit" className={btnPrimary} disabled={saving} aria-busy={saving}>
             {saving ? (

@@ -1,7 +1,15 @@
 import { Prisma } from "@prisma/client";
 
 import { CHAT_ACTIVE } from "@/lib/chat-thread-status";
+import { enrichMeetLinksOnBookings } from "@/lib/booking-resolve-google-meet";
 import { withPoolFallback } from "@/lib/db-resilient";
+import { formatRelativePast } from "@/lib/mentor-dashboard-format";
+import type {
+  MentorActivityRow,
+  MentorBookingStats,
+  MentorDashboardLiveData,
+  MentorMenteeRow,
+} from "@/lib/mentor-dashboard-types";
 import { prisma } from "@/lib/prisma";
 import {
   CacheKeys,
@@ -11,89 +19,7 @@ import {
 } from "@/lib/redis-cache";
 import { prismaGeneratedClientHasAccountDeletedAt } from "@/lib/user-active";
 
-export type MentorBookingStats = {
-  /** All completed sessions (ended in the past). */
-  completedSessionCount: number;
-  /** Sum of session lengths in minutes (completed only). */
-  totalMentoringMinutes: number;
-  /** Completed sessions whose end falls in the current calendar month. */
-  sessionsThisMonth: number;
-  /** Minutes from sessions ending this calendar month. */
-  minutesThisMonth: number;
-};
-
-export type MentorUpcomingSession = {
-  id: string;
-  startAt: Date;
-  endAt: Date;
-  title: string | null;
-  student: {
-    id: string;
-    name: string | null;
-    image: string | null;
-  };
-};
-
-export type MentorMenteeRow = {
-  threadId: string;
-  studentId: string;
-  name: string;
-  image: string | null;
-  subtitle: string;
-  focus: string;
-  lastSessionLabel: string;
-  progressPct: number;
-};
-
-export type MentorActivityRow = {
-  id: string;
-  at: Date;
-  title: string;
-  /** tailwind tone for icon wrapper */
-  tone: string;
-  icon: "calendar" | "chat" | "star";
-};
-
-export type MentorDashboardLiveData = MentorBookingStats & {
-  activeMenteeCount: number;
-  menteesJoinedThisMonth: number;
-  upcomingSessionCount: number;
-  upcomingSessions: MentorUpcomingSession[];
-  averageRating: number | null;
-  reviewCount: number;
-  /** 0–100 composite from ratings, sessions, and reviews. */
-  impactScore: number;
-  mentees: MentorMenteeRow[];
-  activities: MentorActivityRow[];
-};
-
-export function formatRelativePast(when: Date): string {
-  const sec = Math.round((Date.now() - when.getTime()) / 1000);
-  if (sec < 45) return "Just now";
-  if (sec < 3600) return `${Math.floor(sec / 60)} min ago`;
-  if (sec < 86400) return `${Math.floor(sec / 3600)} hour${Math.floor(sec / 3600) === 1 ? "" : "s"} ago`;
-  if (sec < 86400 * 7) return `${Math.floor(sec / 86400)} day${Math.floor(sec / 86400) === 1 ? "" : "s"} ago`;
-  return when.toLocaleDateString("en-IN", { month: "short", day: "numeric" });
-}
-
-function sessionBadge(startAt: Date): { label: string; className: string } {
-  const now = new Date();
-  const d = new Date(startAt);
-  d.setHours(0, 0, 0, 0);
-  const t = new Date(now);
-  t.setHours(0, 0, 0, 0);
-  const diffDays = Math.round((d.getTime() - t.getTime()) / 86400000);
-  if (diffDays === 0) return { label: "Today", className: "bg-primary/15 text-primary" };
-  if (diffDays === 1) return { label: "Tomorrow", className: "bg-orange-50 text-orange-700" };
-  return {
-    label: startAt.toLocaleDateString("en-IN", { month: "short", day: "numeric" }),
-    className: "bg-primary/10 text-primary",
-  };
-}
-
-export function formatSessionBadge(startAt: Date): { label: string; className: string } {
-  return sessionBadge(startAt);
-}
+export type { MentorBookingStats, MentorDashboardLiveData } from "@/lib/mentor-dashboard-types";
 
 /**
  * Compute completed-session totals for a mentor.
@@ -197,10 +123,10 @@ export async function getMentorDashboardLiveData(mentorId: string): Promise<Ment
         _count: { _all: true },
       }),
       prisma.mentoringBooking.count({
-        where: { mentorId, startAt: { gt: now } },
+        where: { mentorId, endAt: { gte: now } },
       }),
       prisma.mentoringBooking.findMany({
-        where: { mentorId, startAt: { gt: now } },
+        where: { mentorId, endAt: { gte: now } },
         orderBy: { startAt: "asc" },
         take: 8,
         select: {
@@ -208,6 +134,8 @@ export async function getMentorDashboardLiveData(mentorId: string): Promise<Ment
           startAt: true,
           endAt: true,
           title: true,
+          googleMeetLink: true,
+          googleEventId: true,
           student: {
             select: { id: true, name: true, image: true },
           },
@@ -367,6 +295,8 @@ export async function getMentorDashboardLiveData(mentorId: string): Promise<Ment
     tone: x.tone,
     icon: x.icon,
   }));
+
+  await enrichMeetLinksOnBookings(upcomingList);
 
   return {
     ...booking,

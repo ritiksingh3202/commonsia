@@ -8,7 +8,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BookingSuccessModal, type BookingSuccessPayload } from "@/components/schedule/BookingSuccessModal";
 import { monthName, MENTOR_TIME_SLOTS_HALF } from "@/components/mentor/mentor-setup-constants";
 import { formatNextAvailableSlotLine } from "@/lib/mentor-next-slot";
-import { istSlotRangeToISO } from "@/lib/schedule-slot-ist";
+import { bookableWindowsFromSortedHalfHourStarts } from "@/lib/booking-availability-slots";
+import { mergeAvailabilityForSlot } from "@/lib/mentor-availability-merge";
 import {
   BOOKING_DISPLAY_TIMEZONES,
   type BookingDisplayTimeZoneId,
@@ -19,9 +20,9 @@ import { todayYmdInScheduleTz, SCHEDULE_BOOKING_TIMEZONE } from "@/lib/schedule-
 
 const CREAM = "bg-[#FFF8F1]";
 const WEEK_HEADERS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
-/** Align with server Redis TTL (~120s) — avoid hammering `/api/schedule/*` while still refreshing. */
-const SLOT_POLL_MS = 90_000;
-const MONTH_POLL_MS = 120_000;
+/** Poll schedule APIs while the tab is open — epoch + Redis rotate on mentor saves. */
+const SLOT_POLL_MS = 20_000;
+const MONTH_POLL_MS = 45_000;
 
 export type ApiBookableSlot = {
   startLabel: string;
@@ -32,6 +33,22 @@ export type ApiBookableSlot = {
 
 type UiSlot = ApiBookableSlot;
 type ApiMonthAvailability = { availableDays: number[] };
+
+async function readScheduleJson<T>(res: Response): Promise<T> {
+  const text = await res.text();
+  if (!text.trim()) {
+    throw new Error("Empty response from the schedule service. Try refreshing the page.");
+  }
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    throw new Error(
+      res.ok
+        ? "Could not read schedule data (invalid JSON). Try refreshing the page."
+        : `Schedule request failed (${res.status}). Try refreshing the page.`,
+    );
+  }
+}
 
 function daysInMonth(year: number, monthIndex: number): number {
   return new Date(year, monthIndex + 1, 0).getDate();
@@ -50,9 +67,19 @@ function ordinal(n: number): string {
   return `${n}th`;
 }
 
+const SUMMARY_WEEKDAYS = [
+  "Sunday",
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+] as const;
+
 function formatLongDate(year: number, monthIndex: number, day: number): string {
-  const d = new Date(year, monthIndex, day);
-  const weekday = d.toLocaleDateString("en-US", { weekday: "long" });
+  const wd = new Date(Date.UTC(year, monthIndex, day, 12, 0, 0)).getUTCDay();
+  const weekday = SUMMARY_WEEKDAYS[wd] ?? "Day";
   const month = monthName(monthIndex);
   return `${weekday}, ${month} ${ordinal(day)}`;
 }
@@ -76,32 +103,30 @@ function splitSlotRange(range: string): [string, string] | null {
 
 function fallbackSlotsForDay(year: number, monthIndex: number, day: number): UiSlot[] {
   const ranges = buildFallbackEveningRanges();
-  const out: UiSlot[] = [];
+  const starts = new Set<string>();
   for (const r of ranges) {
     const p = splitSlotRange(r);
-    if (!p) continue;
-    try {
-      const { startISO, endISO } = istSlotRangeToISO(year, monthIndex, day, p[0], 30);
-      out.push({ startLabel: p[0], startISO, endISO, rangeLabelIst: r });
-    } catch {
-      /* skip */
-    }
+    if (p) starts.add(p[0]);
   }
-  return out;
+  return bookableWindowsFromSortedHalfHourStarts([...starts], year, monthIndex, day, 30);
 }
 
 export function ScheduleCallPage({
   mentorUserId = null,
   mentorDisplayName = null,
   mentorAvailabilityJson = null,
+  initialHasPendingSessionRequest = false,
 }: {
   mentorUserId?: string | null;
   mentorDisplayName?: string | null;
   mentorAvailabilityJson?: unknown;
+  /** Server: this student already has a pending `BookingRequest` for this mentor. */
+  initialHasPendingSessionRequest?: boolean;
 }) {
   const router = useRouter();
   const { status, data: sessionData } = useSession();
   const postBookingRedirectRef = useRef<number | null>(null);
+  const shouldRedirectToStudentAfterModalRef = useRef(false);
   const initialIst = useMemo(() => todayYmdInScheduleTz(), []);
   const [viewYear, setViewYear] = useState(initialIst.year);
   const [viewMonth, setViewMonth] = useState(initialIst.monthIndex);
@@ -109,22 +134,30 @@ export function ScheduleCallPage({
 
   const [displayTimeZone, setDisplayTimeZone] = useState<BookingDisplayTimeZoneId>("Asia/Kolkata");
 
-  const [guests, setGuests] = useState<{ id: string; initials: string; bg: string }[]>([]);
-  const [inviteInput, setInviteInput] = useState("");
-
-  const [durationMin, setDurationMin] = useState<30 | 45 | 60>(30);
+  const sessionBookingMinutes = useMemo(() => {
+    if (!mentorUserId) return 30;
+    return mergeAvailabilityForSlot(mentorAvailabilityJson).sessionDurationMinutes;
+  }, [mentorUserId, mentorAvailabilityJson]);
   const [selectedSlotIndex, setSelectedSlotIndex] = useState(0);
   const [booking, setBooking] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [bookingSuccess, setBookingSuccess] = useState<BookingSuccessPayload | null>(null);
+  const [hasPendingSessionRequest, setHasPendingSessionRequest] = useState(initialHasPendingSessionRequest);
+
+  useEffect(() => {
+    setHasPendingSessionRequest(initialHasPendingSessionRequest);
+  }, [mentorUserId, initialHasPendingSessionRequest]);
 
   const dismissBookingSuccess = useCallback(() => {
     if (postBookingRedirectRef.current != null) {
       window.clearTimeout(postBookingRedirectRef.current);
       postBookingRedirectRef.current = null;
     }
+    const goStudent = shouldRedirectToStudentAfterModalRef.current;
+    shouldRedirectToStudentAfterModalRef.current = false;
     setBookingSuccess(null);
-  }, []);
+    if (goStudent) router.push("/student");
+  }, [router]);
 
   useEffect(() => {
     return () => {
@@ -164,7 +197,7 @@ export function ScheduleCallPage({
       u.searchParams.set("year", String(viewYear));
       u.searchParams.set("month", String(viewMonth));
       const res = await fetch(u.toString());
-      const data = (await res.json()) as { error?: string } & Partial<ApiMonthAvailability>;
+      const data = (await readScheduleJson(res)) as { error?: string } & Partial<ApiMonthAvailability>;
       if (!res.ok) throw new Error(data.error ?? "Could not load availability");
       const days = new Set(Array.isArray(data.availableDays) ? data.availableDays.filter((n) => Number.isInteger(n)) : []);
       setMonthAvailableDays(days);
@@ -187,7 +220,7 @@ export function ScheduleCallPage({
       u.searchParams.set("month", String(viewMonth));
       u.searchParams.set("day", String(displayDay));
       const res = await fetch(u.toString());
-      const data = (await res.json()) as { error?: string; slots?: ApiBookableSlot[] };
+      const data = (await readScheduleJson(res)) as { error?: string; slots?: ApiBookableSlot[] };
       if (!res.ok) throw new Error(data.error ?? "Could not load times");
       setSlots(Array.isArray(data.slots) ? data.slots : []);
     } catch (e) {
@@ -300,30 +333,8 @@ export function ScheduleCallPage({
     return monthAvailableDays.has(day);
   };
 
-  const addGuest = () => {
-    const name = inviteInput.trim();
-    if (!name) return;
-    const parts = name.split(/\s+/);
-    const initials =
-      parts.length >= 2
-        ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
-        : name.slice(0, 2).toUpperCase();
-    const hues = [
-      "bg-rose-200 text-rose-900",
-      "bg-indigo-200 text-indigo-900",
-      "bg-teal-200 text-teal-900",
-      "bg-orange-200 text-orange-900",
-    ];
-    setGuests((g) => [
-      ...g,
-      { id: `g-${Date.now()}`, initials, bg: hues[g.length % hues.length] },
-    ]);
-    setInviteInput("");
-  };
-
-  const removeGuest = (id: string) => setGuests((g) => g.filter((x) => x.id !== id));
-
   const scheduleCall = async () => {
+    shouldRedirectToStudentAfterModalRef.current = false;
     if (postBookingRedirectRef.current != null) {
       window.clearTimeout(postBookingRedirectRef.current);
       postBookingRedirectRef.current = null;
@@ -345,21 +356,44 @@ export function ScheduleCallPage({
     setBooking(true);
     try {
       const start = new Date(selected.startISO);
-      const end = new Date(start.getTime() + durationMin * 60_000);
+      const end = new Date(start.getTime() + sessionBookingMinutes * 60_000);
       const startISO = start.toISOString();
       const endISO = end.toISOString();
 
       if (mentorUserId) {
+        const bookRes = await fetch("/api/booking-requests", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            mentorUserId,
+            startISO,
+            endISO,
+            bookYear: viewYear,
+            bookMonthIndex: viewMonth,
+            bookDay: displayDay,
+            startLabel: selected.startLabel,
+            title: mentorDisplayName ? `Commonsia: Session with ${mentorDisplayName}` : undefined,
+            description: "1:1 mentoring session requested from the booking page.",
+          }),
+        });
+        const bookData = (await bookRes.json()) as { ok?: boolean; error?: string; message?: string };
+        if (!bookRes.ok) {
+          setFeedback(bookData.error ?? "Could not submit your booking request.");
+          return;
+        }
+        setHasPendingSessionRequest(true);
+        void router.refresh();
+        shouldRedirectToStudentAfterModalRef.current = true;
         setBookingSuccess({
           mode: "request_submitted",
+          dismissAfterMs: 2_400,
           dateLine: summaryDate,
           timeLine: summaryTimePrimary,
           istHint: summaryTimeIstHint,
-          durationMin,
+          durationMin: sessionBookingMinutes,
           calendarSynced: false,
           meetLink: null,
-          softMessage:
-            "No calendar event is created yet. Share this preference with us — we’ll message the mentor on WhatsApp for a yes/no, then lock the two-hour band and schedule the call for both of you.",
+          softMessage: bookData.message ?? null,
         });
         return;
       }
@@ -392,7 +426,7 @@ export function ScheduleCallPage({
         dateLine: summaryDate,
         timeLine: summaryTimePrimary,
         istHint: summaryTimeIstHint,
-        durationMin,
+        durationMin: sessionBookingMinutes,
         calendarSynced: Boolean(data.calendarSynced),
         meetLink: data.meetLink ?? null,
         softMessage: data.message ?? null,
@@ -414,7 +448,9 @@ export function ScheduleCallPage({
   };
 
   const bookDisabled =
-    booking || (Boolean(mentorUserId) && (slotsLoading || slots.length === 0 || !selected));
+    booking ||
+    (Boolean(mentorUserId) && hasPendingSessionRequest) ||
+    (Boolean(mentorUserId) && (slotsLoading || slots.length === 0 || !selected));
 
   return (
     <div className="min-h-[min(100vh,900px)] bg-gradient-to-b from-white to-orange-50/20 pb-16 pt-4 sm:pt-6">
@@ -434,7 +470,7 @@ export function ScheduleCallPage({
 
         <div className="rounded-2xl border border-neutral-200/80 bg-white p-3 shadow-xl sm:p-5 md:p-6 lg:p-8">
           <div className="grid grid-cols-1 gap-6 sm:gap-8 lg:grid-cols-[minmax(0,240px)_1fr_minmax(0,260px)] lg:items-start lg:gap-8 xl:gap-10">
-            {/* Left — invite & summary */}
+            {/* Left — summary */}
             <aside className="order-3 flex flex-col gap-5 lg:order-1 lg:self-start">
               {mentorDisplayName ? (
                 <div className="space-y-2">
@@ -446,54 +482,8 @@ export function ScheduleCallPage({
                   ) : null}
                 </div>
               ) : null}
-              <div>
-                <h2 className="text-base font-bold text-[#0a0a0a]">Who needs to be invited?</h2>
-                <p className="mt-1 text-xs text-neutral-500 sm:text-sm">
-                  Add guests to see when they are available.
-                </p>
-              </div>
 
-              <div className="flex overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-sm">
-                <input
-                  type="text"
-                  value={inviteInput}
-                  onChange={(e) => setInviteInput(e.target.value)}
-                  placeholder="Invite Someone"
-                  className="min-w-0 flex-1 border-0 bg-transparent px-3 py-2.5 text-base outline-none placeholder:text-neutral-400 sm:text-sm"
-                  onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addGuest())}
-                />
-                <button
-                  type="button"
-                  onClick={addGuest}
-                  className="shrink-0 bg-primary px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-primary/90"
-                >
-                  Invite
-                </button>
-              </div>
-
-              {guests.length > 0 ? (
-                <div className="flex flex-wrap gap-3">
-                  {guests.map((g) => (
-                    <div key={g.id} className="relative">
-                      <div
-                        className={`flex size-12 items-center justify-center rounded-full text-sm font-semibold ${g.bg}`}
-                      >
-                        {g.initials}
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => removeGuest(g.id)}
-                        className="absolute -right-1 -top-1 flex size-5 items-center justify-center rounded-full bg-red-500 text-white shadow ring-2 ring-white"
-                        aria-label={`Remove ${g.initials}`}
-                      >
-                        <IconX className="size-3" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              ) : null}
-
-              <div className={`mt-6 space-y-3 rounded-2xl ${CREAM} p-4 ring-1 ring-orange-100/60`}>
+              <div className={`space-y-3 rounded-2xl ${CREAM} p-4 ring-1 ring-orange-100/60`}>
                 <div className="flex items-start gap-3 text-sm">
                   <IconCalendar className="mt-0.5 size-5 shrink-0 text-primary" />
                   <div>
@@ -515,7 +505,7 @@ export function ScheduleCallPage({
                   <IconStopwatch className="mt-0.5 size-5 shrink-0 text-primary" />
                   <div>
                     <p className="text-xs text-neutral-500">Duration</p>
-                    <p className="font-semibold text-[#0a0a0a]">{durationMin} Minutes</p>
+                    <p className="font-semibold text-[#0a0a0a]">{sessionBookingMinutes} Minutes</p>
                   </div>
                 </div>
               </div>
@@ -525,26 +515,40 @@ export function ScheduleCallPage({
                   {feedback}
                 </p>
               ) : null}
-              <button
-                type="button"
-                disabled={bookDisabled}
-                onClick={() => void scheduleCall()}
-                className="w-full rounded-xl bg-primary py-3.5 text-sm font-semibold text-white shadow-md transition hover:bg-primary/90 disabled:opacity-60"
-              >
-                {booking
-                  ? mentorUserId
-                    ? "Sending…"
-                    : "Booking…"
-                  : mentorUserId
-                    ? "Request this session"
-                    : "Book a session"}
-              </button>
+              {mentorUserId && hasPendingSessionRequest ? (
+                <div className="space-y-2 rounded-xl border border-amber-200/80 bg-amber-50/90 px-3 py-3 text-left sm:px-4">
+                  <p className="text-sm font-semibold text-[#0a0a0a]">Session requested</p>
+                  <p className="text-[12px] leading-relaxed text-neutral-700 sm:text-[13px]">
+                    We’ll update you by email if this mentor accepts your request. You can review pending requests from
+                    your student profile.
+                  </p>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  disabled={bookDisabled}
+                  onClick={() => void scheduleCall()}
+                  className="w-full rounded-xl bg-primary py-3.5 text-sm font-semibold text-white shadow-md transition hover:bg-primary/90 disabled:opacity-60"
+                >
+                  {booking
+                    ? mentorUserId
+                      ? "Sending…"
+                      : "Booking…"
+                    : mentorUserId
+                      ? "Request this session"
+                      : "Book a session"}
+                </button>
+              )}
             </aside>
 
             {/* Middle — calendar */}
             <section className="order-1 lg:order-2 lg:self-start">
               <h1 className="text-xl font-bold text-[#0a0a0a] sm:text-2xl">
-                {mentorUserId ? "Request a session" : "Book a session"}
+                {mentorUserId
+                  ? hasPendingSessionRequest
+                    ? "Session requested"
+                    : "Request a session"
+                  : "Book a session"}
               </h1>
 
               <div className="mt-5 rounded-2xl border border-neutral-100 bg-white p-4 shadow-sm sm:p-5">
@@ -653,24 +657,26 @@ export function ScheduleCallPage({
                 ) : null}
               </div>
 
-              <div className="relative mt-4">
-                <select
-                  value={durationMin}
-                  onChange={(e) => setDurationMin(Number(e.target.value) as 30 | 45 | 60)}
-                  className="w-full appearance-none rounded-xl border-2 border-primary bg-white py-3 pl-4 pr-10 text-sm font-medium text-[#0a0a0a] outline-none focus:ring-2 focus:ring-primary/20"
-                >
-                  <option value={30}>Duration: 30 Minutes</option>
-                  <option value={45}>Duration: 45 Minutes</option>
-                  <option value={60}>Duration: 60 Minutes</option>
-                </select>
-                <IconChevronDown className="pointer-events-none absolute right-3 top-1/2 size-5 -translate-y-1/2 text-neutral-500" />
-              </div>
-
-              <p className="mt-2 text-[11px] text-neutral-500">
-                {mentorUserId
-                  ? "Only times that match this mentor's availability (and free space on their Google Calendar when connected) are listed. Updates every minute."
-                  : "Connect from a mentor's profile to load their real availability. Sample slots below."}
-              </p>
+              {mentorUserId ? (
+                <div className="mt-2 space-y-1.5 text-[11px] leading-relaxed text-neutral-500">
+                  <p>
+                    Each row is a <span className="font-medium text-neutral-600">time range when this mentor is available</span>{" "}
+                    to take a session (from what they saved). Session length is set by them and shown in the summary on the
+                    left. Times refresh regularly; if they use Google Calendar, busy blocks may hide some ranges here.
+                  </p>
+                  <p>
+                    <span className="font-medium text-neutral-600">After they accept your request,</span> you’ll get an email
+                    with your <span className="font-medium text-neutral-600">confirmed meeting time</span>—for example{" "}
+                    <span className="whitespace-nowrap font-medium text-neutral-700">5:00–5:30 PM</span>—not the whole
+                    availability window shown in the list.
+                  </p>
+                </div>
+              ) : (
+                <p className="mt-2 text-[11px] leading-relaxed text-neutral-500">
+                  Connect from a mentor&apos;s profile to load their real availability. Sample windows below use a 30-minute
+                  session length.
+                </p>
+              )}
 
               {slotsLoading && mentorUserId ? (
                 <p className="mt-4 text-center text-sm text-neutral-500">Loading open times…</p>
@@ -786,14 +792,6 @@ function IconStopwatch({ className }: { className?: string }) {
     <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden>
       <circle cx="12" cy="13" r="8" stroke="currentColor" strokeWidth="1.5" />
       <path d="M12 9v4l2 2M9 3h6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-function IconX({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden>
-      <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
     </svg>
   );
 }

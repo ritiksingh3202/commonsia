@@ -5,7 +5,6 @@ import { useRef, useState } from "react";
 
 import { StudentSetupShell } from "./StudentSetupShell";
 import { setupField, setupLabel, setupRequiredStar } from "./student-ui";
-import { SetupGoogleCalendarConnect } from "@/components/setup/SetupGoogleCalendarConnect";
 import { SetupLinkedInNotice } from "@/components/setup/SetupLinkedInNotice";
 import { useProfileAutosave } from "@/hooks/useProfileAutosave";
 import type { StudentSetupUserSnapshot } from "@/lib/setup-load-user";
@@ -19,11 +18,9 @@ const btnPrimary =
 export function StudentSetupStep3({
   initial,
   linkedInConnected,
-  googleCalendarConnected = false,
 }: {
   initial?: StudentSetupUserSnapshot;
   linkedInConnected?: boolean;
-  googleCalendarConnected?: boolean;
 }) {
   const router = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
@@ -61,10 +58,6 @@ export function StudentSetupStep3({
             const li = linkedinUrl.trim();
             if (!li) {
               window.alert("Please add your LinkedIn profile URL.");
-              return;
-            }
-            if (!googleCalendarConnected) {
-              window.alert("Please connect Google Calendar before completing your profile.");
               return;
             }
             cancelPending();
@@ -173,24 +166,12 @@ export function StudentSetupStep3({
             </button>
           </div>
 
-          <SetupGoogleCalendarConnect
-            connected={googleCalendarConnected}
-            returnPath="/student/setup/3"
-            required
-            description="Required. Sessions are added to Google Calendar. If you signed in with Google, you may already be connected — otherwise use Connect below."
-          />
-
           <div className="flex flex-col gap-2 pt-1 sm:flex-row sm:gap-2">
             <button type="button" onClick={() => router.push("/student/setup/2")} className={btnGhost}>
               <ArrowLeft className="size-3.5" />
               Previous
             </button>
-            <button
-              type="submit"
-              disabled={!googleCalendarConnected || saving}
-              aria-busy={saving}
-              className={btnPrimary}
-            >
+            <button type="submit" disabled={saving} aria-busy={saving} className={btnPrimary}>
               {saving ? (
                 <>
                   <SpinnerIcon className="size-3.5" />

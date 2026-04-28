@@ -34,7 +34,9 @@ export const studentSetupUserSelect = {
   otherInterests: true,
   bio: true,
   portfolioUrl: true,
+  /** Legacy — UI uses `whatsappUrl`; kept so pre-migration rows can pre-fill the field. */
   phone: true,
+  whatsappUrl: true,
   linkedinUrl: true,
 } satisfies Prisma.UserSelect;
 

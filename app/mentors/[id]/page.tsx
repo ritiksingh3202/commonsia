@@ -104,6 +104,16 @@ export default async function PublicMentorPage({ params }: Props) {
 
   const viewerRole = sessionRole ?? viewerDb?.role ?? null;
 
+  const viewerHasPendingBookingRequest =
+    sessionUserId && linked && viewerRole === "student"
+      ? Boolean(
+          await prisma.bookingRequest.findFirst({
+            where: { studentId: sessionUserId, mentorId: linked, status: "pending" },
+            select: { id: true },
+          }),
+        )
+      : false;
+
   const profilePath = mentorProfileHref(mentor);
   const back = profilePath;
   const scheduleTarget = linked
@@ -164,6 +174,7 @@ export default async function PublicMentorPage({ params }: Props) {
       viewerPortfolio={viewerPortfolio}
       viewerSignedIn={Boolean(sessionUserId)}
       portfolioLoginHref={portfolioLoginHref}
+      viewerHasPendingBookingRequest={viewerHasPendingBookingRequest}
     />
   );
 }

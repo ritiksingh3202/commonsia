@@ -16,7 +16,7 @@ import {
   invalidatePublicMentorProfile,
   invalidatePublicMentorsList,
   invalidateStudentDashboard,
-  mentorMonthAvailabilityKeysForMentor,
+  mentorScheduleCacheKeysAfterAvailabilitySave,
 } from "@/lib/redis-cache";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
@@ -186,7 +186,7 @@ export async function PATCH(req: Request) {
   /** All cache invalidations are fire-and-forget so they never block the HTTP response. */
   invalidateStudentDashboard(session.user.id);
   if (body.mentorAvailabilityJson !== undefined) {
-    void delKeys(mentorMonthAvailabilityKeysForMentor(session.user.id));
+    void delKeys(mentorScheduleCacheKeysAfterAvailabilitySave(session.user.id));
   }
   if (updated.role === "mentor") {
     invalidatePublicMentorsList();

@@ -103,6 +103,12 @@ const nextConfig: NextConfig = {
      * & Safari 16+, with a safe WebP fallback for anything else.
      */
     formats: ["image/avif", "image/webp"],
+    /**
+     * Next 16: local `next/image` src with a `?` query must match `localPatterns`.
+     * Omit `search` so paths under `/` can use cache-bust (e.g. `/who_we_are_assets/x.png?v=…`)
+     * while plain paths (e.g. `/home_assets/steps.png`) still match.
+     */
+    localPatterns: [{ pathname: "/**" }],
     remotePatterns: [
       /** OAuth avatars (LinkedIn / Google) — optimized with high-res URL hints in MentorAvatar */
       { protocol: "https", hostname: "media.licdn.com", pathname: "/**" },

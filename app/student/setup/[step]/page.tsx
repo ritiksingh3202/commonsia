@@ -39,32 +39,18 @@ export default async function StudentSetupPage({
     redirect(`/auth/login?callbackUrl=${encodeURIComponent("/student")}`);
   }
 
-  /**
-   * Single findUnique collapses what used to be 3–4 sequential Postgres round-trips
-   * (user fields, LinkedIn account probe, raw googleCalendarRefreshToken read, and a Google
-   * Account fallback) into ONE query. Every "Save & Next" navigation triggers a server render,
-   * so cutting round-trips here directly speeds up the signup flow on Neon/Supabase.
-   *
-   * Google Calendar is considered connected when either the explicit refresh token column is set
-   * (dedicated "Connect Calendar" flow) OR a Google Account row carries an offline refresh_token
-   * (the user signed in with Google).
-   */
   const user = await prisma.user.findUnique({
     where: { id: session.user.id },
     select: {
       ...studentSetupUserSelect,
-      googleCalendarRefreshToken: true,
       accounts: {
-        where: { provider: { in: ["linkedin", "google"] } },
-        select: { provider: true, refresh_token: true },
+        where: { provider: "linkedin" },
+        select: { provider: true },
       },
     },
   });
 
   const linkedInConnected = !!user?.accounts?.some((a) => a.provider === "linkedin");
-  const googleCalendarConnected =
-    !!user?.googleCalendarRefreshToken?.trim() ||
-    !!user?.accounts?.some((a) => a.provider === "google" && a.refresh_token);
 
   const initial = user
     ? ({
@@ -79,6 +65,7 @@ export default async function StudentSetupPage({
         bio: user.bio,
         portfolioUrl: user.portfolioUrl,
         phone: user.phone,
+        whatsappUrl: user.whatsappUrl,
         linkedinUrl: user.linkedinUrl,
       })
     : undefined;
@@ -88,7 +75,6 @@ export default async function StudentSetupPage({
       <StudentSetupStep1
         initial={initial}
         linkedInConnected={linkedInConnected}
-        googleCalendarConnected={googleCalendarConnected}
       />
     );
   }
@@ -97,7 +83,6 @@ export default async function StudentSetupPage({
       <StudentSetupStep2
         initial={initial}
         linkedInConnected={linkedInConnected}
-        googleCalendarConnected={googleCalendarConnected}
       />
     );
   }
@@ -105,7 +90,6 @@ export default async function StudentSetupPage({
     <StudentSetupStep3
       initial={initial}
       linkedInConnected={linkedInConnected}
-      googleCalendarConnected={googleCalendarConnected}
     />
   );
 }

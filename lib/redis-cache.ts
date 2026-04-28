@@ -281,7 +281,7 @@ export function slotCacheKeysAround(mentorUserId: string, when: Date): string[] 
   return keys;
 }
 
-/** Booking changes Google busy — bust month grid for that month ±1. */
+/** Booking changes slot grids — bust month cache for that month ±1. */
 export function mentorMonthAvailabilityKeysAround(mentorUserId: string, when: Date): string[] {
   const keys: string[] = [];
   for (let dm = -1; dm <= 1; dm++) {
@@ -292,7 +292,7 @@ export function mentorMonthAvailabilityKeysAround(mentorUserId: string, when: Da
   return keys;
 }
 
-/** Saved availability changed — clear cached month grids (covers typical booking horizon). */
+/** Saved availability changed — clear cached month grids (typical booking horizon). */
 export function mentorMonthAvailabilityKeysForMentor(mentorUserId: string): string[] {
   const keys: string[] = [];
   const y0 = new Date().getFullYear();
@@ -300,6 +300,27 @@ export function mentorMonthAvailabilityKeysForMentor(mentorUserId: string): stri
     for (let month = 0; month < 12; month++) {
       keys.push(CacheKeys.mentorMonthAvailability(mentorUserId, year, month));
     }
+  }
+  return keys;
+}
+
+/** All per-day slot cache keys for one civil month (0-based `month`). */
+export function mentorSlotKeysForCalendarMonth(mentorUserId: string, year: number, month: number): string[] {
+  const dim = new Date(year, month + 1, 0).getDate();
+  const keys: string[] = [];
+  for (let day = 1; day <= dim; day++) {
+    keys.push(CacheKeys.mentorSlots(mentorUserId, year, month, day));
+  }
+  return keys;
+}
+
+/** When mentor availability JSON changes, bust month grids + slot rows for this month ±1 (covers calendar navigation). */
+export function mentorScheduleCacheKeysAfterAvailabilitySave(mentorUserId: string, now: Date = new Date()): string[] {
+  const keys = [...mentorMonthAvailabilityKeysForMentor(mentorUserId), ...slotCacheKeysAround(mentorUserId, now)];
+  for (let dm = -1; dm <= 1; dm++) {
+    const d = new Date(now.getTime());
+    d.setMonth(d.getMonth() + dm);
+    keys.push(...mentorSlotKeysForCalendarMonth(mentorUserId, d.getFullYear(), d.getMonth()));
   }
   return keys;
 }

@@ -1,17 +1,21 @@
+"use client";
+
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
+import { MentorDashboardQuickActions } from "@/components/mentor/MentorDashboardQuickActions";
 import type { MentorDashboardUser } from "@/components/mentor/mentor-dashboard-types";
 import { normalizeMentorYearsBand } from "@/components/mentor/mentor-setup-constants";
 import { MentorProfileHero } from "@/components/mentor/MentorProfileHero";
 import { profileSkillsSectionTitle } from "@/components/profile/profile-hero-classes";
 import { formatMentoringMinutesLong } from "@/lib/format-mentoring-minutes";
-import {
-  formatRelativePast,
-  formatSessionBadge,
-} from "@/lib/mentor-dashboard-stats";
+import { formatRelativePast, formatSessionBadge } from "@/lib/mentor-dashboard-format";
+import type { MentorDashboardLiveData } from "@/lib/mentor-dashboard-types";
 
 type Props = { user: MentorDashboardUser };
+
+const LIVE_POLL_MS = 35_000;
 
 /** Figma Main Content (130:6879) — cards use 14px radius, hairline border */
 const card =
@@ -52,7 +56,43 @@ function initials(name: string | null): string {
 
 /** Mentor-only home — profile header + dashboard sections aligned to product mockups. */
 export function MentorDashboard({ user }: Props) {
-  const live = user.dashboardLive;
+  const dashboardLiveKeyRef = useRef<string>("");
+  const [polledLive, setPolledLive] = useState<{ key: string; data: MentorDashboardLiveData } | null>(null);
+  const fetchQueueRef = useRef(Promise.resolve());
+
+  const dashboardLiveKey = JSON.stringify(user.dashboardLive ?? null);
+  useEffect(() => {
+    dashboardLiveKeyRef.current = dashboardLiveKey;
+  }, [dashboardLiveKey]);
+
+  const loadLive = useCallback(() => {
+    fetchQueueRef.current = fetchQueueRef.current.then(async () => {
+      try {
+        const r = await fetch("/api/mentor/dashboard-live", { cache: "no-store" });
+        if (!r.ok) return;
+        const j = (await r.json()) as MentorDashboardLiveData;
+        setPolledLive({ key: dashboardLiveKeyRef.current, data: j });
+      } catch {
+        /* ignore */
+      }
+    });
+    return fetchQueueRef.current;
+  }, []);
+
+  useEffect(() => {
+    void loadLive();
+    const id = window.setInterval(() => void loadLive(), LIVE_POLL_MS);
+    const onVis = () => {
+      if (document.visibilityState === "visible") void loadLive();
+    };
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      window.clearInterval(id);
+      document.removeEventListener("visibilitychange", onVis);
+    };
+  }, [loadLive]);
+
+  const live = (polledLive?.key === dashboardLiveKey ? polledLive.data : null) ?? user.dashboardLive;
   const expertise = Array.isArray(user.mentorExpertise)
     ? (user.mentorExpertise as string[]).filter(Boolean)
     : [];
@@ -359,31 +399,7 @@ export function MentorDashboard({ user }: Props) {
         </div>
 
         <aside className="space-y-5">
-          <section className={card}>
-            <h3 className="text-base font-medium text-[#0a0a0a]">
-              Quick Actions
-            </h3>
-            <div className="mt-4 flex flex-col gap-2.5">
-              <button
-                type="button"
-                className="h-8 w-full rounded-lg bg-primary text-[14px] font-medium text-white shadow-sm transition hover:bg-primary/90"
-              >
-                Schedule Session
-              </button>
-              <button
-                type="button"
-                className="h-8 w-full rounded-lg border border-black/10 bg-white text-[14px] font-medium text-[#0a0a0a] hover:bg-neutral-50"
-              >
-                Join Discussion
-              </button>
-              <button
-                type="button"
-                className="h-8 w-full rounded-lg border border-black/10 bg-white text-[14px] font-medium text-[#0a0a0a] hover:bg-neutral-50"
-              >
-                Create Resource
-              </button>
-            </div>
-          </section>
+          <MentorDashboardQuickActions />
 
           <section className={card}>
             <h3 className="text-base font-medium text-[#0a0a0a]">
@@ -410,6 +426,7 @@ export function MentorDashboard({ user }: Props) {
                       time={`${timeStr} IST`}
                       badge={badge.label}
                       badgeClass={badge.className}
+                      meetLink={s.googleMeetLink}
                     />
                   );
                 })}
@@ -487,13 +504,16 @@ function SessionRow({
   time,
   badge,
   badgeClass,
+  meetLink,
 }: {
   name: string;
   topic: string;
   time: string;
   badge: string;
   badgeClass: string;
+  meetLink?: string | null;
 }) {
+  const meet = meetLink?.trim() ?? "";
   return (
     <li className="rounded-[10px] border border-black/10 px-3 py-3">
       <div className="flex items-start justify-between gap-2">
@@ -506,6 +526,16 @@ function SessionRow({
       </div>
       <p className="mt-2 text-sm leading-5 text-[#4a5565]">{topic}</p>
       <p className="mt-0.5 text-sm leading-5 text-[#4a5565]">{time}</p>
+      {meet ? (
+        <a
+          href={meet}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-2 inline-flex min-h-8 items-center justify-center rounded-lg bg-emerald-600 px-3 text-xs font-semibold text-white transition hover:bg-emerald-600/92"
+        >
+          Join Google Meet
+        </a>
+      ) : null}
     </li>
   );
 }

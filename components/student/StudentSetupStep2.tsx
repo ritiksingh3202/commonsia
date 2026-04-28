@@ -17,7 +17,6 @@ import {
 import { interestStateFromServer, interestsPayloadFromSelection } from "@/components/student/student-interest-sync";
 import { StudentSetupShell } from "./StudentSetupShell";
 import { setupField, setupLabel, setupRequiredStar } from "./student-ui";
-import { SetupGoogleCalendarConnect } from "@/components/setup/SetupGoogleCalendarConnect";
 import { SetupLinkedInNotice } from "@/components/setup/SetupLinkedInNotice";
 import { useProfileAutosave } from "@/hooks/useProfileAutosave";
 import { interestsToStringList, type StudentSetupUserSnapshot } from "@/lib/setup-load-user";
@@ -59,11 +58,9 @@ function parseSoftwareFromSaved(raw: string | null | undefined): {
 export function StudentSetupStep2({
   initial,
   linkedInConnected,
-  googleCalendarConnected = false,
 }: {
   initial?: StudentSetupUserSnapshot;
   linkedInConnected?: boolean;
-  googleCalendarConnected?: boolean;
 }) {
   const router = useRouter();
   const { schedule: scheduleSave, cancelPending } = useProfileAutosave();
@@ -316,13 +313,6 @@ export function StudentSetupStep2({
               </div>
             )}
           </div>
-
-          <SetupGoogleCalendarConnect
-            connected={googleCalendarConnected}
-            returnPath="/student/setup/2"
-            required
-            description="Required before you can finish profile setup (step 3). If you signed in with Google, this may already show as connected."
-          />
 
           <div className="flex flex-col gap-2 sm:flex-row sm:gap-2">
             <button type="button" onClick={() => router.push("/student/setup/1")} className={btnGhost}>

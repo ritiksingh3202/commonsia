@@ -1,3 +1,4 @@
+import { enrichMeetLinksOnBookings } from "@/lib/booking-resolve-google-meet";
 import { CHAT_ACTIVE, CHAT_PENDING } from "@/lib/chat-thread-status";
 import {
   countPastBookings,
@@ -58,6 +59,7 @@ async function loadStudentDashboardPayload(userId: string): Promise<StudentDashb
       yearOfStudy: true,
       major: true,
       phone: true,
+      whatsappUrl: true,
       interests: true,
       otherInterests: true,
       softwareSkills: true,
@@ -104,6 +106,8 @@ async function loadStudentDashboardPayload(userId: string): Promise<StudentDashb
   const unreadThreads = threadsWithLastMessage.filter(
     (t) => t.messages[0] && t.messages[0].senderId !== userId,
   ).length;
+
+  await enrichMeetLinksOnBookings(upcomingBookings);
 
   const seenMentor = new Set<string>();
   const mentorsWithUpcomingSessions: StudentDashboardPayload["mentorsWithUpcomingSessions"] = [];

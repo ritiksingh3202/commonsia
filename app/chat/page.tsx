@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import { MentorChatPage } from "@/components/chat/MentorChatPage";
 import { buildMonthlyWeekdayConsumedMap } from "@/lib/mentor-monthly-booking";
+import { mergeAvailabilityForSlot } from "@/lib/mentor-availability-merge";
 import { formatNextAvailableSlotLine, type NextSlotMonthlyConsumedLookup } from "@/lib/mentor-next-slot";
 import { prisma } from "@/lib/prisma";
 
@@ -32,6 +33,7 @@ export default async function ChatPage({ searchParams }: { searchParams: Promise
   const rawMentorId = sp.mentorUserId?.trim();
   let availabilitySummary: string | null = null;
   let mentorUserId: string | null = null;
+  let sessionDurationMinutes: number | null = null;
   if (rawMentorId) {
     const u = await prisma.user.findUnique({
       where: { id: rawMentorId },
@@ -39,6 +41,7 @@ export default async function ChatPage({ searchParams }: { searchParams: Promise
     });
     if (u?.role === "mentor") {
       mentorUserId = rawMentorId;
+      sessionDurationMinutes = mergeAvailabilityForSlot(u.mentorAvailabilityJson).sessionDurationMinutes;
       const since = new Date();
       since.setMonth(since.getMonth() - 6);
       const bookings = await prisma.mentoringBooking.findMany({
@@ -68,6 +71,7 @@ export default async function ChatPage({ searchParams }: { searchParams: Promise
       backHref={backHref}
       availabilitySummary={availabilitySummary}
       mentorUserId={mentorUserId}
+      sessionDurationMinutes={sessionDurationMinutes}
     />
   );
 }

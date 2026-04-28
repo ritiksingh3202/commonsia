@@ -20,18 +20,16 @@ export function getStudentOnboardingRedirectPath(user: {
   university: string | null;
   yearOfStudy: string | null;
   major: string | null;
-  phone: string | null;
+  whatsappUrl: string | null;
+  /** @deprecated Prefer whatsappUrl; still accepted until all rows are migrated. */
+  phone?: string | null;
   interests: unknown;
   otherInterests: string | null;
   softwareSkills: string | null;
 }): string | null {
   if (user.profileComplete) return null;
-  if (
-    !user.university?.trim() ||
-    !user.yearOfStudy?.trim() ||
-    !user.major?.trim() ||
-    !user.phone?.trim()
-  ) {
+  const hasWhatsApp = Boolean(user.whatsappUrl?.trim() || user.phone?.trim());
+  if (!user.university?.trim() || !user.yearOfStudy?.trim() || !user.major?.trim() || !hasWhatsApp) {
     return "/student/setup/1";
   }
   if (!studentInterestsStepSatisfied(user.interests, user.otherInterests)) {

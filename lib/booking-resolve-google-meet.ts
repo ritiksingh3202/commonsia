@@ -1,5 +1,6 @@
 import { google } from "googleapis";
 
+import { getGoogleAdminOAuth2Client } from "@/lib/google-calendar-admin-client";
 import { getGoogleCalendarOAuth2Client } from "@/lib/google-calendar-oauth-client";
 import { meetLinkFromCalendarEventPayload } from "@/lib/google-calendar-meet-link";
 import { prisma } from "@/lib/prisma";
@@ -37,6 +38,30 @@ async function runResolve(bookingId: string): Promise<string | null> {
   const lastFail = lastEmptyResolveAt.get(bookingId);
   if (lastFail !== undefined && Date.now() - lastFail < THROTTLE_MS_AFTER_EMPTY) {
     return (await readMeetLinkOnly(bookingId)) ?? null;
+  }
+
+  /** Booking-request accepts create events on the Commonsia admin calendar first. */
+  const admin = getGoogleAdminOAuth2Client();
+  if (admin) {
+    try {
+      const calendar = google.calendar({ version: "v3", auth: admin });
+      const res = await calendar.events.get({
+        calendarId: "primary",
+        eventId,
+      });
+      const link = res.data ? meetLinkFromCalendarEventPayload(res.data) : null;
+      if (link?.trim()) {
+        const trimmed = link.trim();
+        await prisma.mentoringBooking.update({
+          where: { id: bookingId },
+          data: { googleMeetLink: trimmed },
+        });
+        lastEmptyResolveAt.delete(bookingId);
+        return trimmed;
+      }
+    } catch {
+      /* Event may not be on admin primary in older flows */
+    }
   }
 
   for (const userId of [row.studentId, row.mentorId]) {
@@ -79,4 +104,20 @@ export async function resolveAndPersistMeetLinkForBooking(bookingId: string): Pr
   });
   inflight.set(bookingId, p);
   return p;
+}
+
+/** Best-effort: fill `googleMeetLink` on in-memory rows (and DB) for dashboards after admin Calendar creates the Meet. */
+export async function enrichMeetLinksOnBookings(
+  rows: { id: string; googleMeetLink: string | null; googleEventId: string | null }[],
+  limit = 8,
+): Promise<void> {
+  let n = 0;
+  for (const r of rows) {
+    if (n >= limit) break;
+    if (r.googleMeetLink?.trim()) continue;
+    if (!r.googleEventId?.trim()) continue;
+    n++;
+    const link = await resolveAndPersistMeetLinkForBooking(r.id);
+    if (link) r.googleMeetLink = link;
+  }
 }

@@ -11,12 +11,13 @@ import { NavNotificationsBell } from "@/components/navbar/NavNotificationsBell";
 
 const nav = [
   { href: "/mentors", label: "Mentors" },
-  { href: "/#who-we-are", label: "Who We Are" },
+  { href: "/who-we-are", label: "Who We Are" },
   { href: "/contact", label: "Contact Us" },
 ];
 
 function isActive(pathname: string, href: string) {
   if (href === "/mentors") return pathname === "/mentors";
+  if (href === "/who-we-are") return pathname === "/who-we-are";
   if (href === "/contact") return pathname === "/contact";
   return false;
 }
@@ -97,6 +98,7 @@ export function Navbar() {
     const id = window.setTimeout(() => {
       startTransition(() => {
         router.prefetch("/mentors");
+        router.prefetch("/who-we-are");
         router.prefetch("/contact");
         router.prefetch("/auth");
       });

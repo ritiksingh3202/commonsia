@@ -104,6 +104,7 @@ export default async function AuthContinuePage({
       university: user.university,
       yearOfStudy: user.yearOfStudy,
       major: user.major,
+      whatsappUrl: user.whatsappUrl,
       phone: user.phone,
       interests: user.interests,
       otherInterests: user.otherInterests,

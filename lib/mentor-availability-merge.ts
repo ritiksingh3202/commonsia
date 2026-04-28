@@ -5,6 +5,8 @@ import {
   type MentorAvailabilityJson,
 } from "@/components/mentor/mentor-setup-constants";
 
+const SESSION_DURATIONS = new Set<number>([15, 30, 45, 60, 90]);
+
 /** Merge saved JSON into defaults (used by booking + card copy). */
 export function mergeAvailabilityForSlot(raw: unknown): MentorAvailabilityJson {
   const d = defaultMentorAvailability();
@@ -12,6 +14,9 @@ export function mergeAvailabilityForSlot(raw: unknown): MentorAvailabilityJson {
   const o = raw as Partial<MentorAvailabilityJson>;
   if (o.availabilityType === "weekly" || o.availabilityType === "specific") {
     d.availabilityType = o.availabilityType;
+  }
+  if (typeof o.sessionDurationMinutes === "number" && SESSION_DURATIONS.has(o.sessionDurationMinutes)) {
+    d.sessionDurationMinutes = o.sessionDurationMinutes as MentorAvailabilityJson["sessionDurationMinutes"];
   }
   d.availabilityWindowKind = normalizeAvailabilityWindowKind(
     typeof o.availabilityWindowKind === "string" ? o.availabilityWindowKind : undefined,

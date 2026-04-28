@@ -3,27 +3,31 @@
 import Link from "next/link";
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 
-import { GoogleCalendarRequiredModal } from "@/components/onboarding/GoogleCalendarRequiredModal";
 import { ProfileCompletionWelcome } from "@/components/onboarding/ProfileCompletionWelcome";
+import { WipComingSoonModal, type WipComingSoonVariant } from "@/components/shared/WipComingSoonModal";
 import { StudentProfileHero } from "@/components/student/StudentProfileHero";
 import type { StudentProfileUser } from "@/components/student/student-profile-types";
 import { formatSessionStartDisplay } from "@/lib/booking-datetime-display";
 import type { StudentDashboardPayload } from "@/lib/student-dashboard-data";
 
-/** Background refresh only — avoid overlapping slow requests (server + transfer). */
-const POLL_MS = 120_000;
+/** Background refresh — faster after WhatsApp accept so Meet + upcoming list stay current. */
+const POLL_MS = 35_000;
 
-const recommendations: { title: string; meta: string; href: string; cta: string }[] = [
+type RecommendationItem =
+  | { title: string; meta: string; cta: string; comingSoon: WipComingSoonVariant }
+  | { title: string; meta: string; cta: string; href: string };
+
+const recommendations: RecommendationItem[] = [
   {
     title: "Join the discussion",
     meta: "Community • Ask questions and meet peers on Contact",
-    href: "/contact",
+    comingSoon: "discussion",
     cta: "Open",
   },
   {
     title: "Browse upcoming opportunities",
     meta: "Events & workshops • Stay in the loop via Who We Are",
-    href: "/#who-we-are",
+    comingSoon: "opportunities",
     cta: "Explore",
   },
   {
@@ -94,13 +98,12 @@ function initialsFromName(name: string | null | undefined): string {
 export function StudentDashboard({
   user,
   initialDashboard,
-  googleCalendarConnected,
 }: {
   user: StudentProfileUser;
   initialDashboard: StudentDashboardPayload;
-  googleCalendarConnected: boolean;
 }) {
   const [data, setData] = useState(initialDashboard);
+  const [wip, setWip] = useState<WipComingSoonVariant | null>(null);
   /** Serialize dashboard fetches so a slow response cannot stack parallel 2MB downloads. */
   const loadQueueRef = useRef(Promise.resolve());
 
@@ -153,7 +156,7 @@ export function StudentDashboard({
 
   return (
     <div className="w-full">
-      <GoogleCalendarRequiredModal googleCalendarConnected={googleCalendarConnected} variant="student" />
+      <WipComingSoonModal variant={wip} onClose={() => setWip(null)} />
       <Suspense fallback={null}>
         <ProfileCompletionWelcome variant="student" />
       </Suspense>
@@ -300,12 +303,22 @@ export function StudentDashboard({
                       <p className="text-[15px] font-medium text-[#0a0a0a]">{r.title}</p>
                       <p className="mt-0.5 text-[13px] text-[#6b7280]">{r.meta}</p>
                     </div>
-                    <Link
-                      href={r.href}
-                      className={`${rowBtn} border border-black/[0.12] bg-white text-[#0a0a0a] hover:bg-neutral-50`}
-                    >
-                      {r.cta}
-                    </Link>
+                    {"comingSoon" in r ? (
+                      <button
+                        type="button"
+                        onClick={() => setWip(r.comingSoon)}
+                        className={`${rowBtn} border border-black/[0.12] bg-white text-[#0a0a0a] hover:bg-neutral-50`}
+                      >
+                        {r.cta}
+                      </button>
+                    ) : (
+                      <Link
+                        href={r.href}
+                        className={`${rowBtn} border border-black/[0.12] bg-white text-[#0a0a0a] hover:bg-neutral-50`}
+                      >
+                        {r.cta}
+                      </Link>
+                    )}
                   </li>
                 ))}
               </ul>
@@ -328,12 +341,13 @@ export function StudentDashboard({
                 >
                   {hasPortfolio ? "View portfolio" : "Upload portfolio"}
                 </Link>
-                <Link
-                  href="/contact"
+                <button
+                  type="button"
+                  onClick={() => setWip("discussion")}
                   className="flex h-10 items-center justify-center rounded-lg border border-black/[0.1] bg-white text-[13px] font-medium text-[#0a0a0a] transition-colors hover:bg-neutral-50"
                 >
                   Join discussion
-                </Link>
+                </button>
               </div>
             </section>
 

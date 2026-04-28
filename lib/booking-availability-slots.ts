@@ -131,8 +131,8 @@ export function getAllowedSlotLabelsForDate(
   }
 
   const winKind = normalizeAvailabilityWindowKind(av.availabilityWindowKind);
-  const defaultHorizon =
-    winKind === "fifteen_days" ? 15 : winKind === "monthly" ? 120 : winKind === "weekends" ? 21 : 21;
+  /** Short horizon only for the explicit “next N days” pattern; weekly / weekends / monthly use the full cap so the booking calendar works across the year. */
+  const defaultHorizon = winKind === "fifteen_days" ? 15 : 180;
   const horizon = Math.min(Math.max(av.planningHorizonDays ?? defaultHorizon, 1), 180);
   const diff = daysFromTodayTo(iso, todayIso);
   if (diff < 0 || diff >= horizon) return [];
@@ -256,6 +256,124 @@ export function getBookableSlotSegmentsForDate(
     }
   }
   return out;
+}
+
+function buildConsecutiveSlotStartGroups(sorted: string[]): string[][] {
+  const groups: string[][] = [];
+  let cur: string[] = [];
+  for (const lab of sorted) {
+    const idx = SLOT_INDEX.get(lab);
+    if (idx === undefined) continue;
+    if (cur.length === 0) {
+      cur = [lab];
+      continue;
+    }
+    const prev = cur[cur.length - 1]!;
+    const prevIdx = SLOT_INDEX.get(prev);
+    if (prevIdx === undefined) {
+      cur = [lab];
+      continue;
+    }
+    if (idx === prevIdx + 1) cur.push(lab);
+    else {
+      groups.push(cur);
+      cur = [lab];
+    }
+  }
+  if (cur.length) groups.push(cur);
+  return groups;
+}
+
+function emitBookableWindowsFromLabelGroups(
+  groups: string[][],
+  year: number,
+  monthIndex: number,
+  day: number,
+  sessionDurationMinutes: number,
+  allowedDay: Set<string>,
+): BookableSlotSegment[] {
+  const out: BookableSlotSegment[] = [];
+  for (const g of groups) {
+    const first = g[0]!;
+    const last = g[g.length - 1]!;
+    const needed = requiredHalfHourStartsForDuration(first, sessionDurationMinutes);
+    if (!needed?.length) continue;
+    if (!needed.every((l) => allowedDay.has(l))) continue;
+    const gSet = new Set(g);
+    if (!needed.every((l) => gSet.has(l))) continue;
+
+    const lastIdx = SLOT_INDEX.get(last);
+    if (lastIdx === undefined) continue;
+    const endBoundary = MENTOR_TIME_SLOTS_HALF[lastIdx + 1];
+    if (!endBoundary) continue;
+
+    try {
+      const { startISO } = istSlotRangeToISO(year, monthIndex, day, first, 30);
+      const { endISO } = istSlotRangeToISO(year, monthIndex, day, last, 30);
+      out.push({
+        startLabel: first,
+        startISO,
+        endISO,
+        rangeLabelIst: `${first} – ${endBoundary}`,
+      });
+    } catch {
+      /* skip */
+    }
+  }
+  return out;
+}
+
+/**
+ * Same window rules as {@link getBookableAvailabilityWindowsForDate}, for callers that already
+ * have sorted IST half-hour **start** labels (e.g. schedule page demo fallback).
+ */
+export function bookableWindowsFromSortedHalfHourStarts(
+  sortedHalfHourStartLabels: string[],
+  year: number,
+  monthIndex: number,
+  day: number,
+  sessionDurationMinutes: number,
+): BookableSlotSegment[] {
+  const sorted = sortSlotLabels([...sortedHalfHourStartLabels]);
+  if (!sorted.length) return [];
+  return emitBookableWindowsFromLabelGroups(
+    buildConsecutiveSlotStartGroups(sorted),
+    year,
+    monthIndex,
+    day,
+    sessionDurationMinutes,
+    new Set(sorted),
+  );
+}
+
+/**
+ * One row per **contiguous** mentor availability band (IST half-hour grid), e.g. "10:00 AM – 01:00 PM".
+ * `startISO` / `endISO` span the full band for display; booking should use `startISO` plus
+ * {@link MentorAvailabilityJson.sessionDurationMinutes} from merged availability.
+ */
+export function getBookableAvailabilityWindowsForDate(
+  raw: unknown,
+  year: number,
+  monthIndex: number,
+  day: number,
+  now: Date = new Date(),
+  opts?: SlotResolutionOptions,
+): BookableSlotSegment[] {
+  const av = mergeAvailabilityForSlot(raw);
+  const sessionDur = av.sessionDurationMinutes;
+  let labels = getAllowedSlotLabelsForDate(av, year, monthIndex, day, now, opts);
+  labels = filterPastSlotLabels(labels, year, monthIndex, day, now);
+  if (labels.length === 0) return [];
+
+  const sorted = sortSlotLabels([...labels]);
+  return emitBookableWindowsFromLabelGroups(
+    buildConsecutiveSlotStartGroups(sorted),
+    year,
+    monthIndex,
+    day,
+    sessionDur,
+    new Set(sorted),
+  );
 }
 
 export function validateBookingInAvailability(

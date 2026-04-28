@@ -102,3 +102,67 @@ ${extra}
     }
   }
 }
+
+export async function sendBookingRejectedEmail(opts: {
+  studentEmail: string;
+  studentName: string | null;
+  mentorName: string | null;
+  start: Date;
+  end: Date;
+  reason?: string | null;
+}): Promise<void> {
+  const apiKey = process.env.RESEND_API_KEY?.trim();
+  if (!apiKey) {
+    console.info(
+      "[booking] RESEND_API_KEY not set — skipping Commonsia rejection email. Set RESEND_API_KEY and RESEND_FROM_EMAIL to enable.",
+    );
+    return;
+  }
+
+  const from =
+    process.env.RESEND_FROM_EMAIL?.trim() ||
+    "Commonsia Bookings <onboarding@resend.dev>";
+
+  const when = opts.start.toLocaleString(undefined, {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+  const durationMin = Math.max(1, Math.round((opts.end.getTime() - opts.start.getTime()) / 60_000));
+  const studentN = opts.studentName?.trim() || "Student";
+  const mentorN = opts.mentorName?.trim() || "Mentor";
+  const reason = opts.reason?.trim();
+
+  const html = `<!DOCTYPE html><html><body style="font-family:system-ui,sans-serif;line-height:1.5;color:#111">
+<p>Hi ${studentN},</p>
+<p>Your session request with <strong>${mentorN}</strong> was not accepted.</p>
+<p><strong>When:</strong> ${when} (${durationMin} min)</p>
+${reason ? `<p><strong>Reason:</strong> ${reason}</p>` : ""}
+<p>You can request another time slot from the mentor’s profile.</p>
+<p style="font-size:13px;color:#666">— Commonsia</p>
+</body></html>`;
+
+  try {
+    const res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from,
+        to: [opts.studentEmail.trim()],
+        subject: `Session request not accepted: ${mentorN}`,
+        html,
+      }),
+    });
+    if (!res.ok) {
+      const t = await res.text().catch(() => "");
+      console.error("Resend booking rejection email failed:", res.status, t);
+    }
+  } catch (e) {
+    console.error("Resend booking rejection email error:", e);
+  }
+}

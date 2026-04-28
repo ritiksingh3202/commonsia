@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { useCallback, useState, type ReactNode } from "react";
 
 import { isDefaultProfileCoverPath, profileCoverAspectStyle } from "@/lib/profile-cover";
 
@@ -40,11 +40,11 @@ export function ProfileCover({
   className,
   children,
 }: ProfileCoverProps) {
-  const [failed, setFailed] = useState(false);
+  const [failedSrc, setFailedSrc] = useState<string | null>(null);
   const hasSrc = Boolean(imageSrc?.trim());
-  const showImage = hasSrc && !failed;
+  const showImage = hasSrc && failedSrc !== imageSrc;
 
-  const onImgError = useCallback(() => setFailed(true), []);
+  const onImgError = useCallback(() => setFailedSrc(imageSrc), [imageSrc]);
 
   /** Default asset must use a plain <img>: Next/Image + optimizer can fail on `/file.png?v=` and hid the cover until a custom upload “fixed” it. */
   const isDefaultCover = isDefaultProfileCoverPath(imageSrc);
@@ -63,10 +63,6 @@ export function ProfileCover({
     !isDataOrBlobUrl(imageSrc) &&
     !isRemoteHttpUrl(imageSrc) &&
     imageSrc.startsWith("/");
-
-  useEffect(() => {
-    setFailed(false);
-  }, [imageSrc]);
 
   const aspect = profileCoverAspectStyle();
 

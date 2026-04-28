@@ -25,6 +25,8 @@ type Peer = {
   instagramUrl: string | null;
   whatsappUrl: string | null;
   portfolioUrl: string | null;
+  /** Present when `role === "mentor"` — from saved availability. */
+  mentorSessionDurationMinutes?: number | null;
 };
 
 export type ThreadListItem = {
