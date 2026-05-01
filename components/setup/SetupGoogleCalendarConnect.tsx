@@ -27,7 +27,7 @@ export function SetupGoogleCalendarConnect({ connected, returnPath, description,
     } else if (c === "error") {
       alerted.current = true;
       window.alert(
-        "Could not connect Google Calendar. Try again or check GOOGLE_CLIENT_* and redirect URI in Google Cloud.",
+        "Could not connect Google Calendar. Try again or check GOOGLE_MEET_CLIENT_* (or login Google OAuth vars) and redirect URI in Google Cloud.",
       );
     }
   }, [router]);

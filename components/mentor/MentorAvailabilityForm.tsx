@@ -28,6 +28,7 @@ import {
   slotLabelsForPresetsSelected,
   WEEKEND_TIME_PRESETS,
 } from "@/lib/mentor-availability-patterns";
+import { mergeAvailabilityForSlot } from "@/lib/mentor-availability-merge";
 import { todayIsoInBookingTz } from "@/lib/booking-availability-slots";
 import {
   compactRangesFromLabels,
@@ -35,6 +36,8 @@ import {
   labelsFromCompactRanges,
   type DayIntervalRow,
   sortSlotLabels,
+  weeklyIntervalBandsFromRows,
+  weeklyRowsFromPersisted,
   weeklyRowsFromSlotMap,
   weeklySlotsFromRows,
 } from "@/lib/mentor-availability-slots";
@@ -233,9 +236,12 @@ type Props = {
 export function MentorAvailabilityForm({ initialJson, mentorOnboardingComplete }: Props) {
   const router = useRouter();
   const base = useMemo(() => mergeAvailability(initialJson), [initialJson]);
+  const slotProfile = useMemo(() => mergeAvailabilityForSlot(initialJson), [initialJson]);
 
   const [tab, setTab] = useState<TabId>("weekly");
-  const [weeklyRows, setWeeklyRows] = useState<DayIntervalRow[]>(() => weeklyRowsFromSlotMap(base.weeklySlots));
+  const [weeklyRows, setWeeklyRows] = useState<DayIntervalRow[]>(() =>
+    weeklyRowsFromPersisted(slotProfile.weeklySlots, slotProfile.weeklyIntervalBands),
+  );
   const [sessionTemplates, setSessionTemplates] = useState<SessionTemplateRow[]>(
     () => (base.sessionTemplates?.length ? base.sessionTemplates : defaultSessionTemplates()),
   );
@@ -272,7 +278,8 @@ export function MentorAvailabilityForm({ initialJson, mentorOnboardingComplete }
 
   useEffect(() => {
     const merged = mergeAvailability(initialJson);
-    setWeeklyRows(weeklyRowsFromSlotMap(merged.weeklySlots));
+    const slotted = mergeAvailabilityForSlot(initialJson);
+    setWeeklyRows(weeklyRowsFromPersisted(slotted.weeklySlots, slotted.weeklyIntervalBands));
     setSessionTemplates(merged.sessionTemplates?.length ? merged.sessionTemplates : defaultSessionTemplates());
     const ov = overridesFromAv(merged);
     setOverrideRows(ov.length ? ov : []);
@@ -559,6 +566,7 @@ export function MentorAvailabilityForm({ initialJson, mentorOnboardingComplete }
         blockedDates,
         extraAvailabilitySlots,
         acceptingNewMentees,
+        weeklyIntervalBands: {},
       };
     }
 
@@ -600,6 +608,8 @@ export function MentorAvailabilityForm({ initialJson, mentorOnboardingComplete }
       blockedDates,
       extraAvailabilitySlots,
       acceptingNewMentees,
+      weeklyIntervalBands:
+        kind === "fifteen_days" || kind === "monthly" ? {} : weeklyIntervalBandsFromRows(weeklyRows),
     };
   };
 
@@ -632,7 +642,7 @@ export function MentorAvailabilityForm({ initialJson, mentorOnboardingComplete }
       } catch {
         if (!cancelled) setAutoSaveState("error");
       }
-    }, 1600);
+    }, 1100);
     return () => {
       cancelled = true;
       if (autosaveTimerRef.current) window.clearTimeout(autosaveTimerRef.current);

@@ -69,6 +69,11 @@ export const CacheKeys = {
   /** Short-lived NX lock to reduce double-booking the same mentor slot (see `tryAcquireSlotBookingLock`). */
   bookingSlotLock: (mentorUserId: string, startIso: string) =>
     `${PREFIX}:lock:slot:${mentorUserId}:${startIso}`,
+  /**
+   * Ephemeral copy of `BookingRequest` action raw token (DB stores hash only). Used to sign catalog
+   * links when the mentor taps WhatsApp quick-reply "Accept" (no signed token in the message).
+   */
+  bookingActionRawToken: (bookingRequestId: string) => `${PREFIX}:booking:rawtok:v1:${bookingRequestId}`,
   /** Navbar notification bell summary per user — 15s TTL, invalidated on chat/booking events. */
   notificationsSummary: (userId: string) => `${PREFIX}:notif:summary:v1:${userId}`,
 } as const;
@@ -187,6 +192,38 @@ export async function withJsonCache<T>(key: string, ttlSeconds: number, fetcher:
   return fresh;
 }
 
+const BOOKING_ACTION_RAW_TOKEN_TTL_SEC = 60 * 60 * 24 * 14;
+
+/** Mirror booking raw token at request creation — enables WhatsApp quick-reply Accept without opening GET links. No-op when Redis is unset. */
+export async function rememberBookingActionRawToken(bookingRequestId: string, rawToken: string): Promise<void> {
+  const r = getRedis();
+  if (!r || !bookingRequestId?.trim() || !rawToken?.trim()) return;
+  try {
+    await r.set(CacheKeys.bookingActionRawToken(bookingRequestId.trim()), rawToken.trim(), {
+      ex: BOOKING_ACTION_RAW_TOKEN_TTL_SEC,
+    });
+  } catch {
+    /* ignore */
+  }
+}
+
+/** Read without deleting — caller signs catalog URLs before clearing via {@link forgetBookingActionRawToken}. */
+export async function peekBookingActionRawToken(bookingRequestId: string): Promise<string | null> {
+  const r = getRedis();
+  if (!r || !bookingRequestId?.trim()) return null;
+  try {
+    const v = await r.get<string>(CacheKeys.bookingActionRawToken(bookingRequestId.trim()));
+    return typeof v === "string" && v.length > 0 ? v : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function forgetBookingActionRawToken(bookingRequestId: string): Promise<void> {
+  if (!bookingRequestId?.trim()) return;
+  await delKeys([CacheKeys.bookingActionRawToken(bookingRequestId.trim())]);
+}
+
 export async function delKeys(keys: string[]): Promise<void> {
   const r = getRedis();
   if (!r || keys.length === 0) return;
@@ -220,11 +257,14 @@ export function invalidateStudentDashboard(userId: string): void {
 
 export function invalidatePublicMentorsList(): void {
   void delKeys([CacheKeys.publicMentorsList()]);
-  try {
-    revalidateTag(PUBLIC_MENTORS_REVALIDATE_TAG, "max");
-  } catch {
-    /* e.g. called outside a Next server context */
-  }
+  /** Defer — `revalidateTag` can stall the profiler PATCH response on busy hosts; Redis key is already cleared above. */
+  queueMicrotask(() => {
+    try {
+      revalidateTag(PUBLIC_MENTORS_REVALIDATE_TAG, "max");
+    } catch {
+      /* e.g. called outside a Next server context */
+    }
+  });
 }
 
 /** Drop the single-mentor profile cache (call after the mentor edits profile/avatar/banner). */

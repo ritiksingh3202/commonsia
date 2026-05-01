@@ -2,10 +2,10 @@
 
 import { motion } from "framer-motion";
 import Link from "next/link";
-import { useSession } from "next-auth/react";
 
 import { MentorAvatar } from "@/components/mentors/MentorAvatar";
 import type { Mentor } from "@/lib/mentor-directory";
+import { mentorScheduleHref } from "@/lib/mentor-schedule-href";
 import { mentorProfileHref } from "@/lib/mentor-slug";
 
 const MAX_SKILL_TAGS_ON_CARD = 5;
@@ -15,16 +15,15 @@ export function MentorCard({
   mentor,
   index,
   layout = "default",
+  /** From server `auth()` — avoids `useSession` so cards work under `next/dynamic` SSR without context issues. */
+  viewerUserId = null,
 }: {
   mentor: Mentor;
   index: number;
   layout?: "default" | "spotlight";
+  viewerUserId?: string | null;
 }) {
-  const { data: session } = useSession();
-  const scheduleTarget = `/schedule?mentorUserId=${encodeURIComponent(mentor.id)}`;
-  const scheduleHref = session?.user?.id
-    ? scheduleTarget
-    : `/auth/login?callbackUrl=${encodeURIComponent(scheduleTarget)}`;
+  const scheduleHref = mentorScheduleHref(mentor.id, viewerUserId);
 
   const profileHref = mentorProfileHref(mentor);
   const visibleTags = mentor.tags.slice(0, MAX_SKILL_TAGS_ON_CARD);

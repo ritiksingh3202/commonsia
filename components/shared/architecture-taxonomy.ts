@@ -139,12 +139,12 @@ export function mentorExpertiseStateFromServer(
   let other = "";
   if (strayForOther.length) {
     ids.add(otherLabel);
-    other = strayForOther.join(", ");
+    other = strayForOther.join("\n");
   }
   return { sel: ids, other };
 }
 
-/** Stable order: taxonomy order, then optional free-text from “Other”. */
+/** Stable order: taxonomy order, then optional free-text from “Other” (newline / semicolon separates multiple custom tags; commas stay inside one tag). */
 export function mentorExpertiseListFromSelection(
   sel: Set<string>,
   otherDetail: string,
@@ -155,7 +155,10 @@ export function mentorExpertiseListFromSelection(
     if (sel.has(label)) out.push(label);
   }
   if (sel.has(otherLabel)) {
-    out.push(otherDetail.trim());
+    const raw = otherDetail.trim();
+    if (!raw) return out;
+    const parts = raw.split(/[\n;]+/).map((s) => s.trim()).filter(Boolean);
+    for (const p of parts) out.push(p);
   }
   return out;
 }

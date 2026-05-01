@@ -137,10 +137,10 @@ export async function sendBookingRejectedEmail(opts: {
 
   const html = `<!DOCTYPE html><html><body style="font-family:system-ui,sans-serif;line-height:1.5;color:#111">
 <p>Hi ${studentN},</p>
-<p>Your session request with <strong>${mentorN}</strong> was not accepted.</p>
-<p><strong>When:</strong> ${when} (${durationMin} min)</p>
-${reason ? `<p><strong>Reason:</strong> ${reason}</p>` : ""}
-<p>You can request another time slot from the mentor’s profile.</p>
+<p><strong>${mentorN}</strong> is not available for the requested mentoring slot.</p>
+<p><strong>Requested time:</strong> ${when} (${durationMin} min)</p>
+${reason ? `<p><strong>Note:</strong> ${reason}</p>` : ""}
+<p>Mentor is not available — please book another slot from their Commonsia profile when it suits you.</p>
 <p style="font-size:13px;color:#666">— Commonsia</p>
 </body></html>`;
 
@@ -154,7 +154,7 @@ ${reason ? `<p><strong>Reason:</strong> ${reason}</p>` : ""}
       body: JSON.stringify({
         from,
         to: [opts.studentEmail.trim()],
-        subject: `Session request not accepted: ${mentorN}`,
+        subject: `Mentor unavailable — pick another slot (${mentorN})`,
         html,
       }),
     });

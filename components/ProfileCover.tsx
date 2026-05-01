@@ -89,7 +89,7 @@ export function ProfileCover({
               alt={alt}
               fill
               priority={priority}
-              sizes="100vw"
+              sizes="(max-width:768px) 100vw, min(896px, 90vw)"
               className="object-cover object-center"
               onError={onImgError}
             />

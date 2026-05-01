@@ -95,24 +95,37 @@ export default async function PublicMentorPage({ params }: Props) {
   const mentorReviewsPromise = getPublicReviewsForMentor(mentor.id);
   const bookingStatsPromise = getMentorBookingStats(mentor.id);
 
-  const [viewerDb, similarMentors, mentorReviews, bookingStats] = await Promise.all([
-    viewerDbPromise,
-    similarMentorsPromise,
-    mentorReviewsPromise,
-    bookingStatsPromise,
-  ]);
+  const viewerHasPendingBookingRequestPromise = (async (): Promise<boolean> => {
+    if (!sessionUserId || !linked) return false;
+    if (sessionRole === "mentor") return false;
+    if (sessionRole === "student") {
+      return Boolean(
+        await prisma.bookingRequest.findFirst({
+          where: { studentId: sessionUserId, mentorId: linked, status: "pending" },
+          select: { id: true },
+        }),
+      );
+    }
+    const u = await viewerDbPromise;
+    if (u?.role !== "student") return false;
+    return Boolean(
+      await prisma.bookingRequest.findFirst({
+        where: { studentId: sessionUserId, mentorId: linked, status: "pending" },
+        select: { id: true },
+      }),
+    );
+  })();
+
+  const [viewerDb, similarMentors, mentorReviews, bookingStats, viewerHasPendingBookingRequest] =
+    await Promise.all([
+      viewerDbPromise,
+      similarMentorsPromise,
+      mentorReviewsPromise,
+      bookingStatsPromise,
+      viewerHasPendingBookingRequestPromise,
+    ]);
 
   const viewerRole = sessionRole ?? viewerDb?.role ?? null;
-
-  const viewerHasPendingBookingRequest =
-    sessionUserId && linked && viewerRole === "student"
-      ? Boolean(
-          await prisma.bookingRequest.findFirst({
-            where: { studentId: sessionUserId, mentorId: linked, status: "pending" },
-            select: { id: true },
-          }),
-        )
-      : false;
 
   const profilePath = mentorProfileHref(mentor);
   const back = profilePath;
@@ -175,6 +188,7 @@ export default async function PublicMentorPage({ params }: Props) {
       viewerSignedIn={Boolean(sessionUserId)}
       portfolioLoginHref={portfolioLoginHref}
       viewerHasPendingBookingRequest={viewerHasPendingBookingRequest}
+      viewerUserId={sessionUserId}
     />
   );
 }

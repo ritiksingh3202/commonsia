@@ -8,7 +8,7 @@ export function authErrorMessage(code: string | undefined): string {
     case "Configuration":
       return "Sign-in could not finish due to server configuration. Check the terminal running next dev for the real error. Common causes: database schema out of date (run npx prisma db push after pulling code — missing User columns break OAuth), Postgres rejected the connection (wrong DATABASE_URL or pooler user postgres.<project-ref>), PrismaAdapter errors, missing AUTH_SECRET in production, or AUTH_URL not matching the site you opened. Run npm run db:ping to verify DB credentials.";
     case "CredentialsSignin":
-      return "Invalid email or password. If you have not signed up yet, create an account first. If you use Google or LinkedIn, sign in with that option below.";
+      return "That email or password didn't match our records. Check for typos, or sign in with Google / LinkedIn if you registered that way. New here? Create an account first.";
     case "AccessDenied":
       return "Sign-in was denied.";
     case "Verification":

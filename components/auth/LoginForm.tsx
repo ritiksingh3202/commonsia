@@ -5,6 +5,7 @@ import Link from "next/link";
 import { signIn } from "next-auth/react";
 import { useState } from "react";
 import { authErrorMessage } from "@/lib/auth-error-messages";
+import { isValidEmailAddress } from "@/lib/email-validation";
 import { AUTH_ASSETS } from "./auth-assets";
 import { LegalConsentLinks } from "@/components/legal/LegalConsentLinks";
 import { AuthBackLink } from "./AuthBackLink";
@@ -55,6 +56,7 @@ export function LoginForm({ callbackUrl = "/auth/continue", authError }: LoginFo
               alt=""
               width={28}
               height={28}
+              sizes="28px"
               className="icon-brand-line size-7 object-contain"
             />
           </div>
@@ -76,7 +78,11 @@ export function LoginForm({ callbackUrl = "/auth/continue", authError }: LoginFo
             const email = String(fd.get("email") ?? "").trim();
             const password = String(fd.get("password") ?? "");
             if (!email || !password) {
-              window.alert("Enter your email and password.");
+              setCredsError("Enter your email and password.");
+              return;
+            }
+            if (!isValidEmailAddress(email)) {
+              setCredsError("Enter a valid email address.");
               return;
             }
             setCredsError(null);

@@ -1,7 +1,7 @@
 "use client";
 
+import { PaginationArrowLeft, PaginationArrowRight } from "@/components/icons/PaginationArrowIcons";
 import { motion } from "framer-motion";
-import Image from "next/image";
 import { useMemo } from "react";
 
 type Props = {
@@ -53,13 +53,7 @@ export function MentorPagination({ page, total, onPageChange }: Props) {
         onClick={() => onPageChange(page - 1)}
         className="flex min-h-11 min-w-11 shrink-0 touch-manipulation items-center justify-center rounded-full border border-primary disabled:pointer-events-none disabled:opacity-30 sm:min-h-10 sm:min-w-10"
       >
-        <Image
-          src="/left_arrow.svg"
-          alt=""
-          width={14}
-          height={10}
-          className="icon-brand-line h-2.5 w-3.5"
-        />
+        <PaginationArrowLeft className="icon-brand-line h-2.5 w-3.5" />
       </motion.button>
 
       <div className="flex max-w-[min(100%,20rem)] flex-wrap items-center justify-center gap-1.5 sm:max-w-none sm:gap-2">
@@ -101,13 +95,7 @@ export function MentorPagination({ page, total, onPageChange }: Props) {
         onClick={() => onPageChange(page + 1)}
         className="flex min-h-11 min-w-11 shrink-0 touch-manipulation items-center justify-center rounded-full border border-primary disabled:pointer-events-none disabled:opacity-30 sm:min-h-10 sm:min-w-10"
       >
-        <Image
-          src="/right_arrow.svg"
-          alt=""
-          width={14}
-          height={10}
-          className="icon-brand-line h-2.5 w-3.5"
-        />
+        <PaginationArrowRight className="icon-brand-line h-2.5 w-3.5" />
       </motion.button>
     </nav>
   );

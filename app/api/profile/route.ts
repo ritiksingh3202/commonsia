@@ -183,7 +183,7 @@ export async function PATCH(req: Request) {
     throw err;
   }
 
-  /** All cache invalidations are fire-and-forget so they never block the HTTP response. */
+  /** Cache busting — Redis DEL is non-blocking (`void`); `revalidateTag` deferred inside {@link invalidatePublicMentorsList}. */
   invalidateStudentDashboard(session.user.id);
   if (body.mentorAvailabilityJson !== undefined) {
     void delKeys(mentorScheduleCacheKeysAfterAvailabilitySave(session.user.id));

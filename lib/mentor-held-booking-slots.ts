@@ -9,21 +9,24 @@ function intervalsOverlap(a0: number, a1: number, b0: number, b1: number): boole
 }
 
 /**
- * Session starts that are already held by another student's pending/accepted request or a
+ * Session starts that are already held by another student's pending / awaiting-slot-pick / accepted request or a
  * confirmed {@link MentoringBooking} — used to hide those starts from the public slot list.
  */
 export async function loadMentorHeldSessionIntervals(
   prisma: PrismaClient,
   mentorId: string,
   horizonStart: Date = new Date(),
+  opts?: { excludeBookingRequestId?: string },
 ): Promise<HeldIntervalMs[]> {
   const since = new Date(horizonStart.getTime() - 2 * 60 * 60_000);
+  const excludeId = opts?.excludeBookingRequestId?.trim();
   const [requests, bookings] = await Promise.all([
     prisma.bookingRequest.findMany({
       where: {
         mentorId,
-        status: { in: ["pending", "accepted"] },
+        status: { in: ["pending", "accepted", "awaiting_slot"] },
         startAt: { gte: since },
+        ...(excludeId ? { NOT: { id: excludeId } } : {}),
       },
       select: { startAt: true, endAt: true },
     }),
@@ -53,6 +56,11 @@ export function filterSlotsAgainstHeldIntervals(
   return slots.filter((slot) => {
     const s = new Date(slot.startISO).getTime();
     const e = s + durMs;
-    return !held.some((h) => intervalsOverlap(s, e, h.startMs, h.endMs));
+    return !sessionIntervalOverlapsHeld(s, e, held);
   });
+}
+
+/** True when [startMs, endMs) overlaps any held mentor interval (bookings / in-flight requests). */
+export function sessionIntervalOverlapsHeld(startMs: number, endMs: number, held: HeldIntervalMs[]): boolean {
+  return held.some((h) => intervalsOverlap(startMs, endMs, h.startMs, h.endMs));
 }

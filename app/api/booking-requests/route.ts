@@ -11,8 +11,20 @@ import { mergeAvailabilityForSlot } from "@/lib/mentor-availability-merge";
 import { jsWeekdayFromIsoLocal } from "@/lib/mentor-availability-slots";
 import { mentorHasBookingOnWeekdayInIstMonth } from "@/lib/mentor-monthly-booking";
 import { prisma } from "@/lib/prisma";
-import { delKeys, mentorMonthAvailabilityKeysAround, slotCacheKeysAround } from "@/lib/redis-cache";
-import { whatsappNumberFromUrl, zixflowSendTemplate } from "@/lib/zixflow";
+import { getPublicSiteBaseUrl } from "@/lib/public-site-url";
+import {
+  delKeys,
+  mentorMonthAvailabilityKeysAround,
+  rememberBookingActionRawToken,
+  slotCacheKeysAround,
+} from "@/lib/redis-cache";
+import { studentProfileLinkForBookingWhatsApp } from "@/lib/booking-student-profile-whatsapp";
+import { formatBookingWhatsAppRange } from "@/lib/booking-whatsapp-format";
+import { whatsappDigitsFromProfile, zixflowSendTemplate } from "@/lib/zixflow";
+import {
+  applyZixflowBodyVarOrder,
+  ZIXFLOW_DEFAULT_BOOKING_REQUEST_BODY_ORDER,
+} from "@/lib/zixflow-template-vars";
 
 type Body = {
   mentorUserId?: string;
@@ -67,11 +79,19 @@ export async function POST(req: Request) {
   const [booker, mentorRow] = await Promise.all([
     prisma.user.findUnique({
       where: { id: session.user.id },
-      select: { id: true, email: true, name: true, whatsappUrl: true },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        whatsappUrl: true,
+        university: true,
+        yearOfStudy: true,
+        major: true,
+      },
     }),
     prisma.user.findUnique({
       where: { id: mentorUserId },
-      select: { id: true, role: true, email: true, name: true, whatsappUrl: true, mentorAvailabilityJson: true },
+      select: { id: true, role: true, email: true, name: true, whatsappUrl: true, phone: true, mentorAvailabilityJson: true },
     }),
   ]);
 
@@ -156,11 +176,14 @@ export async function POST(req: Request) {
         startAt: start,
         endAt: end,
         actionTokenHash,
+        /** Mirrors Redis `rememberBookingActionRawToken` so quick-reply Accept can sign `/select-slot` without Upstash. */
+        actionRawTokenOpaque: rawToken,
         title: body.title?.trim() || null,
         description: body.description?.trim() || null,
       },
       select: { id: true, createdAt: true },
     });
+    await rememberBookingActionRawToken(request.id, rawToken);
   } catch (e) {
     if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
       return NextResponse.json(
@@ -174,34 +197,109 @@ export async function POST(req: Request) {
   const acceptSigned = signBookingAction({ bookingRequestId: request.id, action: "accept", rawToken });
   const rejectSigned = signBookingAction({ bookingRequestId: request.id, action: "reject", rawToken });
 
-  const base = (process.env.AUTH_URL ?? "http://localhost:3000").replace(/\/$/, "");
+  const base = getPublicSiteBaseUrl();
   const acceptUrl = acceptSigned ? `${base}/api/webhooks/zixflow?token=${encodeURIComponent(acceptSigned)}` : null;
   const rejectUrl = rejectSigned ? `${base}/api/webhooks/zixflow?token=${encodeURIComponent(rejectSigned)}` : null;
+
+  const studentProfile = studentProfileLinkForBookingWhatsApp(base, booker.id);
 
   void delKeys([
     ...slotCacheKeysAround(mentorRow.id, start),
     ...mentorMonthAvailabilityKeysAround(mentorRow.id, start),
   ]);
 
-  const mentorTo = whatsappNumberFromUrl(mentorRow.whatsappUrl);
+  let mentorTo = whatsappDigitsFromProfile({
+    whatsappUrl: mentorRow.whatsappUrl,
+    phone: mentorRow.phone,
+  });
+  if (!mentorTo) {
+    const fb = process.env.ZIXFLOW_FALLBACK_TO_DIGITS?.trim().replace(/\D/g, "") ?? "";
+    if (fb) {
+      console.warn(
+        "[booking-request] Mentor profile has no WhatsApp URL — sending to ZIXFLOW_FALLBACK_TO_DIGITS (testing only).",
+      );
+      mentorTo = fb;
+    }
+  }
   const template = process.env.ZIXFLOW_BOOKING_REQUEST_TEMPLATE?.trim() || "";
-  if (mentorTo && template && acceptUrl && rejectUrl) {
-    void zixflowSendTemplate({
-      to: mentorTo,
-      template,
-      variables: {
-        mentorName: mentorRow.name ?? "Mentor",
-        studentName: booker.name ?? "Student",
-        startISO: start.toISOString(),
-        endISO: end.toISOString(),
-        acceptUrl,
-        rejectUrl,
-      },
-    }).then((send) => {
-      if (!send.ok) console.error("Zixflow booking request send failed:", send.error);
-    });
+  const bodyVarsOrder =
+    process.env.ZIXFLOW_BOOKING_BODY_VARS_ORDER?.trim() || ZIXFLOW_DEFAULT_BOOKING_REQUEST_BODY_ORDER;
+
+  const whatsappDiagEnabled =
+    process.env.BOOKING_WHATSAPP_DIAGNOSTICS?.trim() === "1" ||
+    process.env.BOOKING_WHATSAPP_DIAGNOSTICS?.trim().toLowerCase() === "true";
+
+  /** Only included in JSON when `BOOKING_WHATSAPP_DIAGNOSTICS=true` — no secrets. */
+  let whatsapp:
+    | { status: "skipped"; reason: string }
+    | { status: "sent"; ok: true }
+    | { status: "sent"; ok: false; error: string }
+    | undefined;
+
+  if (!mentorTo) {
+    console.warn(
+      "[booking-request] WhatsApp not sent: mentor has no usable WhatsApp number on profile (wa.me / +digits). Set WhatsApp on the mentor profile or ZIXFLOW_FALLBACK_TO_DIGITS for testing.",
+    );
+    if (whatsappDiagEnabled) whatsapp = { status: "skipped", reason: "no_mentor_whatsapp_digits" };
+  } else if (!template) {
+    console.warn("[booking-request] WhatsApp not sent: ZIXFLOW_BOOKING_REQUEST_TEMPLATE is empty.");
+    if (whatsappDiagEnabled) whatsapp = { status: "skipped", reason: "missing_ZIXFLOW_BOOKING_REQUEST_TEMPLATE" };
+  } else if (!acceptUrl || !rejectUrl) {
+    console.warn(
+      "[booking-request] WhatsApp not sent: BOOKING_ACTION_SECRET is missing — Accept/Reject links cannot be signed.",
+    );
+    if (whatsappDiagEnabled) whatsapp = { status: "skipped", reason: "missing_BOOKING_ACTION_SECRET" };
   } else {
-    console.info("[booking-request] WhatsApp not sent (missing mentor WhatsApp, template, or action secret).");
+    /**
+     * Await delivery so serverless hosts don’t freeze the invocation before Zixflow’s HTTP request finishes
+     * (fire-and-forget `void` sends were often dropped after the JSON response returned).
+     */
+    try {
+      let variables = applyZixflowBodyVarOrder(
+        {
+          /** Maps to Meta {{1}}–{{6}} via `ZIXFLOW_DEFAULT_BOOKING_REQUEST_BODY_ORDER`. */
+          mentorName: mentorRow.name ?? "Mentor",
+          studentName: booker.name ?? "Student",
+          college: booker.university?.trim() || booker.major?.trim() || "—",
+          year: booker.yearOfStudy?.trim() || "—",
+          studentProfile,
+          requestedTime: formatBookingWhatsAppRange(start, end),
+          acceptUrl,
+          rejectUrl,
+          startISO: start.toISOString(),
+          endISO: end.toISOString(),
+        },
+        bodyVarsOrder,
+      );
+      const acceptBtnVar = process.env.ZIXFLOW_BOOKING_ACCEPT_URL_TEMPLATE_VAR?.trim();
+      const rejectBtnVar = process.env.ZIXFLOW_BOOKING_REJECT_URL_TEMPLATE_VAR?.trim();
+      if (acceptBtnVar && acceptUrl) variables = { ...variables, [acceptBtnVar]: acceptUrl };
+      if (rejectBtnVar && rejectUrl) variables = { ...variables, [rejectBtnVar]: rejectUrl };
+
+      const send = await zixflowSendTemplate({
+        to: mentorTo,
+        template,
+        variables,
+      });
+      if (!send.ok) {
+        console.error("[booking-request] Zixflow booking request send failed:", send.error);
+        if (whatsappDiagEnabled) whatsapp = { status: "sent", ok: false, error: send.error };
+      } else {
+        console.info("[booking-request] Zixflow booking request: API accepted send (check mentor handset / Zixflow dashboard if not delivered).");
+        if (whatsappDiagEnabled) {
+          whatsapp = { status: "sent", ok: true };
+        }
+      }
+    } catch (e) {
+      console.error("[booking-request] Zixflow booking request send threw:", e);
+      if (whatsappDiagEnabled) {
+        whatsapp = {
+          status: "sent",
+          ok: false,
+          error: e instanceof Error ? e.message : "unknown_error",
+        };
+      }
+    }
   }
 
   return NextResponse.json({
@@ -209,6 +307,7 @@ export async function POST(req: Request) {
     bookingRequestId: request.id,
     message:
       "Request received. We’ll email you when the mentor accepts or declines. Other students won’t see this time while it’s pending.",
+    ...(whatsappDiagEnabled && whatsapp ? { whatsapp } : {}),
   });
 }
 

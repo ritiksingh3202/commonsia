@@ -1,22 +1,10 @@
 import type { Metadata } from "next";
-import dynamic from "next/dynamic";
 import { redirect } from "next/navigation";
 
 import { auth } from "@/auth";
+import { MentorEditProfileForm } from "@/components/mentor/MentorEditProfileForm";
 import { getMentorOnboardingRedirectPath } from "@/lib/mentor-onboarding";
 import { prisma } from "@/lib/prisma";
-
-const MentorEditProfileForm = dynamic(
-  () => import("@/components/mentor/MentorEditProfileForm").then((m) => m.MentorEditProfileForm),
-  {
-    loading: () => (
-      <div className="mx-auto max-w-5xl px-4 py-10 sm:px-6 lg:px-8">
-        <div className="h-10 w-48 max-w-full animate-pulse rounded-lg bg-neutral-200" />
-        <div className="mt-6 h-[28rem] max-w-full animate-pulse rounded-2xl bg-neutral-100" />
-      </div>
-    ),
-  },
-);
 
 export const metadata: Metadata = {
   title: { absolute: "Edit profile — Mentor" },

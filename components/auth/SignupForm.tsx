@@ -6,6 +6,7 @@ import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { LegalConsentLinks } from "@/components/legal/LegalConsentLinks";
+import { isValidEmailAddress } from "@/lib/email-validation";
 import { AUTH_ASSETS, type AuthRole } from "./auth-assets";
 import { AuthBackLink } from "./AuthBackLink";
 import { AuthSocialRow } from "./AuthSocialRow";
@@ -61,6 +62,7 @@ export function SignupForm({ role, oauthCallbackUrl }: SignupFormProps) {
   const postSignInCallbackUrl = `/auth/continue?next=${encodeURIComponent(setupTarget)}`;
   const icon = role === "student" ? AUTH_ASSETS.student : AUTH_ASSETS.mentor;
   const [submitting, setSubmitting] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
 
   const saveDraftForOAuth = () => {
     const form = document.getElementById(`signup-form-${role}`) as HTMLFormElement | null;
@@ -89,6 +91,14 @@ export function SignupForm({ role, oauthCallbackUrl }: SignupFormProps) {
       </div>
 
       <div className="rounded-xl border border-[#e5e5e5] bg-white px-5 py-6 shadow-sm sm:px-6 sm:py-7">
+        {formError ? (
+          <div
+            role="alert"
+            className="mb-4 rounded-md border border-red-200 bg-red-50 px-3 py-2.5 text-left text-[12px] leading-snug text-red-950 sm:text-[13px]"
+          >
+            {formError}
+          </div>
+        ) : null}
         <div className="mb-5 flex flex-col items-center text-center">
           <div className="mb-3 flex size-12 items-center justify-center rounded-full bg-primary/10">
             <Image
@@ -96,6 +106,7 @@ export function SignupForm({ role, oauthCallbackUrl }: SignupFormProps) {
               alt=""
               width={28}
               height={28}
+              sizes="28px"
               className="icon-brand-line size-7 object-contain"
             />
           </div>
@@ -119,22 +130,27 @@ export function SignupForm({ role, oauthCallbackUrl }: SignupFormProps) {
             const confirm = String(fd.get("confirmPassword") ?? "");
 
             if (!name || !email) {
-              window.alert("Please enter your name and email.");
+              setFormError("Please enter your name and email.");
+              return;
+            }
+            if (!isValidEmailAddress(email)) {
+              setFormError("Enter a valid email address (for example name@gmail.com).");
               return;
             }
             if (!pw || !confirm) {
-              window.alert(`Please enter and confirm your password (at least ${MIN_PASSWORD} characters).`);
+              setFormError(`Please enter and confirm your password (at least ${MIN_PASSWORD} characters).`);
               return;
             }
             if (pw !== confirm) {
-              window.alert("Passwords do not match.");
+              setFormError("Passwords do not match.");
               return;
             }
             if (pw.length < MIN_PASSWORD) {
-              window.alert(`Password must be at least ${MIN_PASSWORD} characters.`);
+              setFormError(`Password must be at least ${MIN_PASSWORD} characters.`);
               return;
             }
 
+            setFormError(null);
             setSubmitting(true);
             try {
               const reg = await fetch("/api/auth/register", {
@@ -149,7 +165,12 @@ export function SignupForm({ role, oauthCallbackUrl }: SignupFormProps) {
               });
               const data = (await reg.json().catch(() => ({}))) as { error?: string };
               if (!reg.ok) {
-                window.alert(data.error ?? "Could not create your account.");
+                const msg =
+                  data.error ??
+                  (reg.status === 409
+                    ? "An account with this email already exists."
+                    : "Could not create your account.");
+                setFormError(msg);
                 return;
               }
 
@@ -188,6 +209,7 @@ export function SignupForm({ role, oauthCallbackUrl }: SignupFormProps) {
               className={field}
               required
               suppressHydrationWarning
+              onFocus={() => setFormError(null)}
             />
           </div>
           <div className="space-y-1.5">
@@ -203,6 +225,7 @@ export function SignupForm({ role, oauthCallbackUrl }: SignupFormProps) {
               className={field}
               required
               suppressHydrationWarning
+              onFocus={() => setFormError(null)}
             />
           </div>
           <div className="space-y-1.5">
@@ -219,6 +242,7 @@ export function SignupForm({ role, oauthCallbackUrl }: SignupFormProps) {
               required
               minLength={MIN_PASSWORD}
               suppressHydrationWarning
+              onFocus={() => setFormError(null)}
             />
           </div>
           <div className="space-y-1.5">
@@ -235,6 +259,7 @@ export function SignupForm({ role, oauthCallbackUrl }: SignupFormProps) {
               required
               minLength={MIN_PASSWORD}
               suppressHydrationWarning
+              onFocus={() => setFormError(null)}
             />
           </div>
           <button

@@ -1,7 +1,11 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
-import { getGoogleOAuthClient, getLinkedInOAuthClient } from "@/lib/oauth-credentials";
+import {
+  getGoogleCalendarOAuthClient,
+  getGoogleOAuthClient,
+  getLinkedInOAuthClient,
+} from "@/lib/oauth-credentials";
 import { prisma } from "@/lib/prisma";
 
 export const runtime = "nodejs";
@@ -57,6 +61,7 @@ export async function GET(req: NextRequest) {
   const reqHost = req.headers.get("x-forwarded-host") ?? req.headers.get("host") ?? "";
   const reqProto = req.headers.get("x-forwarded-proto") ?? "";
   const google = getGoogleOAuthClient();
+  const googleCalendar = getGoogleCalendarOAuthClient();
   const linkedin = getLinkedInOAuthClient();
 
   let dbOk = false;
@@ -101,10 +106,16 @@ export async function GET(req: NextRequest) {
         ping: { ok: dbOk, error: dbError },
       },
       providers: {
-        google: {
+        googleSignIn: {
           configured: Boolean(google),
           clientIdTail: google ? google.clientId.slice(-10) : null,
           secretLength: google ? google.clientSecret.length : 0,
+        },
+        googleCalendar: {
+          configured: Boolean(googleCalendar),
+          clientIdTail: googleCalendar ? googleCalendar.clientId.slice(-10) : null,
+          secretLength: googleCalendar ? googleCalendar.clientSecret.length : 0,
+          usesDedicatedMeetClient: Boolean(process.env.GOOGLE_MEET_CLIENT_ID?.trim()),
         },
         linkedin: {
           configured: Boolean(linkedin),

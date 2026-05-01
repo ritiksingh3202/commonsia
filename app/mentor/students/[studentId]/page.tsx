@@ -20,14 +20,15 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function MentorViewStudentPage({ params }: Props) {
   const session = await auth();
+  const { studentId } = await params;
+
   if (!session?.user?.id) {
-    redirect("/auth/login?callbackUrl=/mentor");
+    redirect(`/auth/login?callbackUrl=${encodeURIComponent(`/mentor/students/${studentId}`)}`);
   }
   if (session.user.role !== "mentor") {
     redirect("/mentor");
   }
 
-  const { studentId } = await params;
   if (studentId === "demo") {
     redirect("/mentor/students/demo");
   }

@@ -53,6 +53,7 @@ export function WhatsAppGlyph({ className }: { className?: string }) {
       alt=""
       width={20}
       height={20}
+      sizes="20px"
       className={[iconClass, className].filter(Boolean).join(" ")}
     />
   );
@@ -83,6 +84,7 @@ export function LinkedInGlyph({
       alt=""
       width={dim}
       height={dim}
+      sizes={`${dim}px`}
       className={[sizeClass, className].filter(Boolean).join(" ")}
     />
   );
@@ -95,6 +97,7 @@ export function InstagramGlyph({ className }: { className?: string }) {
       alt=""
       width={20}
       height={20}
+      sizes="20px"
       className={[iconClass, className].filter(Boolean).join(" ")}
     />
   );

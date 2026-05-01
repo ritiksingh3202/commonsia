@@ -1,4 +1,5 @@
 import {
+  emptyWeeklySlots,
   MENTOR_TIME_SLOTS_HALF,
   type WeekdayKey,
   WEEKDAY_KEYS,
@@ -153,4 +154,36 @@ export function weeklySlotsFromRows(rows: DayIntervalRow[]): Record<WeekdayKey, 
     out[row.key] = sortSlotLabels([...set]);
   }
   return out;
+}
+
+/** Persist separate preset intervals per weekday (weekly UI rows) alongside flattened `weeklySlots`. */
+export function weeklyIntervalBandsFromRows(
+  rows: DayIntervalRow[],
+): Partial<Record<WeekdayKey, { start: string; end: string }[]>> {
+  const out: Partial<Record<WeekdayKey, { start: string; end: string }[]>> = {};
+  for (const row of rows) {
+    if (!row.enabled || row.intervals.length === 0) continue;
+    out[row.key] = row.intervals.map(({ start, end }) => ({ start, end }));
+  }
+  return out;
+}
+
+/** Hydrate weekly interval rows when `weeklyIntervalBands` exists; otherwise derive from slot labels only. */
+export function weeklyRowsFromPersisted(
+  weeklySlots: Record<WeekdayKey, string[]>,
+  bands: Partial<Record<WeekdayKey, { start: string; end: string }[]>> | undefined,
+): DayIntervalRow[] {
+  return WEEKDAY_KEYS.map((key) => {
+    const slots = weeklySlots[key] ?? [];
+    const explicit = bands?.[key];
+    if (explicit && explicit.length > 0) {
+      const intervals = explicit.filter((b) => (b.start ?? "").trim() && (b.end ?? "").trim());
+      return {
+        key,
+        enabled: slots.length > 0 || intervals.length > 0,
+        intervals: intervals.length > 0 ? intervals : [{ start: "09:00", end: "17:00" }],
+      };
+    }
+    return weeklyRowsFromSlotMap({ ...emptyWeeklySlots(), [key]: slots }).find((r) => r.key === key)!;
+  });
 }

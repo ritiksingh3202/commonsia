@@ -1,27 +1,50 @@
 "use client";
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useSession } from "next-auth/react";
+
 import { MentorCard } from "@/components/mentors/MentorCard";
 import { MentorFilterBar } from "@/components/mentors/MentorFilterBar";
 import { MentorPagination } from "@/components/mentors/MentorPagination";
 import { MentorSearchBar } from "@/components/mentors/MentorSearchBar";
 import { SectionReveal } from "@/components/motion/SectionReveal";
 import type { Mentor } from "@/lib/mentor-directory";
+import type { MentorDirectorySortOrder, MentorDirectoryQuery } from "@/lib/mentors-directory-query";
 import {
-  mentorMatchesExperienceLevel,
-  mentorMatchesLocation,
-  mentorMatchesSearchExpanded,
-  mentorMatchesSelectedInterests,
-  type ExperienceLevelFilter,
-  type LocationFilter,
-} from "@/lib/mentor-discover-search";
-import { NO_UPCOMING_AVAILABILITY_LABEL } from "@/lib/mentor-next-slot";
+  DIRECTORY_PAGE_SIZE,
+  buildMentorDirectoryApiUrl,
+  mentorDirectoryTotalPages,
+} from "@/lib/mentors-directory-query";
+import type { ExperienceLevelFilter, LocationFilter } from "@/lib/mentor-discover-search";
 
-const PAGE_SIZE = 10;
+type SortOrder = MentorDirectorySortOrder;
 
-type SortOrder = "default" | "name-asc" | "name-desc";
+type Props = {
+  /** Matches server shuffle for SSR HTML + `/api/mentors/directory` pagination until tab refresh reshuffles. */
+  initialShuffleSeed: number;
+  initialMentors: Mentor[];
+  initialTotalFiltered: number;
+  initialTotalAll: number;
+  /** Passed from server `auth()` for correct “Book a session” links without client session context. */
+  viewerUserId?: string | null;
+};
 
-export function MentorsPage({ mentors }: { mentors: Mentor[] }) {
+function randomShuffleSeed(): number {
+  const buf = new Uint32Array(1);
+  crypto.getRandomValues(buf);
+  return buf[0] >>> 0;
+}
+
+export function MentorsPage({
+  initialShuffleSeed,
+  initialMentors,
+  initialTotalFiltered,
+  initialTotalAll,
+  viewerUserId = null,
+}: Props) {
+  const { data: session } = useSession();
+  const viewerForCards = session?.user?.id ?? viewerUserId ?? null;
+
   const [q, setQ] = useState("");
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [selectedInterests, setSelectedInterests] = useState<Set<string>>(() => new Set());
@@ -30,50 +53,106 @@ export function MentorsPage({ mentors }: { mentors: Mentor[] }) {
   const [onlyWithAvailability, setOnlyWithAvailability] = useState(false);
   const [sortOrder, setSortOrder] = useState<SortOrder>("default");
 
-  const selectedInterestsKey = useMemo(
-    () => [...selectedInterests].sort().join("|"),
-    [selectedInterests],
-  );
+  const [shuffleSeed, setShuffleSeed] = useState<number>(() => initialShuffleSeed >>> 0);
+
+  const [directory, setDirectory] = useState({
+    mentors: initialMentors,
+    totalFiltered: initialTotalFiltered,
+    totalAll: initialTotalAll,
+  });
+  const [directoryLoading, setDirectoryLoading] = useState(false);
 
   const [page, setPage] = useState(1);
   const pageRef = useRef(page);
   const resultsAnchorRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    const onVisibility = () => {
+      if (document.visibilityState !== "visible") return;
+      setShuffleSeed(randomShuffleSeed());
+      setPage(1);
+    };
+    const onPageShow = (e: PageTransitionEvent) => {
+      if (e.persisted) {
+        setShuffleSeed(randomShuffleSeed());
+        setPage(1);
+      }
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("pageshow", onPageShow);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("pageshow", onPageShow);
+    };
+  }, []);
+
+  useEffect(() => {
     pageRef.current = page;
   }, [page]);
+
   const scrollResultsIntoView = () => {
     requestAnimationFrame(() => {
       resultsAnchorRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     });
   };
 
-  const filtered = useMemo(() => {
-    const passes = (m: Mentor) => {
-      if (q.trim() && !mentorMatchesSearchExpanded(m, q)) return false;
-      if (!mentorMatchesSelectedInterests(m, selectedInterests)) return false;
-      if (!mentorMatchesExperienceLevel(m, experienceLevel)) return false;
-      if (!mentorMatchesLocation(m, locationFilter)) return false;
-      if (onlyWithAvailability && m.slot.trim() === NO_UPCOMING_AVAILABILITY_LABEL) return false;
-      return true;
-    };
-    const list = mentors.filter(passes);
-    if (sortOrder === "name-asc") {
-      return [...list].sort((a, b) => a.name.localeCompare(b.name));
-    }
-    if (sortOrder === "name-desc") {
-      return [...list].sort((a, b) => b.name.localeCompare(a.name));
-    }
-    return list;
-  }, [
-    mentors,
+  const directoryQuery = useMemo(
+    (): MentorDirectoryQuery => ({
+      page,
+      pageSize: DIRECTORY_PAGE_SIZE,
+      q,
+      interests: [...selectedInterests],
+      experienceLevel,
+      locationFilter,
+      onlyWithAvailability,
+      sortOrder,
+      shuffleSeed,
+    }),
+    [
+    shuffleSeed,
+    page,
     q,
     selectedInterests,
     experienceLevel,
     locationFilter,
     onlyWithAvailability,
     sortOrder,
-  ]);
+    ],
+  );
+
+  useEffect(() => {
+    const ac = new AbortController();
+    queueMicrotask(() => setDirectoryLoading(true));
+    fetch(buildMentorDirectoryApiUrl(directoryQuery), {
+      signal: ac.signal,
+      headers: { Accept: "application/json" },
+    })
+      .then(async (res) => {
+        if (!res.ok) throw new Error(String(res.status));
+        return res.json() as Promise<{
+          mentors: Mentor[];
+          totalFiltered: number;
+          totalAll: number;
+        }>;
+      })
+      .then((data) => {
+        if (ac.signal.aborted) return;
+        setDirectory({
+          mentors: Array.isArray(data.mentors) ? data.mentors : [],
+          totalFiltered: typeof data.totalFiltered === "number" ? data.totalFiltered : 0,
+          totalAll: typeof data.totalAll === "number" ? data.totalAll : 0,
+        });
+      })
+      .catch((err: unknown) => {
+        if (err instanceof DOMException && err.name === "AbortError") return;
+        console.warn("[MentorsPage] directory fetch failed:", err);
+      })
+      .finally(() => {
+        if (!ac.signal.aborted) setDirectoryLoading(false);
+      });
+
+    return () => ac.abort();
+  }, [directoryQuery]);
 
   const hasActiveFilters =
     selectedInterests.size > 0 ||
@@ -90,6 +169,7 @@ export function MentorsPage({ mentors }: { mentors: Mentor[] }) {
     (sortOrder !== "default" ? 1 : 0);
 
   const clearFilters = useCallback(() => {
+    setPage(1);
     setSelectedInterests(new Set());
     setExperienceLevel("");
     setLocationFilter("");
@@ -98,6 +178,7 @@ export function MentorsPage({ mentors }: { mentors: Mentor[] }) {
   }, []);
 
   const toggleInterest = useCallback((label: string) => {
+    setPage(1);
     setSelectedInterests((prev) => {
       const next = new Set(prev);
       if (next.has(label)) next.delete(label);
@@ -106,7 +187,7 @@ export function MentorsPage({ mentors }: { mentors: Mentor[] }) {
     });
   }, []);
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const totalPages = mentorDirectoryTotalPages(directory.totalFiltered, DIRECTORY_PAGE_SIZE);
 
   useEffect(() => {
     /* eslint-disable react-hooks/set-state-in-effect -- keep page in range when filtered result count changes */
@@ -114,22 +195,13 @@ export function MentorsPage({ mentors }: { mentors: Mentor[] }) {
     /* eslint-enable react-hooks/set-state-in-effect */
   }, [totalPages]);
 
-  useEffect(() => {
-    /* eslint-disable react-hooks/set-state-in-effect -- reset to first page when search or filters change */
-    setPage(1);
-    /* eslint-enable react-hooks/set-state-in-effect */
-  }, [q, selectedInterestsKey, experienceLevel, locationFilter, onlyWithAvailability, sortOrder]);
-
-  /** Entering /mentors (navbar or link) should show the hero from the top — not auto-scroll to the search block. */
   useLayoutEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: "auto" });
   }, []);
 
   const safePage = Math.min(page, totalPages);
 
-  const slice = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
-
-  if (mentors.length === 0) {
+  if (directory.totalAll === 0 && initialTotalAll === 0) {
     return (
       <div className="bg-white pb-16 sm:pb-20">
         <div className="mx-auto min-w-0 max-w-2xl px-4 pt-10 text-center sm:px-6 sm:pt-14 md:pt-16">
@@ -152,93 +224,109 @@ export function MentorsPage({ mentors }: { mentors: Mentor[] }) {
   }
 
   return (
-    <div className="bg-white pb-6 sm:pb-8">
-      <div id="results" ref={resultsAnchorRef} className="mx-auto min-w-0 max-w-7xl scroll-mt-4 px-4 sm:px-6 lg:px-8">
+    <div className={`bg-white pb-6 sm:pb-8 ${directoryLoading ? "opacity-[0.92] transition-opacity" : ""}`}>
+      <div
+        id="results"
+        ref={resultsAnchorRef}
+        className="mx-auto min-w-0 max-w-7xl scroll-mt-4 px-4 sm:px-6 lg:px-8"
+      >
         <div className="flex min-w-0 flex-col gap-5 pt-6 sm:gap-6 sm:pt-8 md:pt-10">
           <p className="w-full text-left font-sans text-[15px] font-semibold leading-normal text-[#6a7282] sm:text-base">
             Connect, gain mentorship, and learn from real world practice.
           </p>
 
-        <div className="flex min-w-0 flex-col gap-3">
-          <div className="flex min-w-0 flex-row items-stretch gap-3 sm:items-center sm:gap-4">
-            <MentorSearchBar
-              className="min-w-0 flex-1"
-              value={q}
-              onChange={(v) => {
-                const wasNotFirstPage = pageRef.current !== 1;
-                setQ(v);
-                setPage(1);
-                if (wasNotFirstPage) scrollResultsIntoView();
-              }}
-            />
-            <button
-              type="button"
-              onClick={() => setFiltersOpen((o) => !o)}
-              className="inline-flex shrink-0 items-center gap-2 rounded-full bg-primary px-5 py-3 text-sm font-bold text-white shadow-sm ring-1 ring-primary/25 transition hover:bg-primary/95 active:scale-[0.98]"
-              aria-expanded={filtersOpen}
-              aria-controls="mentor-filters-panel"
-            >
-              Filter
-              <svg
-                width={16}
-                height={16}
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth={2.5}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className={`shrink-0 transition-transform duration-200 ${filtersOpen ? "rotate-180" : ""}`}
-                aria-hidden
+          <div className="flex min-w-0 flex-col gap-3">
+            <div className="flex min-w-0 flex-row items-stretch gap-3 sm:items-center sm:gap-4">
+              <MentorSearchBar
+                className="min-w-0 flex-1"
+                value={q}
+                onChange={(v) => {
+                  const wasNotFirstPage = pageRef.current !== 1;
+                  setQ(v);
+                  setPage(1);
+                  if (wasNotFirstPage) scrollResultsIntoView();
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => setFiltersOpen((o) => !o)}
+                className="inline-flex shrink-0 items-center gap-2 rounded-full bg-primary px-5 py-3 text-sm font-bold text-white shadow-sm ring-1 ring-primary/25 transition hover:bg-primary/95 active:scale-[0.98]"
+                aria-expanded={filtersOpen}
+                aria-controls="mentor-filters-panel"
               >
-                <path d="m6 9 6 6 6-6" />
-              </svg>
-              {activeFilterCount > 0 ? (
-                <span className="flex min-h-[1.25rem] min-w-[1.25rem] items-center justify-center rounded-full bg-white/25 px-1.5 text-[11px] font-bold leading-none text-white">
-                  {activeFilterCount}
-                </span>
-              ) : null}
-            </button>
-          </div>
+                Filter
+                <svg
+                  width={16}
+                  height={16}
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={2.5}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className={`shrink-0 transition-transform duration-200 ${filtersOpen ? "rotate-180" : ""}`}
+                  aria-hidden
+                >
+                  <path d="m6 9 6 6 6-6" />
+                </svg>
+                {activeFilterCount > 0 ? (
+                  <span className="flex min-h-[1.25rem] min-w-[1.25rem] items-center justify-center rounded-full bg-white/25 px-1.5 text-[11px] font-bold leading-none text-white">
+                    {activeFilterCount}
+                  </span>
+                ) : null}
+              </button>
+            </div>
           <MentorFilterBar
             filtersOpen={filtersOpen}
             selectedInterestLabels={selectedInterests}
             onToggleInterest={toggleInterest}
             experienceLevel={experienceLevel}
-            onExperienceLevel={setExperienceLevel}
+            onExperienceLevel={(v) => {
+              setPage(1);
+              setExperienceLevel(v);
+            }}
             locationFilter={locationFilter}
-            onLocationFilter={setLocationFilter}
+            onLocationFilter={(v) => {
+              setPage(1);
+              setLocationFilter(v);
+            }}
             onlyWithAvailability={onlyWithAvailability}
-            onOnlyWithAvailability={setOnlyWithAvailability}
+            onOnlyWithAvailability={(v) => {
+              setPage(1);
+              setOnlyWithAvailability(v);
+            }}
             sortOrder={sortOrder}
-            onSortOrder={setSortOrder}
+            onSortOrder={(v) => {
+              setPage(1);
+              setSortOrder(v);
+            }}
             onClearFilters={clearFilters}
             hasActiveFilters={hasActiveFilters}
           />
-        </div>
+          </div>
         </div>
 
         <SectionReveal className="mt-5 sm:mt-6">
-          {mentors.length > 0 ? (
+          {directory.totalAll > 0 ? (
             <p className="mb-3 text-[12px] text-neutral-500">
-              {filtered.length === mentors.length
-                ? `Showing all ${filtered.length} mentor${filtered.length === 1 ? "" : "s"}`
-                : `Showing ${filtered.length} of ${mentors.length} mentor${mentors.length === 1 ? "" : "s"}`}
+              {directory.totalFiltered === directory.totalAll
+                ? `Showing all ${directory.totalFiltered} mentor${directory.totalFiltered === 1 ? "" : "s"}`
+                : `Showing ${directory.totalFiltered} of ${directory.totalAll} mentor${directory.totalAll === 1 ? "" : "s"}`}
             </p>
           ) : null}
           <div className="grid min-w-0 auto-rows-fr grid-cols-1 items-stretch gap-3.5 sm:gap-4 md:gap-5 lg:grid-cols-2 lg:gap-x-8 lg:gap-y-5">
-            {slice.map((m, i) => (
-              <MentorCard key={m.id} mentor={m} index={i} />
+            {directory.mentors.map((m, i) => (
+              <MentorCard key={m.id} mentor={m} index={i} viewerUserId={viewerForCards} />
             ))}
           </div>
-          {filtered.length === 0 && mentors.length > 0 && (
+          {directory.totalFiltered === 0 && directory.totalAll > 0 && (
             <p className="py-5 text-center text-sm text-neutral-600 sm:py-6">
               No mentors match your search and filters. Try different keywords or clear filters.
             </p>
           )}
         </SectionReveal>
 
-        {filtered.length > 0 && (
+        {directory.totalFiltered > 0 && (
           <MentorPagination
             page={safePage}
             total={totalPages}

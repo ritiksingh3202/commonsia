@@ -191,6 +191,21 @@ function isUnreliableExternalImageUrl(url: string): boolean {
   return false;
 }
 
+/** Avatar URL for booking picker UIs — proxies large `data:` images via `/api/mentors/:id/photo`. */
+export function mentorAvatarSrcForBookingUi(userId: string, rawImage: string | null | undefined): string | null {
+  const rawImgSource = rawImage?.trim() ?? "";
+  const rawImg = isUnreliableExternalImageUrl(rawImgSource) ? "" : rawImgSource;
+  if (!rawImg) return null;
+  if (rawImg.startsWith("data:")) return `/api/mentors/${userId}/photo?v=${imageVersionTag(rawImg)}`;
+  return rawImg;
+}
+
+export function hasMentorProfilePhotoForBookingUi(rawImage: string | null | undefined): boolean {
+  const rawImgSource = rawImage?.trim() ?? "";
+  const rawImg = isUnreliableExternalImageUrl(rawImgSource) ? "" : rawImgSource;
+  return Boolean(rawImg);
+}
+
 function displayName(name: string | null, email: string | null): string {
   const n = name?.trim();
   if (n) return n;

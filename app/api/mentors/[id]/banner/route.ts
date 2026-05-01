@@ -42,10 +42,10 @@ export async function GET(req: Request, ctx: Ctx) {
   const cacheKey = hasVersion ? CacheKeys.mentorBannerBlob(id, versionParam) : null;
 
   const immutableHeaders = {
-    "Cache-Control": "public, max-age=31536000, immutable",
+    "Cache-Control": "public, max-age=31536000, immutable, s-maxage=31536000",
   } as const;
   const revalidatingHeaders = {
-    "Cache-Control": "public, max-age=300, stale-while-revalidate=86400",
+    "Cache-Control": "public, max-age=300, stale-while-revalidate=86400, s-maxage=3600",
   } as const;
 
   if (cacheKey) {

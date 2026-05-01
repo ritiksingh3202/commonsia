@@ -333,7 +333,7 @@ export function EditProfileForm({ user: initial }: Props) {
       } catch {
         if (!cancelled) setAutoSave("error");
       }
-    }, 900);
+    }, 550);
     return () => {
       cancelled = true;
       window.clearTimeout(t);

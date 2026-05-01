@@ -1,21 +1,9 @@
 import type { Metadata } from "next";
-import dynamic from "next/dynamic";
 import { redirect } from "next/navigation";
 
 import { auth } from "@/auth";
+import { EditProfileForm } from "@/components/student/edit-profile/EditProfileForm";
 import { prisma } from "@/lib/prisma";
-
-const EditProfileForm = dynamic(
-  () => import("@/components/student/edit-profile/EditProfileForm").then((m) => m.EditProfileForm),
-  {
-    loading: () => (
-      <div className="mx-auto max-w-5xl px-4 py-10 sm:px-6 lg:px-8">
-        <div className="h-10 w-56 max-w-full animate-pulse rounded-lg bg-neutral-200" />
-        <div className="mt-6 h-[32rem] max-w-full animate-pulse rounded-2xl bg-neutral-100" />
-      </div>
-    ),
-  },
-);
 
 export const metadata: Metadata = {
   title: { absolute: "Edit profile" },

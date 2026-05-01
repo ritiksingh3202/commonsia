@@ -429,7 +429,7 @@ export function MentorEditProfileForm({ initial }: { initial: MentorEditProfileI
       } catch {
         if (!cancelled) setAutoSave("error");
       }
-    }, 900);
+    }, 550);
     return () => {
       cancelled = true;
       window.clearTimeout(t);

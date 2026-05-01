@@ -2,15 +2,12 @@ import bcrypt from "bcryptjs";
 import { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 
+import { isValidEmailAddress } from "@/lib/email-validation";
 import { invalidatePublicMentorsList } from "@/lib/redis-cache";
 import { isPrismaConnectionError, isPrismaMissingSchemaError } from "@/lib/prisma-errors";
 import { prisma } from "@/lib/prisma";
 
 const MIN_PASSWORD = 8;
-
-function validEmail(email: string): boolean {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-}
 
 export async function POST(req: Request) {
   let body: unknown;
@@ -30,7 +27,7 @@ export async function POST(req: Request) {
   if (!name || !email || !password) {
     return NextResponse.json({ error: "Name, email, and password are required." }, { status: 400 });
   }
-  if (!validEmail(email)) {
+  if (!isValidEmailAddress(email)) {
     return NextResponse.json({ error: "Enter a valid email address." }, { status: 400 });
   }
   if (password.length < MIN_PASSWORD) {

@@ -143,6 +143,10 @@ export function MentorFilterBar({
                 );
               })}
             </div>
+            <p className="mt-2 max-w-md text-[11px] leading-snug text-neutral-500">
+              Abroad shows mentors who saved a profile country other than India. India includes mentors still setting
+              location (no country yet) or those based in India.
+            </p>
           </div>
 
           <div className="border-t border-black/[0.06] pt-4">

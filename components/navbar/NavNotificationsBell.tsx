@@ -5,7 +5,12 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 type NotificationItem = {
   id: string;
-  type: "message_request" | "message_waiting" | "message_accepted" | "session_booked";
+  type:
+    | "message_request"
+    | "message_waiting"
+    | "booking_declined"
+    | "message_accepted"
+    | "session_booked";
   title: string;
   subtitle: string | null;
   href: string;

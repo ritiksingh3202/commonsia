@@ -229,6 +229,8 @@ export type MentorAvailabilityJson = {
   blockedDates?: BlockedDateEntry[];
   /** Weekly mode: extra slot labels (same format as weeklySlots) per ISO date */
   extraAvailabilitySlots?: Record<string, string[]>;
+  /** Weekly/weekends: saved preset intervals per weekday — keeps booking windows visually separate when bands touch (e.g. 2–4 PM vs 4–6 PM). */
+  weeklyIntervalBands?: Partial<Record<WeekdayKey, { start: string; end: string }[]>>;
   acceptingNewMentees?: boolean;
 };
 

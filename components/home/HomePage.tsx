@@ -12,6 +12,7 @@ import { defaultFaqItems } from "@/lib/faq-content";
 import type { HomeTestimonialCard } from "@/lib/testimonials";
 import { MARKETING_SECTION_TITLE_CLASS } from "@/lib/marketing-section-title";
 import { highResProfileImageUrl } from "@/lib/profile-image-url";
+import { PaginationArrowLeft, PaginationArrowRight } from "@/components/icons/PaginationArrowIcons";
 import { MentorCarouselArrows } from "@/components/mentors/MentorCarouselArrows";
 
 const FaqAccordion = dynamic(
@@ -229,6 +230,7 @@ export function HomePage({ testimonials }: { testimonials: HomeTestimonialCard[]
                 alt=""
                 width={64}
                 height={64}
+                sizes="(max-width:640px) 56px, 64px"
                 className="h-14 w-auto max-w-full object-contain object-left sm:h-16"
                 style={{ width: "auto" }}
               />
@@ -269,6 +271,7 @@ export function HomePage({ testimonials }: { testimonials: HomeTestimonialCard[]
                           alt=""
                           width={26}
                           height={26}
+                          sizes="26px"
                           className="brightness-0 invert"
                         />
                       </span>
@@ -285,6 +288,7 @@ export function HomePage({ testimonials }: { testimonials: HomeTestimonialCard[]
                           alt=""
                           width={28}
                           height={28}
+                          sizes="28px"
                           className="icon-brand-line object-contain"
                         />
                       </motion.span>
@@ -476,7 +480,7 @@ export function HomePage({ testimonials }: { testimonials: HomeTestimonialCard[]
                     onClick={prevM}
                   className="flex size-10 items-center justify-center rounded-full border-2 border-primary bg-white shadow-sm transition hover:bg-primary/5"
                   >
-                    <Image src="/left_arrow.svg" alt="" width={14} height={11} className="icon-brand-line" />
+                    <PaginationArrowLeft className="icon-brand-line h-[11px] w-[14px]" />
                   </motion.button>
                   <motion.button
                     type="button"
@@ -486,7 +490,7 @@ export function HomePage({ testimonials }: { testimonials: HomeTestimonialCard[]
                     onClick={nextM}
                   className="flex size-10 items-center justify-center rounded-full border-2 border-primary bg-white shadow-sm transition hover:bg-primary/5"
                   >
-                    <Image src="/right_arrow.svg" alt="" width={14} height={11} className="icon-brand-line" />
+                    <PaginationArrowRight className="icon-brand-line h-[11px] w-[14px]" />
                   </motion.button>
               </div>
             </SectionReveal>

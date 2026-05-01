@@ -59,6 +59,21 @@ export function mergeAvailabilityForSlot(raw: unknown): MentorAvailabilityJson {
       }
     }
   }
+  if (o.weeklyIntervalBands && typeof o.weeklyIntervalBands === "object") {
+    d.weeklyIntervalBands = {};
+    for (const k of WEEKDAY_KEYS) {
+      const raw = (o.weeklyIntervalBands as Record<string, unknown>)[k];
+      if (!Array.isArray(raw)) continue;
+      const cleaned: { start: string; end: string }[] = [];
+      for (const item of raw) {
+        if (!item || typeof item !== "object") continue;
+        const st = (item as { start?: unknown }).start;
+        const en = (item as { end?: unknown }).end;
+        if (typeof st === "string" && typeof en === "string") cleaned.push({ start: st, end: en });
+      }
+      if (cleaned.length > 0) d.weeklyIntervalBands[k] = cleaned;
+    }
+  }
   if (typeof o.recurringWeekdayJs === "number" && o.recurringWeekdayJs >= 0 && o.recurringWeekdayJs <= 6) {
     d.recurringWeekdayJs = o.recurringWeekdayJs;
   }

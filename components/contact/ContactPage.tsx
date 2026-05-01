@@ -62,6 +62,7 @@ export function ContactPage() {
                 alt=""
                 width={36}
                 height={36}
+                sizes="36px"
                 className="icon-brand-line"
               />
             </IconDisc>
@@ -81,6 +82,7 @@ export function ContactPage() {
                 alt=""
                 width={36}
                 height={36}
+                sizes="36px"
                 className="brightness-0 invert"
               />
             </IconDisc>
@@ -98,6 +100,7 @@ export function ContactPage() {
                 alt=""
                 width={36}
                 height={36}
+                sizes="36px"
                 className="brightness-0 invert"
               />
             </IconDisc>

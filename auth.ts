@@ -18,7 +18,7 @@ import { highResProfileImageUrl } from "@/lib/profile-image-url";
  * OAuth (Auth.js v5):
  * - AUTH_SECRET — required in production (or NEXTAUTH_SECRET). Generate: `npx auth secret`
  * - AUTH_URL — e.g. https://www.commonsia.com (no trailing slash). Must match the hostname in the browser (www vs apex).
- * - GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET (fallback: AUTH_GOOGLE_ID / AUTH_GOOGLE_SECRET)
+ * - GOOGLE_LOGIN_CLIENT_ID / GOOGLE_LOGIN_CLIENT_SECRET (or GOOGLE_CLIENT_* / AUTH_GOOGLE_*)
  * - LINKEDIN_CLIENT_ID / LINKEDIN_CLIENT_SECRET (fallback: AUTH_LINKEDIN_*)
  * - DATABASE_URL — Postgres (e.g. Supabase; see `.env.example`)
  *

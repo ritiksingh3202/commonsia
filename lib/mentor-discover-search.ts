@@ -90,23 +90,33 @@ export function mentorMatchesSelectedInterests(m: Mentor, selectedLabels: Readon
   return false;
 }
 
-const INDIA_RE =
-  /\b(india|indian|bengaluru|bangalore|mumbai|delhi|new delhi|chennai|hyderabad|kolkata|pune|ahmedabad|cept|iit\b|spa delhi|nist\b|vizag|coimbatore|jaipur|noida|gurgaon|kochi|trivandrum|calicut|mysuru|mysore|inr\b|₹|ist\b)/i;
-const ABROAD_RE =
-  /\b(usa|u\.s\.|united states|uk\b|united kingdom|london|england|canada|australia|germany|netherlands|spain|france|uae|dubai|singapore|china|japan|new york|san francisco|toronto|melbourne|paris|berlin|abroad|international office|europe|middle east)\b/i;
-
-/** India filter: not “abroad-only” (neutral mentors still appear). */
-export function mentorMatchesIndiaFilter(m: Mentor): boolean {
-  const hay = mentorSearchHaystack(m);
-  const abroadOnly = ABROAD_RE.test(hay) && !INDIA_RE.test(hay);
-  return !abroadOnly;
+function normalizeCountryToken(country: string | null | undefined): string {
+  return (country ?? "").trim().toLowerCase();
 }
 
-/** Abroad filter: not “India-only” (neutral mentors still appear). */
+/** Mentor saved “India” as their profile country (matches setup combobox label). */
+export function mentorCountryIsIndia(country: string | null | undefined): boolean {
+  const n = normalizeCountryToken(country);
+  if (!n) return false;
+  return n === "india";
+}
+
+/**
+ * India filter: mentors based in India, **or** country not filled yet (still discoverable domestically).
+ */
+export function mentorMatchesIndiaFilter(m: Mentor): boolean {
+  const n = normalizeCountryToken(m.country);
+  if (!n) return true;
+  return mentorCountryIsIndia(m.country);
+}
+
+/**
+ * Abroad filter: mentors who **saved a profile country that is not India** (explicit non-India location).
+ */
 export function mentorMatchesAbroadFilter(m: Mentor): boolean {
-  const hay = mentorSearchHaystack(m);
-  const indiaOnly = INDIA_RE.test(hay) && !ABROAD_RE.test(hay);
-  return !indiaOnly;
+  const n = normalizeCountryToken(m.country);
+  if (!n) return false;
+  return !mentorCountryIsIndia(m.country);
 }
 
 export type ExperienceLevelFilter = "" | "0-3" | "3-7" | "7+";

@@ -268,10 +268,14 @@ export function MentorSetupStep1({
                       *
                     </span>
                   </label>
-                  <input
+                  <p className="text-[11px] leading-snug text-[#6b7280]">
+                    Add multiple areas on separate lines or separated by semicolons. Commas inside one line stay as a single
+                    skill (e.g., ‘Digital fabrication, robotics’).
+                  </p>
+                  <textarea
                     id="mentorExpertiseOther"
                     name="mentorExpertiseOther"
-                    type="text"
+                    rows={3}
                     value={otherExpertise}
                     onChange={(e) => {
                       const v = e.target.value;
@@ -285,7 +289,9 @@ export function MentorSetupStep1({
                         ),
                       });
                     }}
-                    placeholder="e.g., Exhibition design, Computational design"
+                    placeholder={
+                      "Exhibition design\nComputational design; Digital fabrication, robotics"
+                    }
                     className={setupField}
                     autoComplete="off"
                   />

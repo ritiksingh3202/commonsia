@@ -34,6 +34,7 @@ export function BrandLogo({ className, priority = false, context = "navbar" }: B
         alt=""
         width={40}
         height={39}
+        sizes="40px"
         priority={priority}
         className={symbolClass}
       />
@@ -42,6 +43,7 @@ export function BrandLogo({ className, priority = false, context = "navbar" }: B
         alt="Commonsia"
         width={182}
         height={40}
+        sizes="(max-width:640px) 45vw, 182px"
         priority={priority}
         className={wordmarkClass}
       />

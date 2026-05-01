@@ -5,7 +5,7 @@ import { DEFAULT_CALENDAR_OAUTH_RETURN_PATH } from "@/lib/calendar-oauth-return-
 import { setGoogleCalendarRefreshToken } from "@/lib/google-calendar-db";
 import { getCalendarOAuthPublicOrigin, getCalendarOAuthRedirectUri } from "@/lib/calendar-oauth-public-url";
 import { verifyCalendarOAuthState } from "@/lib/calendar-oauth-state";
-import { getGoogleOAuthClient } from "@/lib/oauth-credentials";
+import { getGoogleCalendarOAuthClient } from "@/lib/oauth-credentials";
 
 export async function GET(req: Request) {
   const url = new URL(req.url);
@@ -26,7 +26,7 @@ export async function GET(req: Request) {
     return NextResponse.redirect(`${back}?calendar=error`);
   }
 
-  const googleCreds = getGoogleOAuthClient();
+  const googleCreds = getGoogleCalendarOAuthClient();
   const redirectUri = getCalendarOAuthRedirectUri(req);
 
   if (!googleCreds) {

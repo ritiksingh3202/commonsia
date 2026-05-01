@@ -9,6 +9,7 @@
     "migrate:deploy": "prisma migrate deploy",
     "db:drift-check": "prisma migrate diff --from-schema-datasource prisma/schema.prisma --to-schema-datamodel prisma/schema.prisma --script",
     "db:ping": "node scripts/db-ping.cjs",
+    "booking:whatsapp-check": "node scripts/booking-whatsapp-config-check.cjs",
     "db:push": "prisma db push",
     "start": "next start",
     "lint": "eslint",

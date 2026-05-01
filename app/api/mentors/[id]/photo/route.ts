@@ -40,10 +40,10 @@ export async function GET(req: Request, ctx: Ctx) {
 
   const immutableHeaders = {
     /** Versioned URL + content-hashed key → safe to tell the browser "never re-ask us". */
-    "Cache-Control": "public, max-age=31536000, immutable",
+    "Cache-Control": "public, max-age=31536000, immutable, s-maxage=31536000",
   } as const;
   const revalidatingHeaders = {
-    "Cache-Control": "public, max-age=300, stale-while-revalidate=86400",
+    "Cache-Control": "public, max-age=300, stale-while-revalidate=86400, s-maxage=3600",
   } as const;
 
   if (cacheKey) {

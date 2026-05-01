@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useSession } from "next-auth/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { MentorAvatar } from "@/components/mentors/MentorAvatar";
@@ -72,6 +73,7 @@ export function PublicMentorProfile({
   portfolioLoginHref,
   similarMentorsPersonalized = false,
   viewerHasPendingBookingRequest = false,
+  viewerUserId = null,
 }: {
   mentor: Mentor;
   /** Completed `MentoringBooking` rows for this mentor (end time in the past). */
@@ -99,7 +101,12 @@ export function PublicMentorProfile({
   portfolioLoginHref?: string;
   /** Signed-in student already submitted a pending booking request for this mentor. */
   viewerHasPendingBookingRequest?: boolean;
+  /** Current viewer user id (from server session) — drives similar-mentor card booking links */
+  viewerUserId?: string | null;
 }) {
+  const { data: session } = useSession();
+  const viewerForSimilarCards = session?.user?.id ?? viewerUserId ?? null;
+
   const [tab, setTab] = useState<Tab>("overview");
   const [reviewIdx, setReviewIdx] = useState(0);
   const [similarIdx, setSimilarIdx] = useState(0);
@@ -663,6 +670,7 @@ export function PublicMentorProfile({
               key={`${m.id}-${similarStart}-${i}`}
               mentor={m}
               index={similarStart + i}
+              viewerUserId={viewerForSimilarCards}
             />
           ))}
         </div>

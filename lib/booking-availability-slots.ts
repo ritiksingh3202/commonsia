@@ -27,7 +27,7 @@ import {
   weekdayKeyFromJs,
 } from "@/lib/mentor-availability-patterns";
 import { mergeAvailabilityForSlot } from "@/lib/mentor-availability-merge";
-import { slotLabelToMinutes, sortSlotLabels } from "@/lib/mentor-availability-slots";
+import { slotLabelToMinutes, sortSlotLabels, expandIntervalToSlotLabels } from "@/lib/mentor-availability-slots";
 import { istSlotRangeToISO } from "@/lib/schedule-slot-ist";
 
 const TZ = process.env.DEFAULT_CALENDAR_TIMEZONE ?? "Asia/Kolkata";
@@ -366,13 +366,35 @@ export function getBookableAvailabilityWindowsForDate(
   if (labels.length === 0) return [];
 
   const sorted = sortSlotLabels([...labels]);
+  const allowedDay = new Set(sorted);
+
+  const winKind = normalizeAvailabilityWindowKind(av.availabilityWindowKind);
+  const weekdayKey = weekdayKeyForCalendarDate(year, monthIndex, day);
+  const bands = av.weeklyIntervalBands?.[weekdayKey];
+  const useBands =
+    av.availabilityType === "weekly" &&
+    winKind === "weekends" &&
+    bands &&
+    bands.length > 0;
+
+  if (useBands) {
+    const groups: string[][] = [];
+    for (const band of bands) {
+      const inBand = expandIntervalToSlotLabels(band.start, band.end).filter((l) => allowedDay.has(l));
+      const sortedBand = sortSlotLabels(inBand);
+      if (sortedBand.length === 0) continue;
+      groups.push(...buildConsecutiveSlotStartGroups(sortedBand));
+    }
+    return emitBookableWindowsFromLabelGroups(groups, year, monthIndex, day, sessionDur, allowedDay);
+  }
+
   return emitBookableWindowsFromLabelGroups(
     buildConsecutiveSlotStartGroups(sorted),
     year,
     monthIndex,
     day,
     sessionDur,
-    new Set(sorted),
+    allowedDay,
   );
 }
 

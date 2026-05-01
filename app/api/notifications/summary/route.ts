@@ -11,7 +11,12 @@ export const runtime = "nodejs";
 
 type NotificationItem = {
   id: string;
-  type: "message_request" | "message_waiting" | "message_accepted" | "session_booked";
+  type:
+    | "message_request"
+    | "message_waiting"
+    | "booking_declined"
+    | "message_accepted"
+    | "session_booked";
   title: string;
   subtitle: string | null;
   href: string;
@@ -72,6 +77,7 @@ export async function GET() {
   const sessionRecency = new Date(now.getTime() - 72 * 60 * 60 * 1000);
   const horizon = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
   const acceptNotifyCutoff = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  const bookingDeclinedCutoff = acceptNotifyCutoff;
 
   type MentorPendingRow = Prisma.ChatThreadGetPayload<{
     include: {
@@ -92,9 +98,14 @@ export async function GET() {
     };
   }>;
 
+  type BookingDeclinedRow = Prisma.BookingRequestGetPayload<{
+    include: { mentor: { select: { name: true } } };
+  }>;
+
   let mentorPending: MentorPendingRow[] = [];
   let studentPending: StudentPendingRow[] = [];
   let studentAccepted: StudentAcceptedRow[] = [];
+  let studentBookingDeclined: BookingDeclinedRow[] = [];
   let bookings: BookingRow[] = [];
 
   try {
@@ -144,6 +155,18 @@ export async function GET() {
             include: { mentor: { select: { name: true, email: true } } },
           })
         : Promise.resolve<StudentAcceptedRow[]>([]),
+      role === "student"
+        ? prisma.bookingRequest.findMany({
+            where: {
+              studentId: userId,
+              status: "rejected",
+              decidedAt: { gte: bookingDeclinedCutoff },
+            },
+            orderBy: { decidedAt: "desc" },
+            take: 8,
+            include: { mentor: { select: { name: true } } },
+          })
+        : Promise.resolve<BookingDeclinedRow[]>([]),
       prisma.mentoringBooking.findMany({
         where: {
           ...(role === "mentor" ? { mentorId: userId } : { studentId: userId }),
@@ -161,7 +184,8 @@ export async function GET() {
     mentorPending = results[0] as MentorPendingRow[];
     studentPending = results[1] as StudentPendingRow[];
     studentAccepted = results[2] as StudentAcceptedRow[];
-    bookings = results[3] as BookingRow[];
+    studentBookingDeclined = results[3] as BookingDeclinedRow[];
+    bookings = results[4] as BookingRow[];
   } catch (e) {
     /**
      * If Postgres is temporarily unreachable (P1001/P1002/etc), do NOT 500-loop the navbar.
@@ -218,6 +242,24 @@ export async function GET() {
         threadId: t.id,
       });
     }
+
+    for (const r of studentBookingDeclined) {
+      const mentorName = r.mentor.name?.trim() || "Mentor";
+      const when = r.startAt.toLocaleString(undefined, {
+        weekday: "short",
+        month: "short",
+        day: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+      });
+      items.push({
+        id: `booking-decl-${r.id}`,
+        type: "booking_declined",
+        title: `${mentorName} declined your session request`,
+        subtitle: `Requested: ${when}. Pick another mentor or time slot.`,
+        href: "/student",
+      });
+    }
   }
 
   for (const b of bookings) {
@@ -245,8 +287,9 @@ export async function GET() {
     const pri = (t: NotificationItem["type"]) => {
       if (t === "message_request") return 0;
       if (t === "message_waiting") return 1;
-      if (t === "message_accepted") return 2;
-      return 3;
+      if (t === "booking_declined") return 2;
+      if (t === "message_accepted") return 3;
+      return 4;
     };
     return pri(a.type) - pri(b.type);
   });

@@ -2,7 +2,13 @@ import Image from "next/image";
 import Link from "next/link";
 
 import { BrandLogo } from "@/components/brand/BrandLogo";
-import { SITE_PHONE_DISPLAY, SITE_PHONE_TEL, SITE_WHATSAPP_URL } from "@/lib/site-contact";
+import {
+  SITE_INSTAGRAM_URL,
+  SITE_LINKEDIN_URL,
+  SITE_PHONE_DISPLAY,
+  SITE_PHONE_TEL,
+  SITE_WHATSAPP_URL,
+} from "@/lib/site-contact";
 
 const explore = [
   { href: "/", label: "Home" },
@@ -40,6 +46,7 @@ export function SiteFooter() {
                   alt=""
                   width={18}
                   height={18}
+                  sizes="18px"
                   className="icon-black-line shrink-0"
                 />
                 <a href="mailto:hello@commonsia.com" className="hover:text-primary">
@@ -52,6 +59,7 @@ export function SiteFooter() {
                   alt=""
                   width={18}
                   height={18}
+                  sizes="18px"
                   className="icon-black-line shrink-0"
                 />
                 <a href={`tel:${SITE_PHONE_TEL}`} className="hover:text-primary">
@@ -64,6 +72,7 @@ export function SiteFooter() {
                   alt=""
                   width={18}
                   height={18}
+                  sizes="18px"
                   className="icon-black-line mt-0.5 shrink-0"
                 />
                 <span>IIT Roorkee, Roorkee 247667</span>
@@ -72,6 +81,8 @@ export function SiteFooter() {
             <div className="mt-5 flex gap-4">
               <a
                 href={SITE_WHATSAPP_URL}
+                target="_blank"
+                rel="noopener noreferrer"
                 className="transition-opacity hover:opacity-70"
                 aria-label="WhatsApp"
               >
@@ -80,11 +91,14 @@ export function SiteFooter() {
                   alt=""
                   width={20}
                   height={20}
+                  sizes="20px"
                   className="icon-black-line"
                 />
               </a>
               <a
-                href="https://linkedin.com/"
+                href={SITE_LINKEDIN_URL}
+                target="_blank"
+                rel="noopener noreferrer"
                 className="transition-opacity hover:opacity-70"
                 aria-label="LinkedIn"
               >
@@ -93,11 +107,14 @@ export function SiteFooter() {
                   alt=""
                   width={20}
                   height={20}
+                  sizes="20px"
                   className="icon-black-line"
                 />
               </a>
               <a
-                href="https://instagram.com/"
+                href={SITE_INSTAGRAM_URL}
+                target="_blank"
+                rel="noopener noreferrer"
                 className="transition-opacity hover:opacity-70"
                 aria-label="Instagram"
               >
@@ -106,6 +123,7 @@ export function SiteFooter() {
                   alt=""
                   width={20}
                   height={20}
+                  sizes="20px"
                   className="icon-black-line"
                 />
               </a>

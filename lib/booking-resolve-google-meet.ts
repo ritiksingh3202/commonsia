@@ -1,6 +1,6 @@
 import { google } from "googleapis";
 
-import { getGoogleAdminOAuth2Client } from "@/lib/google-calendar-admin-client";
+import { getGoogleAdminCalendarId, getGoogleAdminOAuth2Client } from "@/lib/google-calendar-admin-client";
 import { getGoogleCalendarOAuth2Client } from "@/lib/google-calendar-oauth-client";
 import { meetLinkFromCalendarEventPayload } from "@/lib/google-calendar-meet-link";
 import { prisma } from "@/lib/prisma";
@@ -46,7 +46,7 @@ async function runResolve(bookingId: string): Promise<string | null> {
     try {
       const calendar = google.calendar({ version: "v3", auth: admin });
       const res = await calendar.events.get({
-        calendarId: "primary",
+        calendarId: getGoogleAdminCalendarId(),
         eventId,
       });
       const link = res.data ? meetLinkFromCalendarEventPayload(res.data) : null;
@@ -60,7 +60,7 @@ async function runResolve(bookingId: string): Promise<string | null> {
         return trimmed;
       }
     } catch {
-      /* Event may not be on admin primary in older flows */
+      /* Event may not be on admin calendar in older flows */
     }
   }
 

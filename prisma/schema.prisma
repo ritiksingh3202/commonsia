@@ -114,6 +114,15 @@ model MentoringBooking {
   /// Google Meet (or similar) join URL when `conferenceData` was used on insert.
   googleMeetLink String?  @db.Text
 
+  /// Populated when this session row was created from an approved `BookingRequest`.
+  bookingRequestId String?          @unique
+  bookingRequest   BookingRequest? @relation(fields: [bookingRequestId], references: [id], onDelete: SetNull)
+
+  /// Set when Zixflow accepted sending the session-confirmed template to the student WhatsApp (profile field).
+  whatsappStudentNotifiedAt DateTime?
+  /// Set when Zixflow accepted sending the session-confirmed template to the mentor WhatsApp (profile field).
+  whatsappMentorNotifiedAt DateTime?
+
   student User @relation("BookingStudent", fields: [studentId], references: [id], onDelete: Cascade)
   mentor  User @relation("BookingMentor", fields: [mentorId], references: [id], onDelete: Cascade)
 
@@ -132,12 +141,20 @@ model BookingRequest {
   startAt   DateTime
   endAt     DateTime
 
-  /// "pending" | "accepted" | "rejected" | "expired"
+  /// "pending" | "awaiting_slot" | "accepted" | "rejected" | "expired"
   status     String   @default("pending")
   decidedAt  DateTime?
 
   /// SHA-256 hex of the action token (Accept/Reject). Store hash only (never the raw token).
   actionTokenHash String @unique
+
+  /**
+   * Same material as `actionTokenHash` pre-image (64-char hex). Server-only: used to sign `/select-slot`
+   * catalog links when the mentor taps WhatsApp quick-reply Accept (no token in URL). Cleared when the
+   * row leaves `pending` or when Redis `rememberBookingActionRawToken` is used as primary. Supplements
+   * Upstash when env is missing in production.
+   */
+  actionRawTokenOpaque String? @db.Text
 
   /// When accepted, we create a real Calendar event and store its ids.
   googleEventId  String?
@@ -149,6 +166,8 @@ model BookingRequest {
 
   student User @relation("BookingRequestStudent", fields: [studentId], references: [id], onDelete: Cascade)
   mentor  User @relation("BookingRequestMentor", fields: [mentorId], references: [id], onDelete: Cascade)
+
+  mentoringBooking MentoringBooking?
 
   @@index([mentorId, startAt])
   @@index([studentId, createdAt])

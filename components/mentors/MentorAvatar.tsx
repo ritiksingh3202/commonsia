@@ -82,7 +82,7 @@ export function MentorAvatar({
               sizes ??
               (variant === "profile"
                 ? "(max-width:640px) 42vw, 184px"
-                : "(max-width:768px) 96vw, 320px")
+                : "(max-width:767px) 100vw, 320px")
             }
             /**
              * `quality` defaults to 75, which is the industry sweet spot for photographs.

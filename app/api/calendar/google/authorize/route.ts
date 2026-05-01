@@ -4,7 +4,7 @@ import { auth } from "@/auth";
 import { sanitizeCalendarOAuthReturnTo } from "@/lib/calendar-oauth-return-to";
 import { signCalendarOAuthState } from "@/lib/calendar-oauth-state";
 import { getCalendarOAuthPublicOrigin, getCalendarOAuthRedirectUri } from "@/lib/calendar-oauth-public-url";
-import { getGoogleOAuthClient } from "@/lib/oauth-credentials";
+import { getGoogleCalendarOAuthClient } from "@/lib/oauth-credentials";
 
 export async function GET(req: Request) {
   const origin = getCalendarOAuthPublicOrigin(req);
@@ -19,10 +19,13 @@ export async function GET(req: Request) {
     return NextResponse.redirect(login);
   }
 
-  const google = getGoogleOAuthClient();
+  const google = getGoogleCalendarOAuthClient();
   if (!google) {
     return NextResponse.json(
-      { error: "Google OAuth is not configured (GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET)." },
+      {
+        error:
+          "Google Calendar OAuth is not configured (GOOGLE_MEET_CLIENT_ID / GOOGLE_MEET_CLIENT_SECRET, or GOOGLE_LOGIN_* / GOOGLE_CLIENT_*).",
+      },
       { status: 500 },
     );
   }

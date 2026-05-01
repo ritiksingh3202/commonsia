@@ -16,7 +16,11 @@ export async function GET(req: Request) {
   }
 
   const row = await prisma.bookingRequest.findFirst({
-    where: { studentId: session.user.id, mentorId: mentorUserId, status: "pending" },
+    where: {
+      studentId: session.user.id,
+      mentorId: mentorUserId,
+      status: { in: ["pending", "awaiting_slot"] },
+    },
     orderBy: { createdAt: "desc" },
     select: { id: true, startAt: true },
   });

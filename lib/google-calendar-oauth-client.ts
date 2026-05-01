@@ -1,7 +1,7 @@
 import { google } from "googleapis";
 
 import { getGoogleCalendarRefreshToken } from "@/lib/google-calendar-db";
-import { getGoogleOAuthClient } from "@/lib/oauth-credentials";
+import { getGoogleCalendarOAuthClient } from "@/lib/oauth-credentials";
 import { prisma } from "@/lib/prisma";
 
 /**
@@ -21,7 +21,7 @@ export async function getGoogleCalendarOAuth2Client(forUserId: string) {
   const refresh = await getGoogleCalendarRefreshTokenForUser(forUserId);
   if (!refresh) return null;
 
-  const googleCreds = getGoogleOAuthClient();
+  const googleCreds = getGoogleCalendarOAuthClient();
   const base = process.env.AUTH_URL ?? "http://localhost:3000";
   const redirectUri = `${base.replace(/\/$/, "")}/api/calendar/google/callback`;
   if (!googleCreds) return null;

@@ -55,6 +55,7 @@ function RoleCard({
             alt={iconAlt}
             width={52}
             height={52}
+            sizes="52px"
             className="icon-brand-line size-12 object-contain sm:size-14"
           />
         </div>
