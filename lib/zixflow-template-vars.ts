@@ -6,8 +6,8 @@
  * |-------------|-----------------|---------------------------------------------------|
  * | {{1}}       | mentorName      | `User.name` (mentor)                              |
  * | {{2}}       | studentName     | `User.name` (student)                             |
- * | {{3}}       | college         | `User.university`, fallback `User.major`          |
- * | {{4}}       | year            | `User.yearOfStudy`                                |
+ * | {{3}}       | year            | `User.yearOfStudy`                                |
+ * | {{4}}       | college         | `User.university`, fallback `User.major`          |
  * | {{5}}       | studentProfile  | `{AUTH_URL}/mentor/students/{studentId}`          |
  * | {{6}}       | requestedTime   | Human range from booking `startAt`/`endAt` (IST) |
  *
@@ -31,8 +31,9 @@
  *
  * For a **tap-to-open catalog** URL button, set `ZIXFLOW_BOOKING_CATALOG_URL_TEMPLATE_VAR` to that component’s keyName.
  */
+/** Matches Meta template `mentorship_booking_request`: {{3}} year, {{4}} college. Override via `ZIXFLOW_BOOKING_BODY_VARS_ORDER`. */
 export const ZIXFLOW_DEFAULT_BOOKING_REQUEST_BODY_ORDER =
-  "mentorName,studentName,college,year,studentProfile,requestedTime";
+  "mentorName,studentName,year,college,studentProfile,requestedTime";
 
 /** Maps Meta {{1}}–{{4}} + catalog URL variable when Zixflow expects it as `body_5`. */
 export const ZIXFLOW_DEFAULT_TIME_SLOTS_BODY_ORDER =

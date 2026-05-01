@@ -304,14 +304,32 @@ export function ScheduleCallPage({
 
   const selected = slots[selectedSlotIndex];
 
-  const summaryDate = formatLongDate(viewYear, viewMonth, displayDay);
-  const summaryTimePrimary = selected
-    ? formatSlotIntervalWithZoneName(selected.startISO, selected.endISO, displayTimeZone)
-    : "Pick a time";
-  const summaryTimeIstHint =
-    selected && displayTimeZone !== "Asia/Kolkata"
-      ? `IST: ${formatSlotInterval(selected.startISO, selected.endISO, "Asia/Kolkata")}`
+  /** First session-length slice inside the chosen mentor band — matches DB + WhatsApp {{6}}. */
+  const mentorRequestedSession =
+    mentorUserId && selected
+      ? {
+          startISO: selected.startISO,
+          endISO: new Date(new Date(selected.startISO).getTime() + sessionBookingMinutes * 60_000).toISOString(),
+        }
       : null;
+
+  const summaryDate = formatLongDate(viewYear, viewMonth, displayDay);
+  const summaryTimePrimary =
+    mentorRequestedSession != null
+      ? formatSlotIntervalWithZoneName(
+          mentorRequestedSession.startISO,
+          mentorRequestedSession.endISO,
+          displayTimeZone,
+        )
+      : selected
+        ? formatSlotIntervalWithZoneName(selected.startISO, selected.endISO, displayTimeZone)
+        : "Pick a time";
+  const summaryTimeIstHint =
+    mentorRequestedSession != null && displayTimeZone !== "Asia/Kolkata"
+      ? `IST: ${formatSlotInterval(mentorRequestedSession.startISO, mentorRequestedSession.endISO, "Asia/Kolkata")}`
+      : selected && displayTimeZone !== "Asia/Kolkata"
+        ? `IST: ${formatSlotInterval(selected.startISO, selected.endISO, "Asia/Kolkata")}`
+        : null;
 
   const prevMonth = () => {
     if (viewMonth === 0) {
@@ -355,7 +373,7 @@ export function ScheduleCallPage({
     }
     setBooking(true);
     try {
-      /** Reserve the mentor's whole contiguous availability band; mentor picks exact session start in catalog. */
+      /** Band from UI; API stores first session-length slice starting at band start (WhatsApp {{6}}). */
       const startISO = selected.startISO;
       const endISO = selected.endISO;
 
@@ -493,7 +511,7 @@ export function ScheduleCallPage({
                 <div className="flex items-start gap-3 text-sm">
                   <IconClock className="mt-0.5 size-5 shrink-0 text-primary" />
                   <div>
-                    <p className="text-xs text-neutral-500">{mentorUserId ? "Requested window" : "Time"}</p>
+                    <p className="text-xs text-neutral-500">{mentorUserId ? "Requested session" : "Time"}</p>
                     <p className="font-semibold text-[#0a0a0a]">{summaryTimePrimary}</p>
                     {summaryTimeIstHint ? (
                       <p className="mt-0.5 text-[11px] text-neutral-500">{summaryTimeIstHint}</p>
@@ -504,10 +522,7 @@ export function ScheduleCallPage({
                   <IconStopwatch className="mt-0.5 size-5 shrink-0 text-primary" />
                   <div>
                     <p className="text-xs text-neutral-500">{mentorUserId ? "Session length" : "Duration"}</p>
-                    <p className="font-semibold text-[#0a0a0a]">
-                      {sessionBookingMinutes} minutes
-                      {mentorUserId ? " (exact start set when mentor confirms)" : ""}
-                    </p>
+                    <p className="font-semibold text-[#0a0a0a]">{sessionBookingMinutes} minutes</p>
                   </div>
                 </div>
               </div>
@@ -662,15 +677,14 @@ export function ScheduleCallPage({
               {mentorUserId ? (
                 <div className="mt-2 space-y-1.5 text-[11px] leading-relaxed text-neutral-500">
                   <p>
-                    Each row is a <span className="font-medium text-neutral-600">time range when this mentor is available</span>{" "}
-                    to take a session (from what they saved). Session length is set by them and shown in the summary on the
-                    left. Times refresh regularly; if they use Google Calendar, busy blocks may hide some ranges here.
+                    Each row is when this mentor is available.{" "}
+                    <span className="font-medium text-neutral-600">
+                      Your request books the first {sessionBookingMinutes}-minute session
+                    </span>{" "}
+                    starting at that row&apos;s begin time (same time shown in WhatsApp and Calendar after they accept).
                   </p>
-                  <p>
-                    <span className="font-medium text-neutral-600">After they accept your request,</span> you’ll get an email
-                    with your <span className="font-medium text-neutral-600">confirmed meeting time</span>—for example{" "}
-                    <span className="whitespace-nowrap font-medium text-neutral-700">5:00–5:30 PM</span>—not the whole
-                    availability window shown in the list.
+                  <p className="font-medium text-neutral-600">
+                    Busy slots may overlap some bands — refresh if times look stale.
                   </p>
                 </div>
               ) : (

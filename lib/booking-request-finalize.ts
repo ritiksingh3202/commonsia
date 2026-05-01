@@ -30,16 +30,15 @@ import {
 const FINALIZE_LOCK_PREFIX = "booking-request-finalize:";
 
 /**
- * Two-step Accept: send `time_slots` + catalog URL before creating the calendar event.
- * If `ZIXFLOW_BOOKING_TIME_SLOTS_TEMPLATE` is set, this is ON unless explicitly disabled
- * (`BOOKING_SLOT_CATALOG_BEFORE_CONFIRM=false` / `0` / `no`) — avoids “template set but flag forgot on Vercel”.
+ * Optional two-step flow: send `time_slots` catalog before Calendar + Meet.
+ * Default OFF — mentor Accept confirms the times already stored on `BookingRequest`.
+ * Enable only when both template name is set and `BOOKING_SLOT_CATALOG_BEFORE_CONFIRM=true`.
  */
 function bookingUsesWhatsAppSlotCatalog(): boolean {
   const tpl = process.env.ZIXFLOW_BOOKING_TIME_SLOTS_TEMPLATE?.trim();
   if (!tpl) return false;
   const flag = process.env.BOOKING_SLOT_CATALOG_BEFORE_CONFIRM?.trim().toLowerCase();
-  if (flag === "false" || flag === "0" || flag === "no") return false;
-  return true;
+  return flag === "true" || flag === "1";
 }
 
 export type HtmlActionResult = {
@@ -615,13 +614,15 @@ export async function finalizeBookingRequestAccept(opts: {
 
     const eventTitle =
       full.title?.trim() ||
-      `Commonsia: Session with ${full.mentor.name?.trim() || "mentor"}`;
+      `Mentorship Session - Commonsia (${full.student.name ?? "Student"} & ${full.mentor.name ?? "Mentor"})`;
     const eventDescription =
       full.description?.trim() ||
       [
-        "Scheduled via Commonsia (mentor accepted the WhatsApp request).",
+        "Mentorship Session - Commonsia",
+        "Scheduled via Commonsia after the mentor accepted the WhatsApp request.",
         full.mentor.name ? `Mentor: ${full.mentor.name}` : null,
         full.student.name ? `Student: ${full.student.name}` : null,
+        "Need to move it? Either party can reschedule from the Google Calendar invite.",
       ]
         .filter(Boolean)
         .join("\n");
@@ -875,13 +876,15 @@ export async function finalizeBookingRequestSlotPick(opts: {
 
     const eventTitle =
       full.title?.trim() ||
-      `Commonsia: Session with ${full.mentor.name?.trim() || "mentor"}`;
+      `Mentorship Session - Commonsia (${full.student.name ?? "Student"} & ${full.mentor.name ?? "Mentor"})`;
     const eventDescription =
       full.description?.trim() ||
       [
-        "Scheduled via Commonsia (mentor chose exact start from WhatsApp catalog).",
+        "Mentorship Session - Commonsia",
+        "Scheduled via Commonsia (mentor chose exact start from the slot catalog).",
         full.mentor.name ? `Mentor: ${full.mentor.name}` : null,
         full.student.name ? `Student: ${full.student.name}` : null,
+        "Need to move it? Either party can reschedule from the Google Calendar invite.",
       ]
         .filter(Boolean)
         .join("\n");

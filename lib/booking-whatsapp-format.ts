@@ -22,7 +22,7 @@ export function formatBookingWhatsAppRange(start: Date, end: Date): string {
   const datePart = dateFmt.format(start);
   const t0 = timeFmt.format(start);
   const t1 = timeFmt.format(end);
-  return `${datePart}, ${t0} – ${t1} (${durationMin}-min session window)`;
+  return `${datePart}, ${t0} – ${t1} (${durationMin}-min session)`;
 }
 
 export function formatBookingWhatsAppDateOnly(d: Date): string {

@@ -161,7 +161,7 @@ export function BookingSuccessModal({
               <p className="mt-1.5 text-[13px] font-medium leading-snug text-neutral-800 sm:text-sm">{payload.timeLine}</p>
               {payload.mode === "request_submitted" ? (
                 <p className="mt-1 text-[11px] leading-snug text-neutral-500 sm:text-xs">
-                  Availability window you requested — final meeting time is set when the mentor confirms.
+                  Time shown is the session that will be booked (first slice of the band you chose).
                 </p>
               ) : null}
               {payload.istHint ? (
@@ -170,8 +170,8 @@ export function BookingSuccessModal({
               <p className="mt-2 text-[12px] text-neutral-600 sm:text-[13px]">
                 {payload.mode === "request_submitted" ? (
                   <>
-                    Session length: <span className="tabular-nums">{payload.durationMin}</span> minutes (exact start after
-                    mentor accepts)
+                    Session length: <span className="tabular-nums">{payload.durationMin}</span> minutes (mentor confirms in
+                    WhatsApp — Meet + Calendar follow)
                   </>
                 ) : (
                   <>
@@ -184,7 +184,7 @@ export function BookingSuccessModal({
             {payload.mode === "request_submitted" ? (
               <p className="mt-3.5 text-left text-[13px] leading-relaxed text-neutral-600 sm:mt-4 sm:text-sm">
                 {payload.softMessage?.trim() ||
-                  "This availability window is reserved for you until the mentor decides. Check your inbox (and spam) for updates."}
+                  "This session time is on hold until the mentor accepts in WhatsApp. Check your inbox (and spam) for updates."}
               </p>
             ) : (
               <>

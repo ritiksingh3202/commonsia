@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 
 import { auth } from "@/auth";
 import { normalizeAvailabilityWindowKind } from "@/components/mentor/mentor-setup-constants";
-import { calendarDateToIso, validateBookingWindowInAvailability } from "@/lib/booking-availability-slots";
+import { calendarDateToIso, validateBookingInAvailability } from "@/lib/booking-availability-slots";
 import { newRawBookingActionToken, sha256Hex, signBookingAction } from "@/lib/booking-action-token";
 import { fetchPrimaryCalendarBusy, intervalOverlapsBusy } from "@/lib/google-calendar-busy";
 import { getGoogleCalendarOAuth2Client } from "@/lib/google-calendar-oauth-client";
@@ -56,12 +56,11 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "mentorUserId is required." }, { status: 400 });
   }
 
-  const start = new Date(body.startISO);
-  const end = new Date(body.endISO);
-  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end <= start) {
+  const bandStart = new Date(body.startISO);
+  const bandEnd = new Date(body.endISO);
+  if (Number.isNaN(bandStart.getTime()) || Number.isNaN(bandEnd.getTime()) || bandEnd <= bandStart) {
     return NextResponse.json({ error: "Invalid start or end time." }, { status: 400 });
   }
-  const durationMin = Math.round((end.getTime() - start.getTime()) / 60_000);
 
   if (
     typeof body.bookYear !== "number" ||
@@ -104,6 +103,17 @@ export async function POST(req: Request) {
 
   const av = mergeAvailabilityForSlot(mentorRow.mentorAvailabilityJson);
   const sessionMinutes = av.sessionDurationMinutes;
+  /** Book the **first** session-length slice inside the contiguous band the student chose (UI sends band start/end). */
+  const sessionEnd = new Date(bandStart.getTime() + sessionMinutes * 60_000);
+  if (sessionEnd.getTime() > bandEnd.getTime()) {
+    return NextResponse.json(
+      {
+        error:
+          "The mentor’s session length does not fit at the start of this availability window. Pick another row or ask them to widen availability.",
+      },
+      { status: 400 },
+    );
+  }
 
   const bookIso = calendarDateToIso(body.bookYear, body.bookMonthIndex, body.bookDay);
   let slotOpts: { monthlyPatternConsumedThisIstMonth?: boolean } | undefined;
@@ -120,13 +130,12 @@ export async function POST(req: Request) {
     );
     slotOpts = { monthlyPatternConsumedThisIstMonth: consumed };
   }
-  const slotCheck = validateBookingWindowInAvailability(
+  const slotCheck = validateBookingInAvailability(
     mentorRow.mentorAvailabilityJson,
     body.bookYear,
     body.bookMonthIndex,
     body.bookDay,
     body.startLabel.trim(),
-    durationMin,
     sessionMinutes,
     new Date(),
     slotOpts,
@@ -134,6 +143,9 @@ export async function POST(req: Request) {
   if (!slotCheck.ok) {
     return NextResponse.json({ error: slotCheck.error }, { status: 400 });
   }
+
+  const start = bandStart;
+  const end = sessionEnd;
 
   // Best-effort Google busy check — short timeout so the student request stays snappy.
   const mentorOauth = await getGoogleCalendarOAuth2Client(mentorRow.id);
@@ -255,8 +267,8 @@ export async function POST(req: Request) {
           /** Maps to Meta {{1}}–{{6}} via `ZIXFLOW_DEFAULT_BOOKING_REQUEST_BODY_ORDER`. */
           mentorName: mentorRow.name ?? "Mentor",
           studentName: booker.name ?? "Student",
-          college: booker.university?.trim() || booker.major?.trim() || "—",
           year: booker.yearOfStudy?.trim() || "—",
+          college: booker.university?.trim() || booker.major?.trim() || "—",
           studentProfile,
           requestedTime: formatBookingWhatsAppRange(start, end),
           acceptUrl,
@@ -301,7 +313,7 @@ export async function POST(req: Request) {
     ok: true,
     bookingRequestId: request.id,
     message:
-      "Request received. We’ll email you when the mentor accepts or declines. Other students won’t see this availability window while it’s pending.",
+      "Request received. We’ll email you when the mentor accepts or declines. Other students won’t see this session start while it’s pending.",
     ...(whatsappDiagEnabled && whatsapp ? { whatsapp } : {}),
   });
 }
