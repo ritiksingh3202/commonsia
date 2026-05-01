@@ -138,7 +138,9 @@ model BookingRequest {
 
   studentId String
   mentorId  String
+  /// Session start — first mentor-configured session-length slice inside the availability band the student picked (not the whole band).
   startAt   DateTime
+  /// Session end — `startAt` + mentor session duration (same interval shown as WhatsApp template {{6}} when vars use default order).
   endAt     DateTime
 
   /// "pending" | "awaiting_slot" | "accepted" | "rejected" | "expired"

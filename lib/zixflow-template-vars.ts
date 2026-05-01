@@ -1,15 +1,15 @@
 /**
  * Logical keys → Zixflow `body_1`, `body_2`, … order defaults.
  *
- * **Template A — mentorship session request** (screenshot: hello {{1}}, … {{6}} requested time):
- * | Meta `{{n}}` | Key             | DB / source                                        |
- * |-------------|-----------------|---------------------------------------------------|
- * | {{1}}       | mentorName      | `User.name` (mentor)                              |
- * | {{2}}       | studentName     | `User.name` (student)                             |
- * | {{3}}       | year            | `User.yearOfStudy`                                |
- * | {{4}}       | college         | `User.university`, fallback `User.major`          |
- * | {{5}}       | studentProfile  | `{AUTH_URL}/mentor/students/{studentId}`          |
- * | {{6}}       | requestedTime   | Human range from booking `startAt`/`endAt` (IST) |
+ * **Template A — mentorship session request** (e.g. `mentorship_booking_request`):
+ * | Meta `{{n}}` | Key             | Meaning / source                                                                 |
+ * |-------------|-----------------|-----------------------------------------------------------------------------------|
+ * | {{1}}       | mentorName      | Mentor’s display name (`User.name`)                                               |
+ * | {{2}}       | studentName     | Student’s display name                                                            |
+ * | {{3}}       | year            | Year of study (`User.yearOfStudy`)                                                |
+ * | {{4}}       | college         | College (`User.university`, fallback `User.major`)                                |
+ * | {{5}}       | studentProfile  | Student profile URL for the mentor                                                |
+ * | {{6}}       | requestedTime   | **Booked slice**: human range from `BookingRequest.startAt`/`endAt` — the first session-length interval at the **start** of the availability band the student chose (e.g. band 10:00–12:00 and 30‑min sessions → {{6}} is 10:00–10:30). Mentor Accept confirms **this exact interval** (unless optional catalog flow overrides picks). Default body order: `ZIXFLOW_DEFAULT_BOOKING_REQUEST_BODY_ORDER`. |
  *
  * **Clickable Accept/Reject links:** Plain URLs in the template *body* are often not tappable in WhatsApp.
  * Add Meta **URL** (call-to-action) buttons and map dynamic URLs via Zixflow variable keys:

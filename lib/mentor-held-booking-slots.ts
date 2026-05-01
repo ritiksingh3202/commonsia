@@ -4,9 +4,9 @@ import type { BookableSlotSegment } from "@/lib/booking-availability-slots";
 
 export type HeldIntervalMs = { startMs: number; endMs: number };
 
-/** Pending requests hold an entire availability band; confirmed bookings hold exact session intervals. */
+/** Pending requests reserve their persisted `[startAt,endAt]` session slice; confirmed bookings use the same shape. */
 export type MentorHeldIntervals = {
-  pendingFullWindows: HeldIntervalMs[];
+  pendingRequestIntervals: HeldIntervalMs[];
   confirmedSessions: HeldIntervalMs[];
 };
 
@@ -16,8 +16,8 @@ function intervalsOverlap(a0: number, a1: number, b0: number, b1: number): boole
 
 /**
  * Loads mentor intervals that block public scheduling:
- * - **BookingRequest** (`pending` / `awaiting_slot` / `accepted` before catalog completes): entire `[startAt,endAt]` window is reserved.
- * - **MentoringBooking**: confirmed sessions at exact `[startAt,endAt]`.
+ * - **BookingRequest** (`pending` / `awaiting_slot` / `accepted`): `[startAt,endAt]` on the row (first session slice the student locked in, not the full UI band).
+ * - **MentoringBooking**: confirmed sessions at `[startAt,endAt]`.
  */
 export async function loadMentorHeldIntervals(
   prisma: PrismaClient,
@@ -43,7 +43,7 @@ export async function loadMentorHeldIntervals(
     }),
   ]);
 
-  const pendingFullWindows: HeldIntervalMs[] = requests.map((r) => ({
+  const pendingRequestIntervals: HeldIntervalMs[] = requests.map((r) => ({
     startMs: r.startAt.getTime(),
     endMs: r.endAt.getTime(),
   }));
@@ -52,7 +52,7 @@ export async function loadMentorHeldIntervals(
     endMs: b.endAt.getTime(),
   }));
 
-  return { pendingFullWindows, confirmedSessions };
+  return { pendingRequestIntervals, confirmedSessions };
 }
 
 /** Flattened list — use when any overlap with `[start,end)` blocks (e.g. catalog granular picks). */
@@ -62,19 +62,18 @@ export async function loadMentorHeldSessionIntervals(
   horizonStart: Date = new Date(),
   opts?: { excludeBookingRequestId?: string },
 ): Promise<HeldIntervalMs[]> {
-  const { pendingFullWindows, confirmedSessions } = await loadMentorHeldIntervals(
+  const { pendingRequestIntervals, confirmedSessions } = await loadMentorHeldIntervals(
     prisma,
     mentorId,
     horizonStart,
     opts,
   );
-  return [...pendingFullWindows, ...confirmedSessions];
+  return [...pendingRequestIntervals, ...confirmedSessions];
 }
 
 /**
- * Drops availability windows already claimed by another pending request (whole-band overlap).
- * Confirmed bookings hide a band only when a session starting at the band's **first** instant would overlap
- * (legacy heuristic — avoids hiding a long band because a short session sits in the middle).
+ * Drops availability segments that overlap another pending request’s persisted `[startAt,endAt]` slice (or any confirmed session).
+ * Confirmed bookings apply an extra heuristic: only sessions starting at the band’s **first** instant can hide the segment.
  */
 export function filterSlotsAgainstHeldIntervals(
   slots: BookableSlotSegment[],
@@ -83,12 +82,12 @@ export function filterSlotsAgainstHeldIntervals(
 ): BookableSlotSegment[] {
   if (slots.length === 0) return slots;
   const durMs = sessionDurationMinutes * 60_000;
-  const { pendingFullWindows, confirmedSessions } = held;
+  const { pendingRequestIntervals, confirmedSessions } = held;
 
   return slots.filter((slot) => {
     const ws = new Date(slot.startISO).getTime();
     const we = new Date(slot.endISO).getTime();
-    if (pendingFullWindows.some((h) => intervalsOverlap(ws, we, h.startMs, h.endMs))) return false;
+    if (pendingRequestIntervals.some((h) => intervalsOverlap(ws, we, h.startMs, h.endMs))) return false;
 
     const sessStart = ws;
     const sessEnd = sessStart + durMs;
