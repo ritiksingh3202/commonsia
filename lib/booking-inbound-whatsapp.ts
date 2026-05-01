@@ -140,8 +140,18 @@ export type BookingInboundQuickReplyAction = "accept" | "reject";
 
 export function parseBookingInboundQuickReply(text: string): BookingInboundQuickReplyAction | null {
   const t = text.trim();
-  if (/^(accept|yes|confirm)\b/i.test(t)) return "accept";
-  if (/^(reject|decline|no)\b/i.test(t)) return "reject";
+  if (!t) return null;
+  /** URL / plain “Accept”, “Reject”, and common payload ids (`session_accept`, `BTN_YES`). */
+  if (/^(reject|decline)(\b|$|[._-])/i.test(t)) return "reject";
+  if (/^no(\b|$|[._-])/i.test(t)) return "reject";
+  if (/^(accept|yes|confirm)(\b|$|[._-])/i.test(t)) return "accept";
+  const lower = t.toLowerCase();
+  if (/^[a-z0-9_.-]+$/i.test(t)) {
+    if (/reject|decline/.test(lower)) return "reject";
+    if ((/accept|confirm|yes|ok/.test(lower)) && !/reject|decline/.test(lower)) return "accept";
+  }
+  if (/^accept\b/i.test(t)) return "accept";
+  if (/^(reject|decline)\b/i.test(t)) return "reject";
   return null;
 }
 

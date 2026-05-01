@@ -29,10 +29,17 @@ import {
 
 const FINALIZE_LOCK_PREFIX = "booking-request-finalize:";
 
+/**
+ * Two-step Accept: send `time_slots` + catalog URL before creating the calendar event.
+ * If `ZIXFLOW_BOOKING_TIME_SLOTS_TEMPLATE` is set, this is ON unless explicitly disabled
+ * (`BOOKING_SLOT_CATALOG_BEFORE_CONFIRM=false` / `0` / `no`) — avoids “template set but flag forgot on Vercel”.
+ */
 function bookingUsesWhatsAppSlotCatalog(): boolean {
-  const flag = process.env.BOOKING_SLOT_CATALOG_BEFORE_CONFIRM?.trim().toLowerCase();
   const tpl = process.env.ZIXFLOW_BOOKING_TIME_SLOTS_TEMPLATE?.trim();
-  return (flag === "true" || flag === "1") && Boolean(tpl);
+  if (!tpl) return false;
+  const flag = process.env.BOOKING_SLOT_CATALOG_BEFORE_CONFIRM?.trim().toLowerCase();
+  if (flag === "false" || flag === "0" || flag === "no") return false;
+  return true;
 }
 
 export type HtmlActionResult = {
@@ -438,6 +445,10 @@ export async function finalizeBookingRequestAccept(opts: {
     }
 
     if (bookingUsesWhatsAppSlotCatalog()) {
+      console.info("[booking] Accept → time_slots catalog path", {
+        bookingRequestId: full.id,
+        template: process.env.ZIXFLOW_BOOKING_TIME_SLOTS_TEMPLATE?.trim() ?? "",
+      });
       const sessionDur = mergeAvailabilityForSlot(full.mentor.mentorAvailabilityJson).sessionDurationMinutes;
       const stepRaw = Number(process.env.BOOKING_SLOT_CATALOG_STEP_MINUTES?.trim());
       const slotStepMinutes = Number.isFinite(stepRaw) && stepRaw >= 5 ? stepRaw : 15;
@@ -489,32 +500,15 @@ export async function finalizeBookingRequestAccept(opts: {
       const fb = process.env.ZIXFLOW_FALLBACK_TO_DIGITS?.trim().replace(/\D/g, "") ?? "";
       if (!mentorTo?.trim() && fb) mentorTo = fb;
 
-      try {
-        const u = await prisma.bookingRequest.updateMany({
-          where: opts.verifiedMentorId
-            ? { id: full.id, mentorId: opts.verifiedMentorId, status: "pending" }
-            : { id: full.id, status: "pending", actionTokenHash: hash! },
-          data: { status: "awaiting_slot", actionRawTokenOpaque: null },
-        });
-        if (u.count !== 1) {
-          return {
-            ok: true,
-            title: "Already handled",
-            message: "This request was already updated.",
-          };
-        }
-      } catch (e) {
-        console.error("[booking] awaiting_slot transition failed:", e);
+      if (!mentorTo?.trim()) {
+        console.warn("[booking] time_slots skipped: mentor has no WhatsApp digits on profile.", full.id);
         return {
           ok: false,
-          title: "Could not continue",
-          message: "Something went wrong saving your acceptance. Try again or contact support.",
+          title: "WhatsApp required",
+          message:
+            "Add a WhatsApp number (wa.me link or phone with country code) on your mentor profile so we can send the slot picker. Then tap Accept again.",
         };
       }
-
-      await forgetBookingActionRawToken(full.id);
-
-      bustBookingCaches(full.mentorId, full.studentId, full.startAt);
 
       let variables = applyZixflowBodyVarOrder(
         {
@@ -530,29 +524,62 @@ export async function finalizeBookingRequestAccept(opts: {
       const catalogBtnVar = process.env.ZIXFLOW_BOOKING_CATALOG_URL_TEMPLATE_VAR?.trim();
       if (catalogBtnVar) variables = { ...variables, [catalogBtnVar]: catalogUrl };
 
-      if (mentorTo?.trim()) {
-        try {
-          const r = await zixflowSendTemplate({
-            to: mentorTo.trim(),
-            template: tpl,
-            variables,
-          });
-          if (!r.ok) console.error("[booking] Zixflow time_slots template failed:", r.error);
-          else console.info("[booking] Zixflow time_slots template accepted for bookingRequestId=", full.id);
-        } catch (e) {
-          console.error("[booking] Zixflow time_slots template threw:", e);
-        }
-      } else {
-        console.warn("[booking] No mentor WhatsApp — time_slots template not sent.");
+      let sendResult: { ok: true } | { ok: false; error: string };
+      try {
+        sendResult = await zixflowSendTemplate({
+          to: mentorTo.trim(),
+          template: tpl,
+          variables,
+        });
+      } catch (e) {
+        console.error("[booking] Zixflow time_slots template threw:", e);
+        sendResult = { ok: false, error: (e as Error)?.message || "unknown_error" };
       }
+
+      if (!sendResult.ok) {
+        console.error("[booking] Zixflow time_slots FAILED (booking stays pending):", sendResult.error, "bookingRequestId=", full.id);
+        return {
+          ok: false,
+          title: "Could not send slot picker",
+          message: `${sendResult.error} — fix Zixflow/template/env on the server, then tap Accept again.`,
+        };
+      }
+
+      console.info("[booking] Zixflow time_slots accepted for bookingRequestId=", full.id);
+
+      try {
+        const u = await prisma.bookingRequest.updateMany({
+          where: opts.verifiedMentorId
+            ? { id: full.id, mentorId: opts.verifiedMentorId, status: "pending" }
+            : { id: full.id, status: "pending", actionTokenHash: hash! },
+          data: { status: "awaiting_slot", actionRawTokenOpaque: null },
+        });
+        if (u.count !== 1) {
+          return {
+            ok: true,
+            title: "Already handled",
+            message: "This request was already updated.",
+          };
+        }
+      } catch (e) {
+        console.error("[booking] awaiting_slot transition failed after successful Zixflow send:", e, full.id);
+        return {
+          ok: false,
+          title: "Partial success",
+          message:
+            "The slot message may have been sent, but saving failed. Check WhatsApp or contact support — avoid accepting twice.",
+        };
+      }
+
+      await forgetBookingActionRawToken(full.id);
+
+      bustBookingCaches(full.mentorId, full.studentId, full.startAt);
 
       return {
         ok: true,
         title: "Almost done",
         message:
-          mentorTo?.trim()
-            ? "Check WhatsApp — open View catalog to pick an exact start time and confirm the session."
-            : "Your acceptance was saved, but WhatsApp could not be sent (add your WhatsApp number on your mentor profile). Use your dashboard or email to coordinate the time.",
+          "Check WhatsApp — open View catalog (or the link in the message) to pick an exact start time and confirm the session.",
       };
     }
 

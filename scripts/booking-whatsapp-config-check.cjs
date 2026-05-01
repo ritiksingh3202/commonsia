@@ -59,6 +59,16 @@ const checks = [
   { key: "ZIXFLOW_API_KEY", critical: true },
   { key: "ZIXFLOW_WHATSAPP_PHONE_ID", critical: true },
   { key: "ZIXFLOW_BOOKING_REQUEST_TEMPLATE", critical: true, hint: "Meta/Zixflow template name for session request" },
+  {
+    key: "ZIXFLOW_BOOKING_TIME_SLOTS_TEMPLATE",
+    critical: false,
+    hint: "if set, Accept sends this before calendar (two-step); opt out with BOOKING_SLOT_CATALOG_BEFORE_CONFIRM=false",
+  },
+  {
+    key: "ZIXFLOW_WEBHOOK_SECRET",
+    critical: false,
+    hint: "required for WhatsApp quick-reply Accept/Reject POST to /api/webhooks/zixflow",
+  },
   { key: "AUTH_URL", critical: false, hint: "defaults to http://localhost:3000 if unset" },
   {
     key: "ZIXFLOW_BOOKING_BODY_VARS_ORDER",
