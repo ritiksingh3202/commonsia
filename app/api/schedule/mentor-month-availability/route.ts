@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import { normalizeAvailabilityWindowKind } from "@/components/mentor/mentor-setup-constants";
 import { getBookableAvailabilityWindowsForDate } from "@/lib/booking-availability-slots";
-import { filterSlotsAgainstHeldIntervals, loadMentorHeldSessionIntervals } from "@/lib/mentor-held-booking-slots";
+import { filterSlotsAgainstHeldIntervals, loadMentorHeldIntervals } from "@/lib/mentor-held-booking-slots";
 import { mergeAvailabilityForSlot } from "@/lib/mentor-availability-merge";
 import { mentorHasBookingOnWeekdayInIstMonth } from "@/lib/mentor-monthly-booking";
 import { prisma } from "@/lib/prisma";
@@ -76,7 +76,7 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: "Mentor not found." }, { status: 404 });
     }
 
-    const held = await loadMentorHeldSessionIntervals(prisma, mentorUserId);
+    const held = await loadMentorHeldIntervals(prisma, mentorUserId);
     const now = new Date();
     const refinedDays: number[] = [];
     for (const d of body.availableDays) {

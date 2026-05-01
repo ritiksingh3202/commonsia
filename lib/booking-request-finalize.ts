@@ -583,6 +583,17 @@ export async function finalizeBookingRequestAccept(opts: {
       };
     }
 
+    const sessionDurMinCatalogGuard = mergeAvailabilityForSlot(full.mentor.mentorAvailabilityJson).sessionDurationMinutes;
+    const windowMin = Math.round((full.endAt.getTime() - full.startAt.getTime()) / 60_000);
+    if (windowMin > sessionDurMinCatalogGuard + 1) {
+      return {
+        ok: false,
+        title: "Catalog step required",
+        message:
+          "This request spans a multi-hour availability window. Enable ZIXFLOW_BOOKING_TIME_SLOTS_TEMPLATE on the server so the mentor can pick an exact start time, then accept again.",
+      };
+    }
+
     if (!(await tryAcquireSlotBookingLock(mentorSlotLockKey, 75))) {
       return {
         ok: false,

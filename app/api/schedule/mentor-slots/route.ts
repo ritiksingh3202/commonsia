@@ -4,7 +4,7 @@ import { normalizeAvailabilityWindowKind } from "@/components/mentor/mentor-setu
 import { calendarDateToIso, getBookableAvailabilityWindowsForDate } from "@/lib/booking-availability-slots";
 import { mergeAvailabilityForSlot } from "@/lib/mentor-availability-merge";
 import { jsWeekdayFromIsoLocal } from "@/lib/mentor-availability-slots";
-import { filterSlotsAgainstHeldIntervals, loadMentorHeldSessionIntervals } from "@/lib/mentor-held-booking-slots";
+import { filterSlotsAgainstHeldIntervals, loadMentorHeldIntervals } from "@/lib/mentor-held-booking-slots";
 import { mentorHasBookingOnWeekdayInIstMonth } from "@/lib/mentor-monthly-booking";
 import { prisma } from "@/lib/prisma";
 import { CacheKeys, CacheTtl, SCHEDULE_API_CACHE_CONTROL, withJsonCache } from "@/lib/redis-cache";
@@ -74,7 +74,7 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: "Mentor not found." }, { status: 404 });
     }
 
-    const held = await loadMentorHeldSessionIntervals(prisma, mentorUserId);
+    const held = await loadMentorHeldIntervals(prisma, mentorUserId);
     const slots = filterSlotsAgainstHeldIntervals(body.slots, sessionMin, held);
 
     return NextResponse.json(

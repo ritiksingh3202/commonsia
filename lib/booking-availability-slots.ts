@@ -398,6 +398,42 @@ export function getBookableAvailabilityWindowsForDate(
   );
 }
 
+/**
+ * Validates a **whole contiguous availability window** (student requests the band; mentor picks exact start later).
+ * `windowDurationMinutes` must be a multiple of 30 and ≥ `minimumSessionMinutes`.
+ */
+export function validateBookingWindowInAvailability(
+  raw: unknown,
+  year: number,
+  monthIndex: number,
+  day: number,
+  windowStartLabel: string,
+  windowDurationMinutes: number,
+  minimumSessionMinutes: number,
+  now: Date = new Date(),
+  opts?: SlotResolutionOptions,
+): { ok: true } | { ok: false; error: string } {
+  if (!Number.isFinite(windowDurationMinutes) || windowDurationMinutes < minimumSessionMinutes) {
+    return {
+      ok: false,
+      error: `Requested window must be at least ${minimumSessionMinutes} minutes so a session can fit inside.`,
+    };
+  }
+  if (windowDurationMinutes % 30 !== 0) {
+    return { ok: false, error: "Requested window length must align to 30-minute slots." };
+  }
+  return validateBookingInAvailability(
+    raw,
+    year,
+    monthIndex,
+    day,
+    windowStartLabel,
+    windowDurationMinutes,
+    now,
+    opts,
+  );
+}
+
 export function validateBookingInAvailability(
   raw: unknown,
   year: number,

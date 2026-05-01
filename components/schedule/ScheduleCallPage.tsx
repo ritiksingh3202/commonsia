@@ -355,10 +355,9 @@ export function ScheduleCallPage({
     }
     setBooking(true);
     try {
-      const start = new Date(selected.startISO);
-      const end = new Date(start.getTime() + sessionBookingMinutes * 60_000);
-      const startISO = start.toISOString();
-      const endISO = end.toISOString();
+      /** Reserve the mentor's whole contiguous availability band; mentor picks exact session start in catalog. */
+      const startISO = selected.startISO;
+      const endISO = selected.endISO;
 
       if (mentorUserId) {
         const bookRes = await fetch("/api/booking-requests", {
@@ -494,7 +493,7 @@ export function ScheduleCallPage({
                 <div className="flex items-start gap-3 text-sm">
                   <IconClock className="mt-0.5 size-5 shrink-0 text-primary" />
                   <div>
-                    <p className="text-xs text-neutral-500">Time</p>
+                    <p className="text-xs text-neutral-500">{mentorUserId ? "Requested window" : "Time"}</p>
                     <p className="font-semibold text-[#0a0a0a]">{summaryTimePrimary}</p>
                     {summaryTimeIstHint ? (
                       <p className="mt-0.5 text-[11px] text-neutral-500">{summaryTimeIstHint}</p>
@@ -504,8 +503,11 @@ export function ScheduleCallPage({
                 <div className="flex items-start gap-3 text-sm">
                   <IconStopwatch className="mt-0.5 size-5 shrink-0 text-primary" />
                   <div>
-                    <p className="text-xs text-neutral-500">Duration</p>
-                    <p className="font-semibold text-[#0a0a0a]">{sessionBookingMinutes} Minutes</p>
+                    <p className="text-xs text-neutral-500">{mentorUserId ? "Session length" : "Duration"}</p>
+                    <p className="font-semibold text-[#0a0a0a]">
+                      {sessionBookingMinutes} minutes
+                      {mentorUserId ? " (exact start set when mentor confirms)" : ""}
+                    </p>
                   </div>
                 </div>
               </div>

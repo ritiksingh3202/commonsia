@@ -152,23 +152,39 @@ export function BookingSuccessModal({
             </p>
 
             <div className="mt-5 rounded-xl bg-[#FFF8F1] px-3.5 py-3.5 text-left ring-1 ring-orange-100/80 sm:mt-6 sm:px-4 sm:py-4">
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-primary sm:text-[11px]">When</p>
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-primary sm:text-[11px]">
+                {payload.mode === "request_submitted" ? "Requested" : "When"}
+              </p>
               <p className="mt-1 text-[0.9375rem] font-semibold leading-snug text-[#0a0a0a] sm:text-base">
                 {payload.dateLine}
               </p>
               <p className="mt-1.5 text-[13px] font-medium leading-snug text-neutral-800 sm:text-sm">{payload.timeLine}</p>
+              {payload.mode === "request_submitted" ? (
+                <p className="mt-1 text-[11px] leading-snug text-neutral-500 sm:text-xs">
+                  Availability window you requested — final meeting time is set when the mentor confirms.
+                </p>
+              ) : null}
               {payload.istHint ? (
                 <p className="mt-1 text-[11px] leading-snug text-neutral-500 sm:text-xs">{payload.istHint}</p>
               ) : null}
               <p className="mt-2 text-[12px] text-neutral-600 sm:text-[13px]">
-                <span className="tabular-nums">{payload.durationMin}</span> minutes
+                {payload.mode === "request_submitted" ? (
+                  <>
+                    Session length: <span className="tabular-nums">{payload.durationMin}</span> minutes (exact start after
+                    mentor accepts)
+                  </>
+                ) : (
+                  <>
+                    <span className="tabular-nums">{payload.durationMin}</span> minutes
+                  </>
+                )}
               </p>
             </div>
 
             {payload.mode === "request_submitted" ? (
               <p className="mt-3.5 text-left text-[13px] leading-relaxed text-neutral-600 sm:mt-4 sm:text-sm">
                 {payload.softMessage?.trim() ||
-                  "Your chosen time is on hold for this mentor until they decide. Check your inbox (and spam) for updates."}
+                  "This availability window is reserved for you until the mentor decides. Check your inbox (and spam) for updates."}
               </p>
             ) : (
               <>

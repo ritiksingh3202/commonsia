@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 
 import { auth } from "@/auth";
 import { normalizeAvailabilityWindowKind } from "@/components/mentor/mentor-setup-constants";
-import { calendarDateToIso, validateBookingInAvailability } from "@/lib/booking-availability-slots";
+import { calendarDateToIso, validateBookingWindowInAvailability } from "@/lib/booking-availability-slots";
 import { newRawBookingActionToken, sha256Hex, signBookingAction } from "@/lib/booking-action-token";
 import { fetchPrimaryCalendarBusy, intervalOverlapsBusy } from "@/lib/google-calendar-busy";
 import { getGoogleCalendarOAuth2Client } from "@/lib/google-calendar-oauth-client";
@@ -104,12 +104,6 @@ export async function POST(req: Request) {
 
   const av = mergeAvailabilityForSlot(mentorRow.mentorAvailabilityJson);
   const sessionMinutes = av.sessionDurationMinutes;
-  if (durationMin !== sessionMinutes) {
-    return NextResponse.json(
-      { error: `Session length must match this mentor's setting (${sessionMinutes} minutes).` },
-      { status: 400 },
-    );
-  }
 
   const bookIso = calendarDateToIso(body.bookYear, body.bookMonthIndex, body.bookDay);
   let slotOpts: { monthlyPatternConsumedThisIstMonth?: boolean } | undefined;
@@ -126,13 +120,14 @@ export async function POST(req: Request) {
     );
     slotOpts = { monthlyPatternConsumedThisIstMonth: consumed };
   }
-  const slotCheck = validateBookingInAvailability(
+  const slotCheck = validateBookingWindowInAvailability(
     mentorRow.mentorAvailabilityJson,
     body.bookYear,
     body.bookMonthIndex,
     body.bookDay,
     body.startLabel.trim(),
     durationMin,
+    sessionMinutes,
     new Date(),
     slotOpts,
   );
@@ -306,7 +301,7 @@ export async function POST(req: Request) {
     ok: true,
     bookingRequestId: request.id,
     message:
-      "Request received. We’ll email you when the mentor accepts or declines. Other students won’t see this time while it’s pending.",
+      "Request received. We’ll email you when the mentor accepts or declines. Other students won’t see this availability window while it’s pending.",
     ...(whatsappDiagEnabled && whatsapp ? { whatsapp } : {}),
   });
 }
