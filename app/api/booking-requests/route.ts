@@ -262,6 +262,10 @@ export async function POST(req: Request) {
      * (fire-and-forget `void` sends were often dropped after the JSON response returned).
      */
     try {
+      /**
+       * WhatsApp template **mentorship_session_booking**: {{1}} mentor … {{6}} requested time (see `lib/zixflow-template-vars.ts`).
+       * Accept/Reject URLs must stay signed (`acceptUrl` / `rejectUrl` → `/api/webhooks/zixflow?token=…`).
+       */
       let variables = applyZixflowBodyVarOrder(
         {
           /** Maps to Meta {{1}}–{{6}} via `ZIXFLOW_DEFAULT_BOOKING_REQUEST_BODY_ORDER`. */

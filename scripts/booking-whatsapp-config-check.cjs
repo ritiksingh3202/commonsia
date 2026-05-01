@@ -73,7 +73,7 @@ const checks = [
   {
     key: "ZIXFLOW_BOOKING_BODY_VARS_ORDER",
     critical: false,
-    hint: "optional; defaults map {{1}}–{{6}} to mentor, student, college, year, profile URL, time",
+    hint: "optional; defaults map {{1}}–{{6}} to mentorName, studentName, year, college, studentProfile, requestedTime",
   },
   { key: "ZIXFLOW_DEFAULT_COUNTRY_CODE", critical: false, hint: "e.g. 91 when mentors save 10-digit local numbers" },
   { key: "ZIXFLOW_FALLBACK_TO_DIGITS", critical: false, hint: "testing only — if mentor profile has no WhatsApp" },

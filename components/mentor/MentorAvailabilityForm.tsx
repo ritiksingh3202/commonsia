@@ -19,6 +19,10 @@ import {
   type WeekdayKey,
   WEEKDAY_KEYS,
 } from "@/components/mentor/mentor-setup-constants";
+import {
+  MENTOR_SETUP_STEP_COUNT,
+  MentorSetupProgressHeader,
+} from "@/components/mentor/MentorSetupShell";
 import { MentorSchedulePanel } from "@/components/mentor/MentorSchedulePanel";
 import { MandatorySetupReminderModal } from "@/components/setup/MandatorySetupReminderModal";
 import {
@@ -642,7 +646,7 @@ export function MentorAvailabilityForm({ initialJson, mentorOnboardingComplete }
       } catch {
         if (!cancelled) setAutoSaveState("error");
       }
-    }, 1100);
+    }, 550);
     return () => {
       cancelled = true;
       if (autosaveTimerRef.current) window.clearTimeout(autosaveTimerRef.current);
@@ -677,7 +681,6 @@ export function MentorAvailabilityForm({ initialJson, mentorOnboardingComplete }
       if (!res.ok) throw new Error("save");
       setSavedBanner(true);
       window.setTimeout(() => setSavedBanner(false), 3000);
-      router.refresh();
       router.push(mentorOnboardingComplete ? "/mentor" : "/mentor?welcome=1");
     } catch {
       window.alert("Could not save availability. Try again.");
@@ -698,15 +701,30 @@ export function MentorAvailabilityForm({ initialJson, mentorOnboardingComplete }
         onDismiss={() => setMandatoryExitOpen(false)}
       />
       <div className="mx-auto max-w-6xl px-3 py-6 sm:px-5 sm:py-8 md:px-6 lg:px-8">
+        {!mentorOnboardingComplete ? (
+          <div className="mb-6 rounded-xl border border-black/10 bg-white p-4 shadow-sm sm:p-6 md:p-8">
+            <MentorSetupProgressHeader
+              percentComplete={87}
+              stepCaption={`Step ${MENTOR_SETUP_STEP_COUNT} of ${MENTOR_SETUP_STEP_COUNT}`}
+              subheading="Last step: add when you’re typically available. Tap Complete Setup below to reach 100% and open your dashboard — you can refine this anytime later."
+            />
+          </div>
+        ) : (
+          <p className="mb-4 text-[13px] font-medium text-emerald-800">
+            Profile setup complete · availability settings below
+          </p>
+        )}
         <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-[#0a0a0a] sm:text-3xl">
-              {mentorOnboardingComplete ? "Manage Your Availability" : "Set Your Availability"}
-            </h1>
+            {mentorOnboardingComplete ? (
+              <h1 className="text-2xl font-bold tracking-tight text-[#0a0a0a] sm:text-3xl">Manage Your Availability</h1>
+            ) : (
+              <h2 className="text-2xl font-bold tracking-tight text-[#0a0a0a] sm:text-3xl">Set Your Availability</h2>
+            )}
             <p className="mt-1.5 text-sm text-neutral-600 sm:text-base">
               {mentorOnboardingComplete
                 ? "Set when you’re available and optional date overrides."
-                : "Last step: share when you’re typically free. You can refine this anytime after setup."}
+                : "Choose weekly hours or date overrides — drafts save as you edit."}
             </p>
             <p className="mt-2 text-xs text-neutral-500" aria-live="polite">
               {autoSaveState === "saving" ? (

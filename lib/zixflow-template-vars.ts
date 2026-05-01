@@ -1,24 +1,35 @@
 /**
  * Logical keys → Zixflow `body_1`, `body_2`, … order defaults.
  *
- * **Template A — mentorship session request** (e.g. `mentorship_booking_request`):
+ * **Template — Meta `mentorship_session_booking` (“Mentorship Session Booking”)** — example body:
+ *
+ * ```
+ * Hello {{1}},
+ *
+ * {{2}}, a {{3}} year student from {{4}}, has requested a mentorship session with you on Commonsia.
+ *
+ * Student Profile:
+ * {{5}}
+ *
+ * Requested Time:
+ * {{6}}
+ * ```
+ *
  * | Meta `{{n}}` | Key             | Meaning / source                                                                 |
  * |-------------|-----------------|-----------------------------------------------------------------------------------|
- * | {{1}}       | mentorName      | Mentor’s display name (`User.name`)                                               |
- * | {{2}}       | studentName     | Student’s display name                                                            |
+ * | {{1}}       | mentorName      | Mentor’s display name (`User.name`) — after “Hello …,”                            |
+ * | {{2}}       | studentName     | Student’s display name                                                          |
  * | {{3}}       | year            | Year of study (`User.yearOfStudy`)                                                |
- * | {{4}}       | college         | College (`User.university`, fallback `User.major`)                                |
- * | {{5}}       | studentProfile  | Student profile URL for the mentor                                                |
- * | {{6}}       | requestedTime   | **Booked slice**: human range from `BookingRequest.startAt`/`endAt` — the first session-length interval at the **start** of the availability band the student chose (e.g. band 10:00–12:00 and 30‑min sessions → {{6}} is 10:00–10:30). Mentor Accept confirms **this exact interval** (unless optional catalog flow overrides picks). Default body order: `ZIXFLOW_DEFAULT_BOOKING_REQUEST_BODY_ORDER`. |
+ * | {{4}}       | college         | College (`User.university`, fallback `User.major`)                              |
+ * | {{5}}       | studentProfile  | Mentor-facing student profile URL                                                |
+ * | {{6}}       | requestedTime   | **Booked slice**: human range from `BookingRequest.startAt`/`endAt` — first session-length interval at band start |
  *
- * **Clickable Accept/Reject links:** Plain URLs in the template *body* are often not tappable in WhatsApp.
- * Add Meta **URL** (call-to-action) buttons and map dynamic URLs via Zixflow variable keys:
- * - `ZIXFLOW_BOOKING_ACCEPT_URL_TEMPLATE_VAR` — duplicate full signed Accept URL (`acceptUrl`).
- * - `ZIXFLOW_BOOKING_REJECT_URL_TEMPLATE_VAR` — duplicate full signed Decline URL (`rejectUrl`).
- * Match each env value to the **keyName** from Zixflow “Get Template Variables” for your URL button components.
+ * Set `ZIXFLOW_BOOKING_REQUEST_TEMPLATE=mentorship_session_booking` (or your Meta-registered name).
  *
- * Accept/Reject quick replies send plain text (“Accept”) — they complete when Zixflow POSTs the inbound payload
- * to `/api/webhooks/zixflow` with `Authorization: Bearer ZIXFLOW_WEBHOOK_SECRET` (see Zixflow Incoming WhatsApp Message).
+ * **Clickable Accept/Reject:** Map Meta URL buttons to the **full signed** URLs from our payload (`acceptUrl` / `rejectUrl`)
+ * pointing at `/api/webhooks/zixflow?token=…`. Do **not** use `/api/booking/accept?bookingId=…` (unsupported; insecure).
+ *
+ * Accept/Reject quick replies POST inbound payloads to `/api/webhooks/zixflow` with `Authorization: Bearer ZIXFLOW_WEBHOOK_SECRET`.
  *
  * **Template B — pick exact slot (“View catalog”)** after mentor taps Accept:
  * | Meta `{{n}}` | Key            | Source                                              |
@@ -31,7 +42,7 @@
  *
  * For a **tap-to-open catalog** URL button, set `ZIXFLOW_BOOKING_CATALOG_URL_TEMPLATE_VAR` to that component’s keyName.
  */
-/** Matches Meta template `mentorship_booking_request`: {{3}} year, {{4}} college. Override via `ZIXFLOW_BOOKING_BODY_VARS_ORDER`. */
+/** Body order for Meta `mentorship_session_booking` ({{1}} mentor … {{6}} time). Override via `ZIXFLOW_BOOKING_BODY_VARS_ORDER`. */
 export const ZIXFLOW_DEFAULT_BOOKING_REQUEST_BODY_ORDER =
   "mentorName,studentName,year,college,studentProfile,requestedTime";
 

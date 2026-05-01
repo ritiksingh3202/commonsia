@@ -20,7 +20,7 @@ const steps = [
   { label: "Step 3 of 3", pct: 100, bar: "100%" },
 ] as const;
 
-/** Matches {@link MentorSetupShell}: same max width, gradient, card padding, and progress header. */
+/** Same max width, gradient, card padding, and progress header pattern as mentor setup (student flow remains 3 steps). */
 export function StudentSetupShell({
   step,
   backHref,

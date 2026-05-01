@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { CountryCityComboboxFields } from "@/components/shared/CountryCityComboboxFields";
@@ -33,7 +33,7 @@ export function StudentSetupStep1({
   linkedInConnected?: boolean;
 }) {
   const router = useRouter();
-  const { schedule: scheduleSave, cancelPending } = useProfileAutosave();
+  const { schedule: scheduleSave, cancelPending } = useProfileAutosave(400);
 
   const { program: p0, majorOther: mo0 } = useMemo(
     () => programStateFromMajor(initial?.major ?? null),
@@ -50,6 +50,10 @@ export function StudentSetupStep1({
     () => ((initial?.whatsappUrl ?? initial?.phone) ?? "").trim(),
   );
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    router.prefetch("/student/setup/2");
+  }, [router]);
 
   return (
     <StudentSetupShell step={1} backHref="/auth/register/student">

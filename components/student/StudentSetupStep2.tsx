@@ -63,8 +63,13 @@ export function StudentSetupStep2({
   linkedInConnected?: boolean;
 }) {
   const router = useRouter();
-  const { schedule: scheduleSave, cancelPending } = useProfileAutosave();
+  const { schedule: scheduleSave, cancelPending } = useProfileAutosave(400);
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    router.prefetch("/student/setup/1");
+    router.prefetch("/student/setup/3");
+  }, [router]);
 
   const interestDerived = useMemo(
     () =>

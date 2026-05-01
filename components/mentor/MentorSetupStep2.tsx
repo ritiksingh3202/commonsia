@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import {
@@ -32,7 +32,7 @@ export function MentorSetupStep2({
   linkedInConnected?: boolean;
 }) {
   const router = useRouter();
-  const { schedule: scheduleSave, cancelPending } = useProfileAutosave();
+  const { schedule: scheduleSave, cancelPending } = useProfileAutosave(400);
 
   const initialSet = useMemo(
     () => mentorMentorshipSelectionsFromStored(initial?.mentorMentorshipFocus),
@@ -40,6 +40,11 @@ export function MentorSetupStep2({
   );
   const [selected, setSelected] = useState(() => initialSet);
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    router.prefetch("/mentor/setup/1");
+    router.prefetch("/mentor/setup/3");
+  }, [router]);
 
   const toggle = (title: string) => {
     setSelected((prev) => {

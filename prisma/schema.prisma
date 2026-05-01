@@ -130,7 +130,11 @@ model MentoringBooking {
   @@index([mentorId])
 }
 
-/// Pending mentor-approval session request created from the booking UI.
+/**
+ * Pending mentor approval for a session (student booking UI → WhatsApp **mentorship_session_booking** template).
+ * Meta body {{1}}–{{6}} map via `ZIXFLOW_BOOKING_BODY_VARS_ORDER` (default: mentor, student, year, college, profile URL, time).
+ * Accept/Decline use signed `GET /api/webhooks/zixflow?token=…`, not raw `bookingId` URLs.
+ */
 model BookingRequest {
   id        String   @id @default(cuid())
   createdAt DateTime @default(now())

@@ -44,7 +44,7 @@ export function MentorSetupStep1({
   linkedInConnected?: boolean;
 }) {
   const router = useRouter();
-  const { schedule: scheduleSave, cancelPending } = useProfileAutosave();
+  const { schedule: scheduleSave, cancelPending } = useProfileAutosave(400);
 
   const expertiseDerived = useMemo(
     () => expertiseFromSnapshot(initial?.mentorExpertise),
@@ -59,6 +59,10 @@ export function MentorSetupStep1({
   const [expertise, setExpertise] = useState<Set<string>>(() => new Set(expertiseDerived.sel));
   const [otherExpertise, setOtherExpertise] = useState(expertiseDerived.other);
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    router.prefetch("/mentor/setup/2");
+  }, [router]);
 
   useEffect(() => {
     const d = expertiseFromSnapshot(initial?.mentorExpertise);

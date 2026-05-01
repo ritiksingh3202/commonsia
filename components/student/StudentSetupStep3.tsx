@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { StudentSetupShell } from "./StudentSetupShell";
 import { setupField, setupLabel, setupRequiredStar } from "./student-ui";
@@ -23,13 +23,54 @@ export function StudentSetupStep3({
   linkedInConnected?: boolean;
 }) {
   const router = useRouter();
-  const fileRef = useRef<HTMLInputElement>(null);
-  const { schedule: scheduleSave, cancelPending } = useProfileAutosave();
+  const portfolioFileRef = useRef<HTMLInputElement>(null);
+  const { schedule: scheduleSave, cancelPending } = useProfileAutosave(400);
 
   const [bio, setBio] = useState(initial?.bio ?? "");
   const [linkedinUrl, setLinkedinUrl] = useState(initial?.linkedinUrl ?? "");
   const [portfolioUrl, setPortfolioUrl] = useState(initial?.portfolioUrl ?? "");
+  const [portfolioFileLabel, setPortfolioFileLabel] = useState(initial?.portfolioFileName ?? "");
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    router.prefetch("/student/setup/2");
+    router.prefetch("/student");
+  }, [router]);
+
+  useEffect(() => {
+    setPortfolioFileLabel(initial?.portfolioFileName ?? "");
+  }, [initial?.portfolioFileName]);
+
+  const onPortfolioFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    const fd = new FormData();
+    fd.set("file", file);
+    try {
+      const res = await fetch("/api/profile/portfolio-file", {
+        method: "POST",
+        body: fd,
+      });
+      if (!res.ok) {
+        const j = (await res.json().catch(() => ({}))) as { error?: string };
+        throw new Error(j.error ?? "Upload failed");
+      }
+      setPortfolioFileLabel(file.name);
+    } catch (err) {
+      window.alert(err instanceof Error ? err.message : "Upload failed.");
+    }
+  };
+
+  const clearPortfolioFile = async () => {
+    try {
+      const res = await fetch("/api/profile/portfolio-file", { method: "DELETE" });
+      if (!res.ok) throw new Error("Remove failed");
+      setPortfolioFileLabel("");
+    } catch {
+      window.alert("Could not remove file. Try again.");
+    }
+  };
 
   return (
     <StudentSetupShell step={3} backHref="/student/setup/2">
@@ -151,19 +192,40 @@ export function StudentSetupStep3({
           </div>
 
           <div className="space-y-1.5">
-            <span className={setupLabel}>
+            <span id="student-setup-portfolio-file-label" className={setupLabel}>
               Upload portfolio <span className="font-normal text-[#9ca3af]">(Optional)</span>
             </span>
+            <input
+              ref={portfolioFileRef}
+              type="file"
+              accept=".pdf,.zip,application/pdf,application/zip,application/x-zip-compressed"
+              className="hidden"
+              aria-labelledby="student-setup-portfolio-file-label"
+              onChange={onPortfolioFile}
+            />
             <button
               type="button"
-              onClick={() => fileRef.current?.click()}
+              onClick={() => portfolioFileRef.current?.click()}
               className="flex w-full flex-col items-center justify-center rounded-lg border-2 border-dashed border-[#d1d5dc] bg-white px-3 py-6 text-center transition-colors hover:border-primary/35 hover:bg-neutral-50/80"
             >
               <UploadIcon className="mb-2 size-8 text-[#4a5565]" />
               <p className="text-[13px] font-medium text-[#4a5565]">Click to upload PDF or ZIP file</p>
               <p className="mt-0.5 text-[11px] font-medium text-[#99a1af]">Max file size: 10MB</p>
-              <input ref={fileRef} type="file" accept=".pdf,.zip,application/pdf,application/zip" className="hidden" />
             </button>
+            {portfolioFileLabel ? (
+              <div className="flex flex-wrap items-center gap-2 rounded-md border border-black/10 bg-neutral-50/90 px-2.5 py-2 text-[13px]">
+                <span className="min-w-0 flex-1 truncate text-[#0a0a0a]" title={portfolioFileLabel}>
+                  {portfolioFileLabel}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => void clearPortfolioFile()}
+                  className="shrink-0 text-[12px] font-medium text-red-600 hover:text-red-700"
+                >
+                  Remove
+                </button>
+              </div>
+            ) : null}
           </div>
 
           <div className="flex flex-col gap-2 pt-1 sm:flex-row sm:gap-2">

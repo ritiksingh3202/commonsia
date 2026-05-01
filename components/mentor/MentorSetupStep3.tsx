@@ -24,7 +24,7 @@ export function MentorSetupStep3({
   linkedInConnected?: boolean;
 }) {
   const router = useRouter();
-  const { schedule: scheduleSave, cancelPending } = useProfileAutosave();
+  const { schedule: scheduleSave, cancelPending } = useProfileAutosave(400);
 
   const [bio, setBio] = useState(initial?.bio ?? "");
   const [linkedinUrl, setLinkedinUrl] = useState(initial?.linkedinUrl ?? "");
@@ -34,6 +34,11 @@ export function MentorSetupStep3({
   const [portfolioFileLabel, setPortfolioFileLabel] = useState(initial?.portfolioFileName ?? "");
   const [saving, setSaving] = useState(false);
   const portfolioFileRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    router.prefetch("/mentor/setup/2");
+    router.prefetch("/mentor/availability");
+  }, [router]);
 
   useEffect(() => {
     setPortfolioFileLabel(initial?.portfolioFileName ?? "");
@@ -55,7 +60,6 @@ export function MentorSetupStep3({
         throw new Error(j.error ?? "Upload failed");
       }
       setPortfolioFileLabel(file.name);
-      router.refresh();
     } catch (err) {
       window.alert(err instanceof Error ? err.message : "Upload failed.");
     }
@@ -66,7 +70,6 @@ export function MentorSetupStep3({
       const res = await fetch("/api/profile/portfolio-file", { method: "DELETE" });
       if (!res.ok) throw new Error("Remove failed");
       setPortfolioFileLabel("");
-      router.refresh();
     } catch {
       window.alert("Could not remove file. Try again.");
     }

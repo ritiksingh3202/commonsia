@@ -64,6 +64,7 @@ export default async function StudentSetupPage({
         otherInterests: user.otherInterests,
         bio: user.bio,
         portfolioUrl: user.portfolioUrl,
+        portfolioFileName: user.portfolioFileName,
         phone: user.phone,
         whatsappUrl: user.whatsappUrl,
         linkedinUrl: user.linkedinUrl,

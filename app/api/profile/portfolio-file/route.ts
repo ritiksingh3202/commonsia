@@ -1,5 +1,10 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
+import {
+  invalidatePublicMentorProfile,
+  invalidatePublicMentorsList,
+  invalidateStudentDashboard,
+} from "@/lib/redis-cache";
 import { NextResponse } from "next/server";
 
 const MAX_BYTES = 10 * 1024 * 1024;
@@ -36,13 +41,20 @@ export async function POST(req: Request) {
   const b64 = buf.toString("base64");
   const dataUrl = `data:${mime};base64,${b64}`;
 
-  await prisma.user.update({
+  const updated = await prisma.user.update({
     where: { id: session.user.id },
     data: {
       portfolioFileName: file.name,
       portfolioFileDataUrl: dataUrl,
     },
+    select: { role: true },
   });
+
+  invalidateStudentDashboard(session.user.id);
+  if (updated.role === "mentor") {
+    invalidatePublicMentorsList();
+    invalidatePublicMentorProfile(session.user.id);
+  }
 
   return NextResponse.json({ ok: true });
 }
@@ -53,13 +65,20 @@ export async function DELETE() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  await prisma.user.update({
+  const updated = await prisma.user.update({
     where: { id: session.user.id },
     data: {
       portfolioFileName: null,
       portfolioFileDataUrl: null,
     },
+    select: { role: true },
   });
+
+  invalidateStudentDashboard(session.user.id);
+  if (updated.role === "mentor") {
+    invalidatePublicMentorsList();
+    invalidatePublicMentorProfile(session.user.id);
+  }
 
   return NextResponse.json({ ok: true });
 }
