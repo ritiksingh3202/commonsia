@@ -311,11 +311,41 @@ export function extractZixflowIncomingWhatsApp(body: unknown): {
   return { fromDigits: fd, messageText: text };
 }
 
+/** Zixflow "incoming.whatsapp.message" event: sender.number + message.button.text */
+function extractZixflowIncomingMessageEvent(body: unknown): {
+  fromDigits: string;
+  messageText: string;
+} | null {
+  if (!body || typeof body !== "object") return null;
+  const o = body as Record<string, unknown>;
+
+  const sender = asRecord(o.sender);
+  const fromRaw =
+    (sender && typeof sender.number === "string" ? sender.number : null) ??
+    (sender && typeof sender.phone === "string" ? sender.phone : null);
+  if (!fromRaw) return null;
+
+  const msg = asRecord(o.message);
+  if (!msg) return null;
+
+  let text = "";
+  const btn = asRecord(msg.button);
+  if (btn && typeof btn.text === "string") text = btn.text.trim();
+  if (!text && typeof msg.type === "string" && msg.type === "button" && typeof msg.body === "string") {
+    text = msg.body.trim();
+  }
+  if (!text && typeof msg.text === "string") text = msg.text.trim();
+
+  return tryPackInbound(fromRaw, text);
+}
+
 /** Try Zixflow event envelope first, then generic Meta/Zixflow shapes. */
 export function extractInboundWhatsAppFromWebhook(body: unknown): {
   fromDigits: string;
   messageText: string;
 } | null {
+  const direct = extractZixflowIncomingMessageEvent(body);
+  if (direct) return direct;
   const z = extractZixflowIncomingWhatsApp(body);
   if (z) return z;
   const generic = extractInboundWhatsAppBookingSignal(body);
