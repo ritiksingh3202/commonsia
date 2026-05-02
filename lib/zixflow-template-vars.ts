@@ -50,7 +50,13 @@ export const ZIXFLOW_DEFAULT_BOOKING_REQUEST_BODY_ORDER =
 export const ZIXFLOW_DEFAULT_TIME_SLOTS_BODY_ORDER =
   "mentorName,studentName,requestedDate,requestedRange,catalogUrl";
 
-export const ZIXFLOW_DEFAULT_BOOKING_CONFIRMED_BODY_ORDER = "studentName,mentorName,startISO,meetLink";
+/**
+ * 3-var default (`{{1}}`=studentName, `{{2}}`=mentorName, `{{3}}`=date-range).
+ * To include the Meet link as `{{4}}`, set:
+ *   ZIXFLOW_BOOKING_CONFIRMED_BODY_VARS_ORDER=studentName,mentorName,startISO,meetLink
+ * (your Zixflow templates must have body_4 mapped to {{4}} for Meet link).
+ */
+export const ZIXFLOW_DEFAULT_BOOKING_CONFIRMED_BODY_ORDER = "studentName,mentorName,startISO";
 
 /**
  * Maps logical keys → Zixflow `body_1`, `body_2`, … per `orderRaw` (comma / whitespace separated).

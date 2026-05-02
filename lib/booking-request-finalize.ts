@@ -65,15 +65,17 @@ async function sendConfirmedWhatsapps(opts: {
   studentName: string | null;
   mentorName: string | null;
   startISO: string;
+  endISO: string;
   meetLink: string | null;
 }): Promise<{ studentNotified: boolean; mentorNotified: boolean }> {
   let studentNotified = false;
   let mentorNotified = false;
 
+  const sessionRange = formatBookingWhatsAppRange(new Date(opts.startISO), new Date(opts.endISO));
   const varsBase: Record<string, string> = {
     studentName: opts.studentName?.trim() || "Student",
     mentorName: opts.mentorName?.trim() || "Mentor",
-    startISO: opts.startISO,
+    startISO: sessionRange,
     meetLink: opts.meetLink?.trim() || "",
   };
 
@@ -718,6 +720,7 @@ export async function finalizeBookingRequestAccept(opts: {
       studentName: full.student.name,
       mentorName: full.mentor.name,
       startISO: full.startAt.toISOString(),
+      endISO: full.endAt.toISOString(),
       meetLink,
     });
 
@@ -977,6 +980,7 @@ export async function finalizeBookingRequestSlotPick(opts: {
       studentName: full.student.name,
       mentorName: full.mentor.name,
       startISO: slotStart.toISOString(),
+      endISO: slotEnd.toISOString(),
       meetLink,
     });
 
