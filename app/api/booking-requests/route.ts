@@ -284,8 +284,13 @@ export async function POST(req: Request) {
       );
       const acceptBtnVar = process.env.ZIXFLOW_BOOKING_ACCEPT_URL_TEMPLATE_VAR?.trim();
       const rejectBtnVar = process.env.ZIXFLOW_BOOKING_REJECT_URL_TEMPLATE_VAR?.trim();
-      if (acceptBtnVar && acceptUrl) variables = { ...variables, [acceptBtnVar]: acceptUrl };
-      if (rejectBtnVar && rejectUrl) variables = { ...variables, [rejectBtnVar]: rejectUrl };
+      /**
+       * WhatsApp URL buttons have static prefixes like `https://commonsia.com/api/booking/accept?bookingId=`
+       * with `{{1}}` as the dynamic suffix. Pass just the bookingRequestId so the final URL becomes
+       * `…/api/booking/accept?bookingId={request.id}`.
+       */
+      if (acceptBtnVar) variables = { ...variables, [acceptBtnVar]: request.id };
+      if (rejectBtnVar) variables = { ...variables, [rejectBtnVar]: request.id };
 
       const send = await zixflowSendTemplate({
         to: mentorTo,
