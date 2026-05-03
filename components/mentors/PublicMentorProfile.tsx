@@ -61,51 +61,93 @@ function achievementsFromCertifications(raw: string | null): { title: string; bo
     });
 }
 
+function initialsFromName(name: string): string {
+  return name
+    .split(/\s+/)
+    .map((w) => w[0])
+    .join("")
+    .slice(0, 4)
+    .toUpperCase();
+}
+
 export function PublicMentorProfile({
   mentor,
   publicBookingStats,
   mentorReviews,
   similarMentors,
-  messageHref,
-  scheduleHref,
+  mentorLinkedUserId,
+  profilePath,
   viewerPortfolio,
-  viewerSignedIn = true,
   portfolioLoginHref,
-  similarMentorsPersonalized = false,
-  viewerHasPendingBookingRequest = false,
-  viewerUserId = null,
 }: {
   mentor: Mentor;
-  /** Completed `MentoringBooking` rows for this mentor (end time in the past). */
   publicBookingStats: {
     completedSessionCount: number;
     totalMentoringMinutes: number;
   };
-  /** Session reviews for this mentor (from `SessionReview` where `mentorId` matches). */
   mentorReviews: PublicMentorReview[];
   similarMentors: Mentor[];
-  /** When true (student signed in), suggestions use the student’s interests plus this mentor’s expertise. */
-  similarMentorsPersonalized?: boolean;
-  messageHref: string;
-  scheduleHref: string;
-  /** When this marketing card is linked to a real mentor `User`, students can open their shared portfolio. */
+  /** Linked real-user ID for this mentor card — used to build booking / message hrefs. */
+  mentorLinkedUserId: string | null;
+  /** Canonical profile URL — used for login callbackUrl on portfolio. */
+  profilePath: string;
   viewerPortfolio?: {
     userId: string;
     portfolioUrl: string | null;
     portfolioFileName: string | null;
     portfolioVisibleToOthers: boolean;
   } | null;
-  /** Authenticated viewers can open the uploaded document directly; anonymous viewers get a sign-in CTA. */
-  viewerSignedIn?: boolean;
-  /** `/auth/login?callbackUrl=...` back to this profile, shown to anonymous viewers. */
   portfolioLoginHref?: string;
-  /** Signed-in student already submitted a pending booking request for this mentor. */
-  viewerHasPendingBookingRequest?: boolean;
-  /** Current viewer user id (from server session) — drives similar-mentor card booking links */
-  viewerUserId?: string | null;
 }) {
-  const { data: session } = useSession();
-  const viewerForSimilarCards = session?.user?.id ?? viewerUserId ?? null;
+  const { data: session, status: sessionStatus } = useSession();
+  const viewerSignedIn = sessionStatus === "authenticated";
+  const sessionUserId = session?.user?.id ?? null;
+  const sessionRole = (session?.user as { role?: string } | undefined)?.role ?? null;
+  const viewerForSimilarCards = sessionUserId;
+
+  const [viewerHasPendingBookingRequest, setViewerHasPendingBookingRequest] = useState(false);
+  useEffect(() => {
+    if (!viewerSignedIn || !mentorLinkedUserId || sessionRole === "mentor") {
+      setViewerHasPendingBookingRequest(false);
+      return;
+    }
+    let cancelled = false;
+    fetch(`/api/booking-requests/pending?mentorUserId=${encodeURIComponent(mentorLinkedUserId)}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d: { pending?: boolean } | null) => {
+        if (!cancelled) setViewerHasPendingBookingRequest(Boolean(d?.pending));
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [viewerSignedIn, mentorLinkedUserId, sessionRole]);
+
+  const scheduleTarget = mentorLinkedUserId
+    ? `/schedule?mentorUserId=${encodeURIComponent(mentorLinkedUserId)}`
+    : "/schedule";
+  const scheduleHref = viewerSignedIn
+    ? scheduleTarget
+    : `/auth/login?callbackUrl=${encodeURIComponent(scheduleTarget)}`;
+
+  const back = profilePath;
+  let messageHref: string;
+  if (sessionRole === "student" && mentorLinkedUserId) {
+    messageHref = `/messages?peer=${encodeURIComponent(mentorLinkedUserId)}`;
+  } else if (!sessionUserId && mentorLinkedUserId) {
+    messageHref = `/auth/login?callbackUrl=${encodeURIComponent(`/messages?peer=${encodeURIComponent(mentorLinkedUserId)}`)}`;
+  } else if (sessionUserId && mentorLinkedUserId && sessionRole === "mentor") {
+    messageHref = "/messages";
+  } else {
+    messageHref = `/chat?${new URLSearchParams({
+      name: mentor.name,
+      role: mentor.role,
+      initials: initialsFromName(mentor.name),
+      cred: mentor.role,
+      back,
+    }).toString()}`;
+  }
+
+  const portfolioLoginHrefComputed =
+    portfolioLoginHref ?? `/auth/login?callbackUrl=${encodeURIComponent(profilePath)}`;
 
   const [tab, setTab] = useState<Tab>("overview");
   const [reviewIdx, setReviewIdx] = useState(0);
@@ -425,7 +467,7 @@ export function PublicMentorProfile({
                   portfolioFileName={viewerPortfolio.portfolioFileName}
                   portfolioVisibleToOthers={viewerPortfolio.portfolioVisibleToOthers}
                   viewerSignedIn={viewerSignedIn}
-                  loginHref={portfolioLoginHref}
+                  loginHref={portfolioLoginHrefComputed}
                 />
               ) : null}
             </div>
@@ -629,7 +671,7 @@ export function PublicMentorProfile({
                 portfolioFileName={viewerPortfolio.portfolioFileName}
                 portfolioVisibleToOthers={viewerPortfolio.portfolioVisibleToOthers}
                 viewerSignedIn={viewerSignedIn}
-                loginHref={portfolioLoginHref}
+                loginHref={portfolioLoginHrefComputed}
                 className="!mt-0"
               />
             ) : null}
@@ -657,12 +699,10 @@ export function PublicMentorProfile({
        */}
       <section className="mx-auto mt-14 min-w-0 max-w-7xl border-t border-black/[0.06] px-3 pt-10 sm:px-5 md:px-6 lg:px-8">
         <h2 className="text-base font-semibold text-[#0a0a0a]">
-          {similarMentorsPersonalized ? "Suggested mentors for you" : "More mentors to explore"}
+          More mentors to explore
         </h2>
         <p className="mt-1 text-[12px] leading-relaxed text-neutral-500">
-          {similarMentorsPersonalized
-            ? "Based on your profile interests and this mentor’s areas of expertise — not a random list."
-            : "Ranked by overlap with this mentor’s expertise. Sign in as a student to tailor suggestions to your interests."}
+          Ranked by overlap with this mentor&apos;s expertise.
         </p>
         <div className="mt-5 grid min-w-0 auto-rows-fr grid-cols-1 items-stretch gap-3.5 sm:gap-4 md:gap-5 lg:grid-cols-2 lg:gap-x-8 lg:gap-y-5">
           {similar.slice(similarStart, similarStart + similarPageSize).map((m, i) => (
