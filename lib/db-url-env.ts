@@ -84,7 +84,7 @@ function applyPrismaPoolDefaults(
       connLimit = isServerless ? "1" : "2";
     }
     if (!sp.has("connection_limit")) sp.set("connection_limit", connLimit);
-    if (!sp.has("pool_timeout")) sp.set("pool_timeout", isServerless ? "15" : "20");
+    if (!sp.has("pool_timeout")) sp.set("pool_timeout", isServerless ? "30" : "20");
     parsed.search = sp.toString() ? `?${sp.toString()}` : "";
     const scheme = url.startsWith("postgres://") ? "postgres:" : "postgresql:";
     return parsed.toString().replace(/^http:\/\//i, `${scheme}//`);
