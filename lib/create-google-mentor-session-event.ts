@@ -38,7 +38,6 @@ export async function createGoogleMentorSessionEvent(opts: {
     useDefault: false,
     overrides: [
       { method: "popup" as const, minutes: 10 },
-      { method: "email" as const, minutes: 30 },
     ],
   };
 
