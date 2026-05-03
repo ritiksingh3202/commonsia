@@ -99,6 +99,28 @@ model User {
   bookingRequestsAsMentor    BookingRequest[]   @relation("BookingRequestMentor")
   sessionReviewsAuthored     SessionReview[]      @relation("SessionReviewStudent")
   sessionReviewsReceived     SessionReview[]      @relation("SessionReviewMentor")
+  forumPosts                 ForumPost[]          @relation("ForumPostAuthor")
+}
+
+/**
+ * Public community feed entry, created when the configured admin user posts to the
+ * Commonsia WhatsApp number. Author identity is enforced via env COMMUNITY_AUTHOR_USER_ID
+ * and a phone-digit match against User.whatsappUrl / User.phone in the webhook.
+ */
+model ForumPost {
+  id                String   @id @default(cuid())
+  authorUserId      String
+  author            User     @relation("ForumPostAuthor", fields: [authorUserId], references: [id], onDelete: Cascade)
+  text              String?  @db.Text
+  imageUrl          String?  @db.Text
+  links             String[] @default([])
+  /// Inbound WhatsApp message id used for dedupe (webhook may retry).
+  whatsappMessageId String?  @unique
+  postedAt          DateTime @default(now())
+  /// Soft-delete from an admin page later without a migration.
+  deletedAt         DateTime?
+
+  @@index([deletedAt, postedAt(sort: Desc)])
 }
 
 /// Student–mentor session booked via Commonsia (persists even when Google Calendar is not connected).

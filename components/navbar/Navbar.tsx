@@ -11,12 +11,14 @@ import { NavNotificationsBell } from "@/components/navbar/NavNotificationsBell";
 
 const nav = [
   { href: "/mentors", label: "Mentors" },
+  { href: "/community", label: "Community" },
   { href: "/who-we-are", label: "Who We Are" },
   { href: "/contact", label: "Contact Us" },
 ];
 
 function isActive(pathname: string, href: string) {
   if (href === "/mentors") return pathname === "/mentors";
+  if (href === "/community") return pathname === "/community" || pathname.startsWith("/community/");
   if (href === "/who-we-are") return pathname === "/who-we-are";
   if (href === "/contact") return pathname === "/contact";
   return false;

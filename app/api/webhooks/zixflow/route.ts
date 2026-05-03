@@ -17,6 +17,12 @@ import {
   finalizeBookingRequestSlotPick,
   type HtmlActionResult,
 } from "@/lib/booking-request-finalize";
+import {
+  createForumPostFromInbound,
+  extractInboundMedia,
+  resolveCommunityAuthorForInbound,
+} from "@/lib/forum-inbound";
+import { revalidatePath } from "next/cache";
 
 export const runtime = "nodejs";
 
@@ -165,6 +171,40 @@ function extractTokenFromZixflowBody(body: unknown): string | null {
   return null;
 }
 
+/** Pull the message id + image URL out of common Zixflow / Meta inbound shapes. */
+function extractInboundExtras(body: unknown): { messageId: string | null; imageUrl: string | null } {
+  if (!body || typeof body !== "object") return { messageId: null, imageUrl: null };
+  const o = body as Record<string, unknown>;
+
+  let messageId: string | null = null;
+  if (typeof o.messageId === "string" && o.messageId.trim()) messageId = o.messageId.trim();
+
+  const messageNode =
+    (o.message as Record<string, unknown> | undefined) ??
+    (((o.data as Record<string, unknown> | undefined)?.message) as Record<string, unknown> | undefined) ??
+    null;
+
+  if (!messageId && messageNode && typeof (messageNode as Record<string, unknown>).id === "string") {
+    messageId = ((messageNode as Record<string, unknown>).id as string).trim() || null;
+  }
+
+  if (!messageId) {
+    const entry = Array.isArray(o.entry) ? (o.entry[0] as Record<string, unknown>) : null;
+    const changes = entry && Array.isArray(entry.changes) ? (entry.changes[0] as Record<string, unknown>) : null;
+    const value = changes?.value as Record<string, unknown> | undefined;
+    const messages = value?.messages;
+    const m0 = Array.isArray(messages) ? (messages[0] as Record<string, unknown>) : null;
+    if (m0 && typeof m0.id === "string") messageId = m0.id.trim() || null;
+    if (m0 && !messageNode) {
+      const media = extractInboundMedia(m0);
+      return { messageId, imageUrl: media.imageUrl };
+    }
+  }
+
+  const media = extractInboundMedia(messageNode);
+  return { messageId, imageUrl: media.imageUrl };
+}
+
 async function processInboundWhatsApp(
   body: unknown,
   logPrefix: string,
@@ -187,6 +227,27 @@ async function processInboundWhatsApp(
     action: action ?? "(none)",
   });
   if (!action) {
+    /**
+     * Not a booking quick-reply. Try the community-post path: if the sender phone matches the
+     * configured COMMUNITY_AUTHOR_USER_ID's WhatsApp digits, save the message (text/image/links)
+     * as a public ForumPost and revalidate /community so the feed updates immediately.
+     */
+    const authorUserId = await resolveCommunityAuthorForInbound(inbound.fromDigits);
+    if (authorUserId) {
+      const extras = extractInboundExtras(body);
+      const created = await createForumPostFromInbound({
+        authorUserId,
+        text: inbound.messageText,
+        imageUrl: extras.imageUrl,
+        whatsappMessageId: extras.messageId,
+      });
+      if (created) {
+        try { revalidatePath("/community"); } catch { /* noop in tests */ }
+        console.info(`[${logPrefix}] community post created:`, created);
+        return NextResponse.json({ ok: true, forumPostId: created }, { status: 200 });
+      }
+      return NextResponse.json({ ok: true, ignored: true, reason: "empty_post" }, { status: 200 });
+    }
     return NextResponse.json({ ok: true, ignored: true, reason: "not_booking_quick_reply" }, { status: 200 });
   }
 
