@@ -106,18 +106,34 @@ export async function resolveAndPersistMeetLinkForBooking(bookingId: string): Pr
   return p;
 }
 
-/** Best-effort: fill `googleMeetLink` on in-memory rows (and DB) for dashboards after admin Calendar creates the Meet. */
+/**
+ * Best-effort: fill `googleMeetLink` on in-memory rows (and DB) for dashboards.
+ *
+ * Runs all candidate resolves in PARALLEL with a global timeout cap so a slow Google
+ * Calendar API call can never block the dashboard render past `timeoutMs`. Whatever
+ * resolves in time gets a link; the rest stay null and resolve later (next render or
+ * when the user clicks Join). Previously this was sequential with no timeout — a single
+ * hung Google call could push the page past Vercel's 25s function limit.
+ */
 export async function enrichMeetLinksOnBookings(
   rows: { id: string; googleMeetLink: string | null; googleEventId: string | null }[],
   limit = 8,
+  timeoutMs = 2500,
 ): Promise<void> {
-  let n = 0;
-  for (const r of rows) {
-    if (n >= limit) break;
-    if (r.googleMeetLink?.trim()) continue;
-    if (!r.googleEventId?.trim()) continue;
-    n++;
-    const link = await resolveAndPersistMeetLinkForBooking(r.id);
-    if (link) r.googleMeetLink = link;
-  }
+  const candidates = rows
+    .filter((r) => !r.googleMeetLink?.trim() && r.googleEventId?.trim())
+    .slice(0, limit);
+  if (candidates.length === 0) return;
+
+  const work = Promise.allSettled(
+    candidates.map(async (r) => {
+      const link = await resolveAndPersistMeetLinkForBooking(r.id);
+      if (link) r.googleMeetLink = link;
+    }),
+  );
+
+  await Promise.race([
+    work,
+    new Promise<void>((resolve) => setTimeout(resolve, timeoutMs)),
+  ]);
 }
