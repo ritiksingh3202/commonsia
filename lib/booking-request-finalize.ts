@@ -19,6 +19,7 @@ import { signCatalogAccess } from "@/lib/booking-slot-pick-token";
 import { formatBookingWhatsAppDateOnly, formatBookingWhatsAppRange } from "@/lib/booking-whatsapp-format";
 import { mergeAvailabilityForSlot } from "@/lib/mentor-availability-merge";
 import { prisma } from "@/lib/prisma";
+import { prismaDirect } from "@/lib/prisma-direct";
 import { getPublicSiteBaseUrl } from "@/lib/public-site-url";
 import { whatsappDigitsFromProfile, zixflowSendTemplate } from "@/lib/zixflow";
 import {
@@ -648,7 +649,7 @@ export async function finalizeBookingRequestAccept(opts: {
     let mentoringBookingId: string | null = null;
 
     try {
-      await prisma.$transaction(async (tx) => {
+      await prismaDirect.$transaction(async (tx) => {
         const u = await tx.bookingRequest.updateMany({
           where: opts.verifiedMentorId
             ? { id: full.id, mentorId: opts.verifiedMentorId, status: "pending" }
@@ -911,7 +912,7 @@ export async function finalizeBookingRequestSlotPick(opts: {
     let mentoringBookingId: string | null = null;
 
     try {
-      await prisma.$transaction(async (tx) => {
+      await prismaDirect.$transaction(async (tx) => {
         const u = await tx.bookingRequest.updateMany({
           where: { id: full.id, status: "awaiting_slot", actionTokenHash: hash },
           data: {
