@@ -175,7 +175,7 @@ async function processInboundWhatsApp(
       `[${logPrefix}] unrecognized payload shape. Tip: webhook URL must be public HTTPS (deploy or ngrok); localhost is unreachable.`,
     );
     return NextResponse.json(
-      { ok: false, error: “Unrecognized payload - expected inbound WhatsApp Accept/Reject with sender matching a mentor profile.” },
+      { ok: false, error: "Unrecognized payload - expected inbound WhatsApp Accept/Reject with sender matching a mentor profile." },
       { status: 400 },
     );
   }
@@ -184,22 +184,22 @@ async function processInboundWhatsApp(
   console.info(`[${logPrefix}] inbound parsed:`, {
     fromDigitsTail: inbound.fromDigits.slice(-4),
     messageText: inbound.messageText,
-    action: action ?? “(none)”,
+    action: action ?? "(none)",
   });
   if (!action) {
-    return NextResponse.json({ ok: true, ignored: true, reason: “not_booking_quick_reply” }, { status: 200 });
+    return NextResponse.json({ ok: true, ignored: true, reason: "not_booking_quick_reply" }, { status: 200 });
   }
 
   const mentorId = await findMentorUserIdByInboundDigits(inbound.fromDigits);
   if (!mentorId) {
     console.warn(`[${logPrefix}] booking quick reply from unknown WhatsApp:`, `${inbound.fromDigits.slice(0, 4)}…`);
-    return NextResponse.json({ ok: true, ignored: true, reason: “unknown_sender” }, { status: 200 });
+    return NextResponse.json({ ok: true, ignored: true, reason: "unknown_sender" }, { status: 200 });
   }
 
-  if (action === “accept”) {
+  if (action === "accept") {
     const resolved = await resolveBookingIdForInboundAccept(mentorId);
-    if (resolved.kind === “respond”) {
-      console.info(`[${logPrefix}] Accept response:`, resolved.title, resolved.ok ? “(ok)” : “(error)”);
+    if (resolved.kind === "respond") {
+      console.info(`[${logPrefix}] Accept response:`, resolved.title, resolved.ok ? "(ok)" : "(error)");
       return NextResponse.json(
         { ok: resolved.ok, title: resolved.title, message: resolved.message },
         { status: resolved.status },
@@ -212,7 +212,7 @@ async function processInboundWhatsApp(
   }
 
   const resolved = await resolveBookingIdForInboundReject(mentorId);
-  if (resolved.kind === “respond”) {
+  if (resolved.kind === "respond") {
     console.info(`[${logPrefix}] Reject response:`, resolved.title);
     return NextResponse.json(
       { ok: resolved.ok, title: resolved.title, message: resolved.message },
@@ -227,64 +227,64 @@ async function processInboundWhatsApp(
 
 /**
  * POST webhook: handles both Meta Cloud API webhooks (x-hub-signature-256) and Zixflow webhooks
- * (Authorization: Bearer / x-zixflow-secret). Meta path processes inbound “Accept”/”Reject” button taps.
+ * (Authorization: Bearer / x-zixflow-secret). Meta path processes inbound "Accept"/"Reject" button taps.
  * Zixflow path also handles signed Accept/Reject URL tokens forwarded from mentor WhatsApp messages.
  */
 export async function POST(req: Request) {
-  const metaSig = req.headers.get(“x-hub-signature-256”)?.trim();
+  const metaSig = req.headers.get("x-hub-signature-256")?.trim();
 
   if (metaSig) {
     const rawBody = await req.text();
     const metaAppSecret = process.env.META_APP_SECRET?.trim();
     if (metaAppSecret && !verifyMetaHmac(rawBody, metaSig, metaAppSecret)) {
-      console.warn(“[meta-webhook] HMAC verification failed”);
-      return NextResponse.json({ ok: false, error: “Invalid signature” }, { status: 401 });
+      console.warn("[meta-webhook] HMAC verification failed");
+      return NextResponse.json({ ok: false, error: "Invalid signature" }, { status: 401 });
     }
 
     let body: unknown;
     try {
       body = JSON.parse(rawBody);
     } catch {
-      return NextResponse.json({ ok: false, error: “Invalid JSON” }, { status: 400 });
+      return NextResponse.json({ ok: false, error: "Invalid JSON" }, { status: 400 });
     }
-    try { console.log(“[meta-webhook]”, JSON.stringify(body)); } catch { /* ignore */ }
+    try { console.log("[meta-webhook]", JSON.stringify(body)); } catch { /* ignore */ }
 
-    // Meta sends status/delivery notifications too — ACK them all with 200 (Meta retries on non-2xx)
+    // Meta sends status/delivery notifications too - ACK them all with 200 (Meta retries on non-2xx)
     const inbound = extractInboundWhatsAppFromWebhook(body);
     if (!inbound) {
-      return NextResponse.json({ ok: true, ignored: true, reason: “no_inbound_message” }, { status: 200 });
+      return NextResponse.json({ ok: true, ignored: true, reason: "no_inbound_message" }, { status: 200 });
     }
-    return processInboundWhatsApp(body, “meta-webhook”);
+    return processInboundWhatsApp(body, "meta-webhook");
   }
 
   // --- Zixflow / legacy path ---
   const secret = process.env.ZIXFLOW_WEBHOOK_SECRET?.trim();
   if (!secret) {
     return NextResponse.json(
-      { ok: false, error: “POST disabled until ZIXFLOW_WEBHOOK_SECRET is set. Without it, mentors must open the Accept/Decline links (GET).” },
+      { ok: false, error: "POST disabled until ZIXFLOW_WEBHOOK_SECRET is set. Without it, mentors must open the Accept/Decline links (GET)." },
       { status: 503 },
     );
   }
 
   if (!verifyZixflowWebhookSecret(req, secret)) {
-    return NextResponse.json({ ok: false, error: “Unauthorized” }, { status: 401 });
+    return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
   }
 
   let body: unknown;
   try {
     body = await req.json();
   } catch {
-    return NextResponse.json({ ok: false, error: “Invalid JSON” }, { status: 400 });
+    return NextResponse.json({ ok: false, error: "Invalid JSON" }, { status: 400 });
   }
-  try { console.log(“[zixflow-webhook]”, JSON.stringify(body)); } catch { console.log(“[zixflow-webhook]”, “[non-serializable payload]”); }
+  try { console.log("[zixflow-webhook]", JSON.stringify(body)); } catch { console.log("[zixflow-webhook]", "[non-serializable payload]"); }
 
   const token = extractTokenFromZixflowBody(body);
   if (token) {
-    console.info(“[zixflow-webhook] routing: signed_token”);
+    console.info("[zixflow-webhook] routing: signed_token");
     const r = await processBookingToken(token);
-    console.info(“[zixflow-webhook] token pipeline result:”, r.ok, r.title);
+    console.info("[zixflow-webhook] token pipeline result:", r.ok, r.title);
     return NextResponse.json({ ok: r.ok, title: r.title, message: r.message }, { status: r.ok ? 200 : 400 });
   }
 
-  return processInboundWhatsApp(body, “zixflow-webhook”);
+  return processInboundWhatsApp(body, "zixflow-webhook");
 }
