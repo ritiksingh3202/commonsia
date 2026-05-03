@@ -11,7 +11,7 @@ import { NavNotificationsBell } from "@/components/navbar/NavNotificationsBell";
 
 const nav = [
   { href: "/mentors", label: "Mentors" },
-  { href: "/community", label: "Community" },
+  { href: "/community", label: "Community Forum" },
   { href: "/who-we-are", label: "Who We Are" },
   { href: "/contact", label: "Contact Us" },
 ];
