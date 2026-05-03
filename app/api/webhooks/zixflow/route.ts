@@ -175,7 +175,7 @@ async function processInboundWhatsApp(
       `[${logPrefix}] unrecognized payload shape. Tip: webhook URL must be public HTTPS (deploy or ngrok); localhost is unreachable.`,
     );
     return NextResponse.json(
-      { ok: false, error: “Unrecognized payload — expected inbound WhatsApp Accept/Reject with sender matching a mentor profile.” },
+      { ok: false, error: “Unrecognized payload - expected inbound WhatsApp Accept/Reject with sender matching a mentor profile.” },
       { status: 400 },
     );
   }
