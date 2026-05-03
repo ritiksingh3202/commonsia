@@ -235,9 +235,10 @@ async function processInboundWhatsApp(
     const authorUserId = await resolveCommunityAuthorForInbound(inbound.fromDigits);
     if (authorUserId) {
       const extras = extractInboundExtras(body);
+      const cleanText = inbound.messageText === "[media]" ? null : inbound.messageText;
       const created = await createForumPostFromInbound({
         authorUserId,
-        text: inbound.messageText,
+        text: cleanText,
         imageUrl: extras.imageUrl,
         whatsappMessageId: extras.messageId,
       });

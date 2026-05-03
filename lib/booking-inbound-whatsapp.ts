@@ -344,6 +344,28 @@ function extractZixflowIncomingMessageEvent(body: unknown): {
     text = msg.body.trim();
   }
   if (!text && typeof msg.text === "string") text = msg.text.trim();
+  /** Meta-style text node: `message.text = { body: "..." }` (Zixflow forwards this verbatim). */
+  if (!text) {
+    const tb = asRecord(msg.text);
+    if (tb && typeof tb.body === "string") text = tb.body.trim();
+  }
+  if (!text && typeof msg.body === "string") text = msg.body.trim();
+  /** Image / document captions land here for media messages with text. */
+  if (!text) {
+    for (const k of ["image", "video", "document"] as const) {
+      const node = asRecord(msg[k]);
+      const cap = node && typeof node.caption === "string" ? node.caption.trim() : "";
+      if (cap) { text = cap; break; }
+    }
+  }
+  /** Allow image-only posts: synthesize a placeholder so tryPackInbound succeeds. */
+  if (!text) {
+    for (const k of ["image", "video", "document"] as const) {
+      const node = asRecord(msg[k]);
+      const url = node && (typeof node.url === "string" ? node.url : typeof node.link === "string" ? node.link : "");
+      if (url) { text = "[media]"; break; }
+    }
+  }
 
   return tryPackInbound(fromRaw, text);
 }
