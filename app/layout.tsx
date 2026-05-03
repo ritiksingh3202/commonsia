@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { ABeeZee, Poppins } from "next/font/google";
+import { Analytics } from "@vercel/analytics/next";
 
 import { auth } from "@/auth";
 import { AuthSessionProvider } from "@/components/providers/AuthSessionProvider";
@@ -83,6 +84,7 @@ export default async function RootLayout({
           <RouteProgressBar />
           {children}
         </AuthSessionProvider>
+        <Analytics />
       </body>
     </html>
   );
