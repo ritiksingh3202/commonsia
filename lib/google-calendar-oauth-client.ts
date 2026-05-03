@@ -4,8 +4,8 @@ import { getGoogleCalendarRefreshToken } from "@/lib/google-calendar-db";
 import { getGoogleCalendarOAuthClient } from "@/lib/oauth-credentials";
 
 /**
- * Refresh token from the "Connect Calendar" flow only.
- * Sign-in Account tokens are excluded — they are issued by GOOGLE_LOGIN_CLIENT_ID
+ * Refresh token from mentor "Connect Calendar" flow only.
+ * Sign-in Account tokens are intentionally excluded — they were issued by GOOGLE_LOGIN_CLIENT_ID
  * which differs from GOOGLE_MEET_CLIENT_ID, causing unauthorized_client errors.
  */
 export async function getGoogleCalendarRefreshTokenForUser(userId: string): Promise<string | null> {

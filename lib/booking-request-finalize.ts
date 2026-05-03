@@ -24,6 +24,7 @@ import { whatsappDigitsFromProfile, zixflowSendTemplate } from "@/lib/zixflow";
 import {
   applyZixflowBodyVarOrder,
   ZIXFLOW_DEFAULT_BOOKING_CONFIRMED_BODY_ORDER,
+  ZIXFLOW_DEFAULT_BOOKING_CONFIRMED_MENTOR_BODY_ORDER,
   ZIXFLOW_DEFAULT_TIME_SLOTS_BODY_ORDER,
 } from "@/lib/zixflow-template-vars";
 
@@ -72,7 +73,6 @@ async function sendConfirmedWhatsapps(opts: {
   let mentorNotified = false;
 
   const sessionRange = formatBookingWhatsAppRange(new Date(opts.startISO), new Date(opts.endISO));
-
   const varsBase: Record<string, string> = {
     studentName: opts.studentName?.trim() || "Student",
     mentorName: opts.mentorName?.trim() || "Mentor",
@@ -80,9 +80,13 @@ async function sendConfirmedWhatsapps(opts: {
     meetLink: opts.meetLink?.trim() || "",
   };
 
-  const confirmedOrder =
+  const studentOrder =
     process.env.ZIXFLOW_BOOKING_CONFIRMED_BODY_VARS_ORDER?.trim() || ZIXFLOW_DEFAULT_BOOKING_CONFIRMED_BODY_ORDER;
-  const vars = applyZixflowBodyVarOrder(varsBase, confirmedOrder);
+  const studentVars = applyZixflowBodyVarOrder(varsBase, studentOrder);
+
+  const mentorOrder =
+    process.env.ZIXFLOW_BOOKING_CONFIRMED_MENTOR_BODY_VARS_ORDER?.trim() || ZIXFLOW_DEFAULT_BOOKING_CONFIRMED_MENTOR_BODY_ORDER;
+  const mentorVars = applyZixflowBodyVarOrder(varsBase, mentorOrder);
 
   const studentTpl = process.env.ZIXFLOW_BOOKING_CONFIRMED_TEMPLATE?.trim();
   if (opts.studentWa && !studentTpl) {
@@ -101,7 +105,7 @@ async function sendConfirmedWhatsapps(opts: {
       const r = await zixflowSendTemplate({
         to: opts.studentWa,
         template: studentTpl,
-        variables: vars,
+        variables: studentVars,
       });
       studentNotified = r.ok;
       if (!r.ok) console.error("[booking] Zixflow confirm (student) failed:", r.error);
@@ -127,7 +131,7 @@ async function sendConfirmedWhatsapps(opts: {
       const r = await zixflowSendTemplate({
         to: opts.mentorWa,
         template: mentorTpl,
-        variables: vars,
+        variables: mentorVars,
       });
       mentorNotified = r.ok;
       if (!r.ok) console.error("[booking] Zixflow confirm (mentor) failed:", r.error);
