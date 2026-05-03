@@ -1,6 +1,7 @@
 import { cache } from "react";
 
 import { prisma } from "@/lib/prisma";
+import { getActiveUserWhere } from "@/lib/user-active";
 
 export type CommunityPost = {
   id: string;
@@ -47,3 +48,26 @@ async function getPublicCommunityFeedImpl(): Promise<CommunityPost[]> {
 
 /** Request-scoped memoization so page + metadata renders share the query. */
 export const getPublicCommunityFeed = cache(getPublicCommunityFeedImpl);
+
+export type CommunityStats = {
+  mentorCount: number;
+  studentCount: number;
+  postCount: number;
+};
+
+async function getCommunityStatsImpl(): Promise<CommunityStats> {
+  const activeWhere = getActiveUserWhere();
+  try {
+    const [mentorCount, studentCount, postCount] = await Promise.all([
+      prisma.user.count({ where: { role: "mentor", mentorOnboardingComplete: true, ...activeWhere } }),
+      prisma.user.count({ where: { role: "student", ...activeWhere } }),
+      prisma.forumPost.count({ where: { deletedAt: null } }),
+    ]);
+    return { mentorCount, studentCount, postCount };
+  } catch (e) {
+    console.error("[forum-feed] stats read failed:", e);
+    return { mentorCount: 0, studentCount: 0, postCount: 0 };
+  }
+}
+
+export const getCommunityStats = cache(getCommunityStatsImpl);

@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 
 import { CommunityFeed } from "@/components/community/CommunityFeed";
+import { CommunityStatsStrip } from "@/components/community/CommunityStats";
 import { MarketingShell } from "@/components/layout/MarketingShell";
-import { getPublicCommunityFeed } from "@/lib/forum-feed";
+import { getCommunityStats, getPublicCommunityFeed } from "@/lib/forum-feed";
 
 export const metadata: Metadata = {
   title: { absolute: "Community Forum" },
@@ -11,12 +12,14 @@ export const metadata: Metadata = {
 
 /**
  * ISR'd public feed: cached at the edge for `revalidate` seconds. Updates immediately
- * when the WhatsApp webhook calls revalidatePath("/community") on a new post.
+ * when the WhatsApp webhook calls revalidatePath("/community") on a new post. Stats
+ * also refresh on the client every 60s via /api/community/stats so signups reflect
+ * without needing a hard reload.
  */
 export const revalidate = 60;
 
 export default async function CommunityPage() {
-  const posts = await getPublicCommunityFeed();
+  const [posts, stats] = await Promise.all([getPublicCommunityFeed(), getCommunityStats()]);
   return (
     <MarketingShell>
       <div className="bg-[#fafafa] pb-16 pt-8 sm:pt-10">
@@ -29,6 +32,7 @@ export default async function CommunityPage() {
           </p>
         </header>
         <div className="px-4 sm:px-6">
+          <CommunityStatsStrip initial={stats} />
           <CommunityFeed posts={posts} />
         </div>
       </div>
