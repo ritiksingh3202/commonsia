@@ -67,6 +67,15 @@ function extractFromMetaLikeValue(value: unknown): { fromDigits: string; message
       text = (typeof lr.title === "string" ? lr.title : "") || (typeof lr.id === "string" ? lr.id : "") || "";
     }
   }
+  // Template quick reply buttons: Meta sends type="button" with button.payload / button.text
+  if (!text && m0.type === "button" && m0.button && typeof m0.button === "object") {
+    const btn = m0.button as Record<string, unknown>;
+    text =
+      (typeof btn.text === "string" ? btn.text : "") ||
+      (typeof btn.payload === "string" ? btn.payload : "") ||
+      "";
+    text = text.trim();
+  }
   if (!text && m0.text && typeof m0.text === "object") {
     const tb = (m0.text as Record<string, unknown>).body;
     if (typeof tb === "string") text = tb;
