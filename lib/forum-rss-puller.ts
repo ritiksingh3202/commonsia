@@ -23,8 +23,11 @@ export type RssSource = {
  * to the Commonsia number with a hashtag like #phd / #faculty.
  */
 export const FORUM_RSS_SOURCES: RssSource[] = [
-  { id: "opportunitydesk", label: "OpportunityDesk", feedUrl: "https://opportunitydesk.org/feed/" },
-  { id: "globalopportunitydesk", label: "Global Opportunity Desk", feedUrl: "https://globalopportunitydesk.com/feed/" },
+  /** OpportunityDesk skews young — youth fellowships, leadership programs, contests. */
+  { id: "opportunitydesk", label: "OpportunityDesk", feedUrl: "https://opportunitydesk.org/feed/", defaultCategory: "bachelors" },
+  /** Global Opportunity Desk leans grad-school / fellowships. */
+  { id: "globalopportunitydesk", label: "Global Opportunity Desk", feedUrl: "https://globalopportunitydesk.com/feed/", defaultCategory: "masters" },
+  /** Commonwealth Scholarships are mostly PhD / advanced study. */
   { id: "cscuk", label: "Commonwealth Scholarships", feedUrl: "https://cscuk.fcdo.gov.uk/feed/", defaultCategory: "phd" },
 ];
 

@@ -73,24 +73,40 @@ export function classifyForumPostText(rawText: string | null | undefined): {
   }
   if (hashtagCategory) return { category: hashtagCategory, cleanedText: cleanedText || null };
 
-  // 2. Keyword scan, in priority order.
+  // 2. Keyword scan, in priority order — specific terms first, then broader fallbacks.
   const lower = text.toLowerCase();
   const has = (re: RegExp) => re.test(lower);
-  /** Specific first — startup beats general "research grant" etc. */
-  if (has(/\b(startup|incubator|accelerator|founder|venture\s*fund|seed\s*fund|entrepreneur)/)) {
+
+  /** Tier 1 — explicit level keywords. Highest confidence. */
+  if (has(/\b(startup|start-?up|incubator|accelerator|venture\s*(?:fund|capital)|seed\s*(?:fund|round)|pitch\s*competition|entrepreneurs?|founders?|hackathon|innovation\s*challenge)/)) {
     return { category: "startup", cleanedText: text };
   }
-  if (has(/\b(phd|doctoral|doctorate|d\.?phil)/)) {
+  if (has(/\b(phd|ph\.d|doctoral|doctorate|d\.?phil|postdoc(toral)?)/)) {
     return { category: "phd", cleanedText: text };
   }
-  if (has(/\b(master'?s|m\.?sc|m\.?phil|m\.?a\.?\b|postgrad|post-?graduate|pg\b)/)) {
+  if (has(/\b(master'?s|m\.?sc\b|m\.?phil|m\.?a\.?\b|m\.?b\.?a\.?\b|postgrad(uate)?|graduate\s*program)/)) {
     return { category: "masters", cleanedText: text };
   }
-  if (has(/\b(bachelor'?s|b\.?sc|b\.?a\.?\b|undergrad|under-?graduate|ug\b)/)) {
+  if (has(/\b(bachelor'?s|b\.?sc\b|b\.?a\.?\b|undergrad(uate)?\b|ug\b|high\s*school|secondary\s*school)/)) {
     return { category: "bachelors", cleanedText: text };
   }
-  if (has(/\b(faculty|professor|principal\s*investigator|project\s*proposal|research\s*grant|fellowship\s*for\s*faculty)/)) {
+  if (has(/\b(faculty|professor|principal\s*investigator|project\s*proposal|research\s*grant|early[-\s]?career\s*researcher|tenure[-\s]?track)/)) {
     return { category: "faculty", cleanedText: text };
   }
+
+  /** Tier 2 — broader keywords with sensible defaults. Looser, lower confidence. */
+  if (has(/\b(youth|young\s*(?:leader|professional|innovator)|next\s*generation|teen|undergraduate\s*student|student\s*program|summer\s*school|winter\s*school|internship)/)) {
+    return { category: "bachelors", cleanedText: text };
+  }
+  if (has(/\b(scholarship|study\s*abroad|exchange\s*program|mba|graduate\s*school)/)) {
+    return { category: "masters", cleanedText: text };
+  }
+  if (has(/\b(fellowship|research\s*award|academic\s*award|visiting\s*scholar|sabbatical)/)) {
+    return { category: "faculty", cleanedText: text };
+  }
+  if (has(/\b(grant|call\s*for\s*proposals|call\s*for\s*papers|conference|symposium|colloquium)/)) {
+    return { category: "faculty", cleanedText: text };
+  }
+
   return { category: null, cleanedText: text };
 }
