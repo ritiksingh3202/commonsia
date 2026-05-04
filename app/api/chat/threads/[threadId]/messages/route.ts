@@ -99,19 +99,20 @@ export async function POST(req: Request, ctx: RouteCtx) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const msg = await prisma.chatMessage.create({
-    data: {
-      threadId,
-      senderId: session.user.id,
-      body: text,
-    },
-    select: { id: true, body: true, createdAt: true, senderId: true },
-  });
-
-  await prisma.chatThread.update({
-    where: { id: threadId },
-    data: { updatedAt: new Date() },
-  });
+  const [msg] = await Promise.all([
+    prisma.chatMessage.create({
+      data: {
+        threadId,
+        senderId: session.user.id,
+        body: text,
+      },
+      select: { id: true, body: true, createdAt: true, senderId: true },
+    }),
+    prisma.chatThread.update({
+      where: { id: threadId },
+      data: { updatedAt: new Date() },
+    }),
+  ]);
 
   await invalidateChatThreadsForParticipants(thread.studentId, thread.mentorId);
 

@@ -244,6 +244,7 @@ model ChatMessage {
   sender User       @relation(fields: [senderId], references: [id], onDelete: Cascade)
 
   @@index([threadId])
+  @@index([senderId])
 }
 
 /// Review submitted after a mentorship session; home page + mentor public profile.

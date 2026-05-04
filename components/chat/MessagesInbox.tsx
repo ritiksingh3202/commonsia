@@ -249,8 +249,7 @@ export function MessagesInbox({
       }, 0);
       return () => window.clearTimeout(clearT);
     }
-    setMessages([]);
-    setThreadStatus(null);
+    setLoadingMsgs(true);
     setMsgError(null);
     const kick = window.setTimeout(() => {
       void loadMessages(selectedId);

@@ -6,7 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { getActiveUserWhere, prismaGeneratedClientHasAccountDeletedAt } from "@/lib/user-active";
 import { NextResponse } from "next/server";
 
-function peerSelect() {
+function peerSelect(isMentor = true) {
   return {
     id: true,
     name: true,
@@ -23,8 +23,9 @@ function peerSelect() {
     instagramUrl: true,
     whatsappUrl: true,
     portfolioUrl: true,
-    mentorAvailabilityJson: true,
-  } as const;
+    // Only mentors have availability JSON — skip it for student peers to reduce payload.
+    ...(isMentor ? { mentorAvailabilityJson: true as const } : {}),
+  };
 }
 
 type PeerRow = {
@@ -43,7 +44,7 @@ type PeerRow = {
   instagramUrl: string | null;
   whatsappUrl: string | null;
   portfolioUrl: string | null;
-  mentorAvailabilityJson: unknown;
+  mentorAvailabilityJson?: unknown;
 };
 
 function publicPeerPayload(peer: PeerRow) {
@@ -118,8 +119,8 @@ export async function GET() {
       where,
       orderBy: { updatedAt: "desc" },
       include: {
-        student: { select: peerSelect() },
-        mentor: { select: peerSelect() },
+        student: { select: peerSelect(false) },
+        mentor: { select: peerSelect(true) },
         messages: {
           orderBy: { createdAt: "desc" },
           take: 1,
@@ -224,8 +225,8 @@ export async function POST(req: Request) {
   const fresh = await prisma.chatThread.findUniqueOrThrow({
     where: { id: thread.id },
     include: {
-      student: { select: peerSelect() },
-      mentor: { select: peerSelect() },
+      student: { select: peerSelect(false) },
+      mentor: { select: peerSelect(true) },
       messages: {
         orderBy: { createdAt: "desc" },
         take: 1,
