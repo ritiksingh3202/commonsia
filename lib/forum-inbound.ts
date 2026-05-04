@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { whatsappDigitsFromProfile } from "@/lib/zixflow";
 import { normalizeInboundWhatsAppDigits } from "@/lib/booking-inbound-whatsapp";
+import { classifyForumPostText, type ForumCategorySlug } from "@/lib/forum-categories";
 
 /**
  * Verifies the inbound WhatsApp sender matches the configured community author.
@@ -88,17 +89,26 @@ export function extractInboundMedia(messageNode: unknown): ParsedInboundMedia {
 
 /**
  * Insert a community post if the inbound message hasn't already been processed.
- * Returns the new post id (or the existing one if duplicate).
+ * Auto-classifies the text into a category (hashtag override > keyword scan, see
+ * lib/forum-categories.ts). Returns the new post id (or the existing one if duplicate).
  */
 export async function createForumPostFromInbound(opts: {
   authorUserId: string;
   text: string | null;
   imageUrl: string | null;
   whatsappMessageId: string | null;
+  /** Override classifier (used by RSS puller, which already knows the category). */
+  forcedCategory?: ForumCategorySlug | null;
+  sourceLabel?: string | null;
+  sourceUrl?: string | null;
 }): Promise<string | null> {
-  const text = opts.text?.trim() || null;
+  const rawText = opts.text?.trim() || null;
   const imageUrl = opts.imageUrl?.trim() || null;
-  if (!text && !imageUrl) return null;
+  if (!rawText && !imageUrl) return null;
+
+  const { category: detected, cleanedText } = classifyForumPostText(rawText);
+  const text = cleanedText ?? rawText;
+  const category = opts.forcedCategory !== undefined ? opts.forcedCategory : detected;
 
   const links = text ? extractLinks(text).links : [];
 
@@ -118,6 +128,9 @@ export async function createForumPostFromInbound(opts: {
         imageUrl,
         links,
         whatsappMessageId: opts.whatsappMessageId ?? null,
+        category,
+        sourceLabel: opts.sourceLabel ?? null,
+        sourceUrl: opts.sourceUrl ?? null,
       },
       select: { id: true },
     });

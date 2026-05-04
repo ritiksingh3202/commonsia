@@ -118,13 +118,20 @@ model ForumPost {
   text              String?  @db.Text
   imageUrl          String?  @db.Text
   links             String[] @default([])
-  /// Inbound WhatsApp message id used for dedupe (webhook may retry).
+  /// Inbound WhatsApp message id (Zixflow/Meta) OR rss:<sourceId>:<itemGuid> for cron-pulled posts. Used for dedupe.
   whatsappMessageId String?  @unique
+  /// One of: bachelors, masters, phd, faculty, startup. Null = uncategorized (shown under "All" only).
+  category          String?
+  /// Display label for the source ("OpportunityDesk", etc.). Null = posted by author directly.
+  sourceLabel       String?
+  /// Article URL when the post was auto-pulled from an RSS feed; the card title-links here.
+  sourceUrl         String?  @db.Text
   postedAt          DateTime @default(now())
   /// Soft-delete from an admin page later without a migration.
   deletedAt         DateTime?
 
   @@index([deletedAt, postedAt(sort: Desc)])
+  @@index([category, deletedAt, postedAt(sort: Desc)])
 }
 
 /// Student–mentor session booked via Commonsia (persists even when Google Calendar is not connected).

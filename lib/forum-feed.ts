@@ -3,12 +3,17 @@ import { cache } from "react";
 import { prisma } from "@/lib/prisma";
 import { getActiveUserWhere } from "@/lib/user-active";
 
+import type { ForumCategorySlug } from "@/lib/forum-categories";
+
 export type CommunityPost = {
   id: string;
   text: string | null;
   imageUrl: string | null;
   links: string[];
   postedAt: string;
+  category: ForumCategorySlug | null;
+  sourceLabel: string | null;
+  sourceUrl: string | null;
   author: {
     name: string | null;
     image: string | null;
@@ -17,10 +22,13 @@ export type CommunityPost = {
 
 const FEED_PAGE_SIZE = 50;
 
-async function getPublicCommunityFeedImpl(): Promise<CommunityPost[]> {
+async function getPublicCommunityFeedImpl(category?: ForumCategorySlug | null): Promise<CommunityPost[]> {
   try {
     const rows = await prisma.forumPost.findMany({
-      where: { deletedAt: null },
+      where: {
+        deletedAt: null,
+        ...(category ? { category } : {}),
+      },
       orderBy: { postedAt: "desc" },
       take: FEED_PAGE_SIZE,
       select: {
@@ -29,6 +37,9 @@ async function getPublicCommunityFeedImpl(): Promise<CommunityPost[]> {
         imageUrl: true,
         links: true,
         postedAt: true,
+        category: true,
+        sourceLabel: true,
+        sourceUrl: true,
         author: { select: { name: true, image: true } },
       },
     });
@@ -38,6 +49,9 @@ async function getPublicCommunityFeedImpl(): Promise<CommunityPost[]> {
       imageUrl: r.imageUrl,
       links: r.links,
       postedAt: r.postedAt.toISOString(),
+      category: (r.category as ForumCategorySlug | null) ?? null,
+      sourceLabel: r.sourceLabel,
+      sourceUrl: r.sourceUrl,
       author: { name: r.author.name, image: r.author.image },
     }));
   } catch (e) {

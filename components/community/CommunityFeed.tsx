@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 
+import { categoryMeta } from "@/lib/forum-categories";
 import type { CommunityPost } from "@/lib/forum-feed";
 
 function formatRelative(iso: string): string {
@@ -96,14 +97,30 @@ export function CommunityFeed({ posts }: { posts: CommunityPost[] }) {
           key={p.id}
           className="overflow-hidden rounded-2xl border border-black/[0.06] bg-white shadow-sm"
         >
-          <div className="flex items-center gap-3 px-5 pt-4">
-            <AuthorAvatar name={p.author.name} image={p.author.image} />
-            <div className="min-w-0">
-              <p className="truncate text-sm font-semibold text-[#0a0a0a]">
-                {p.author.name ?? "Commonsia"}
-              </p>
-              <p className="text-xs text-neutral-500">{formatRelative(p.postedAt)}</p>
+          <div className="flex items-start justify-between gap-3 px-5 pt-4">
+            <div className="flex min-w-0 items-center gap-3">
+              <AuthorAvatar name={p.author.name} image={p.author.image} />
+              <div className="min-w-0">
+                <p className="truncate text-sm font-semibold text-[#0a0a0a]">
+                  {p.sourceLabel ? p.sourceLabel : p.author.name ?? "Commonsia"}
+                </p>
+                <p className="text-xs text-neutral-500">{formatRelative(p.postedAt)}</p>
+              </div>
             </div>
+            {p.category ? (
+              (() => {
+                const meta = categoryMeta(p.category);
+                if (!meta) return null;
+                return (
+                  <span
+                    className="shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-white"
+                    style={{ backgroundColor: meta.accent }}
+                  >
+                    {meta.label}
+                  </span>
+                );
+              })()
+            ) : null}
           </div>
 
           {p.imageUrl ? (
@@ -141,6 +158,19 @@ export function CommunityFeed({ posts }: { posts: CommunityPost[] }) {
                 </li>
               ))}
             </ul>
+          ) : null}
+
+          {p.sourceUrl ? (
+            <div className="flex items-center justify-end border-t border-black/[0.04] px-5 py-2.5">
+              <Link
+                href={p.sourceUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[12px] font-semibold text-primary hover:underline"
+              >
+                Read on {p.sourceLabel ?? "source"} &rarr;
+              </Link>
+            </div>
           ) : null}
         </li>
       ))}

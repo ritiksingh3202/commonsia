@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import { CommunityCategoryNav } from "@/components/community/CommunityCategoryNav";
 import { CommunityFeed } from "@/components/community/CommunityFeed";
 import { CommunityStatsStrip } from "@/components/community/CommunityStats";
 import { MarketingShell } from "@/components/layout/MarketingShell";
@@ -10,12 +11,6 @@ export const metadata: Metadata = {
   description: "Updates, links, and posts shared with the Commonsia community.",
 };
 
-/**
- * ISR'd public feed: cached at the edge for `revalidate` seconds. Updates immediately
- * when the WhatsApp webhook calls revalidatePath("/community") on a new post. Stats
- * also refresh on the client every 60s via /api/community/stats so signups reflect
- * without needing a hard reload.
- */
 export const revalidate = 60;
 
 export default async function CommunityPage() {
@@ -33,6 +28,7 @@ export default async function CommunityPage() {
         </header>
         <div className="px-4 sm:px-6">
           <CommunityStatsStrip initial={stats} />
+          <CommunityCategoryNav active={null} />
           <CommunityFeed posts={posts} />
         </div>
       </div>
