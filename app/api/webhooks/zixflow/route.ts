@@ -214,9 +214,14 @@ async function processInboundWhatsApp(
     console.warn(
       `[${logPrefix}] unrecognized payload shape. Tip: webhook URL must be public HTTPS (deploy or ngrok); localhost is unreachable.`,
     );
+    /**
+     * Always 200 for unparseable payloads. Meta and Zixflow retry non-2xx responses for
+     * ~24h; one bad shape would otherwise cause a webhook retry storm and rate-limit us.
+     * The body still tells our own logs / dashboards what happened.
+     */
     return NextResponse.json(
-      { ok: false, error: "Unrecognized payload - expected inbound WhatsApp Accept/Reject with sender matching a mentor profile." },
-      { status: 400 },
+      { ok: true, ignored: true, reason: "unrecognized_payload" },
+      { status: 200 },
     );
   }
 
@@ -264,13 +269,14 @@ async function processInboundWhatsApp(
       console.info(`[${logPrefix}] Accept response:`, resolved.title, resolved.ok ? "(ok)" : "(error)");
       return NextResponse.json(
         { ok: resolved.ok, title: resolved.title, message: resolved.message },
-        { status: resolved.status },
+        { status: 200 },
       );
     }
     console.info(`[${logPrefix}] Accept: finalize bookingRequestId=`, resolved.bookingRequestId);
     const r = await finalizeBookingRequestAccept({ bookingRequestId: resolved.bookingRequestId, verifiedMentorId: mentorId });
     console.info(`[${logPrefix}] inbound Accept done:`, resolved.bookingRequestId, r.ok, r.title);
-    return NextResponse.json({ ok: r.ok, title: r.title, message: r.message }, { status: r.ok ? 200 : 400 });
+    /** Always 200 to ack the webhook even on logical failure — Meta retries non-2xx for ~24h. */
+    return NextResponse.json({ ok: r.ok, title: r.title, message: r.message }, { status: 200 });
   }
 
   const resolved = await resolveBookingIdForInboundReject(mentorId);
@@ -345,7 +351,8 @@ export async function POST(req: Request) {
     console.info("[zixflow-webhook] routing: signed_token");
     const r = await processBookingToken(token);
     console.info("[zixflow-webhook] token pipeline result:", r.ok, r.title);
-    return NextResponse.json({ ok: r.ok, title: r.title, message: r.message }, { status: r.ok ? 200 : 400 });
+    /** Always 200 to ack the webhook even on logical failure — Meta retries non-2xx for ~24h. */
+    return NextResponse.json({ ok: r.ok, title: r.title, message: r.message }, { status: 200 });
   }
 
   return processInboundWhatsApp(body, "zixflow-webhook");

@@ -125,7 +125,32 @@ export async function PATCH(req: Request) {
   if (body.name !== undefined) data.name = body.name;
   if (body.phone !== undefined) data.phone = body.phone;
   if (body.image !== undefined) data.image = body.image;
-  if (body.role !== undefined) data.role = body.role;
+
+  /**
+   * SECURITY: role can only be set on the FIRST choice (current role null) — typically
+   * OAuth users on /role-select. Once set, role is immutable via this endpoint, otherwise
+   * any signed-in student could PATCH `{role: "mentor"}` and slip into the mentor flow.
+   * Real role changes (e.g. abuse migration) should be done by an admin with raw DB access.
+   */
+  if (body.role !== undefined) {
+    const current = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { role: true },
+    });
+    if (current?.role == null) {
+      data.role = body.role;
+    } else if (current.role === body.role) {
+      // No-op: client re-sent the same role; allow without write.
+    } else {
+      console.warn(
+        `[api/profile] blocked role change attempt by ${session.user.id}: ${current.role} -> ${body.role}`,
+      );
+      return NextResponse.json(
+        { error: "Role cannot be changed after onboarding. Contact support if this is wrong." },
+        { status: 403 },
+      );
+    }
+  }
   if (body.university !== undefined) data.university = body.university;
   if (body.yearOfStudy !== undefined) data.yearOfStudy = body.yearOfStudy;
   if (body.major !== undefined) data.major = body.major;
@@ -153,7 +178,24 @@ export async function PATCH(req: Request) {
   if (body.mentorMaxMenteesPref !== undefined) data.mentorMaxMenteesPref = body.mentorMaxMenteesPref;
   if (body.mentorCertifications !== undefined) data.mentorCertifications = body.mentorCertifications;
   if (body.mentorAvailabilityJson !== undefined) data.mentorAvailabilityJson = body.mentorAvailabilityJson;
-  if (body.mentorOnboardingComplete !== undefined) data.mentorOnboardingComplete = body.mentorOnboardingComplete;
+  /**
+   * SECURITY: only allow flipping `mentorOnboardingComplete = true` for users whose role
+   * is actually "mentor". A student PATCH'ing this would otherwise just be a no-op write
+   * with no effect on directory listing (`getPublicMentors` filters by role too), but
+   * blocking it here keeps the User table from carrying misleading `true` flags on student
+   * rows.
+   */
+  if (body.mentorOnboardingComplete !== undefined) {
+    const target = data.role ?? (await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { role: true },
+    }))?.role;
+    if (target === "mentor") {
+      data.mentorOnboardingComplete = body.mentorOnboardingComplete;
+    } else if (body.mentorOnboardingComplete === true) {
+      console.warn(`[api/profile] ignored mentorOnboardingComplete=true for non-mentor ${session.user.id}`);
+    }
+  }
 
   if (Object.keys(data).length === 0) {
     return NextResponse.json({ ok: true });

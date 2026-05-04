@@ -108,6 +108,7 @@ export function PublicMentorProfile({
   const [viewerHasPendingBookingRequest, setViewerHasPendingBookingRequest] = useState(false);
   useEffect(() => {
     if (!viewerSignedIn || !mentorLinkedUserId || sessionRole === "mentor") {
+      /* eslint-disable-next-line react-hooks/set-state-in-effect -- intentional reset when viewer signs out / switches to mentor role; no API call needed */
       setViewerHasPendingBookingRequest(false);
       return;
     }

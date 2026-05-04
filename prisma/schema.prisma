@@ -100,6 +100,10 @@ model User {
   sessionReviewsAuthored     SessionReview[]      @relation("SessionReviewStudent")
   sessionReviewsReceived     SessionReview[]      @relation("SessionReviewMentor")
   forumPosts                 ForumPost[]          @relation("ForumPostAuthor")
+
+  /// Speeds up the public mentor directory + every "find by role" query;
+  /// also lets the inbound WhatsApp webhook find a mentor by digit-suffix without a full scan.
+  @@index([role, mentorOnboardingComplete, accountDeletedAt])
 }
 
 /**
