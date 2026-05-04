@@ -30,7 +30,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: `Post must be ${MAX_BODY} characters or fewer.` }, { status: 400 });
   }
 
-  const category = categoryRaw ?? classifyForumPostText(text) ?? null;
+  const category = categoryRaw ?? classifyForumPostText(text)?.category ?? null;
 
   const post = await prisma.forumPost.create({
     data: {
