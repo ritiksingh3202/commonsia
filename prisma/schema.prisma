@@ -161,6 +161,7 @@ model MentoringBooking {
 
   @@index([studentId, startAt])
   @@index([mentorId])
+  @@index([mentorId, endAt])
 }
 
 /**

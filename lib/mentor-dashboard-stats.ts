@@ -96,9 +96,11 @@ export async function getMentorDashboardLiveData(mentorId: string): Promise<Ment
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
   startOfMonth.setHours(0, 0, 0, 0);
 
-  const booking = await getMentorBookingStats(mentorId);
+  const userDelSelect = prismaGeneratedClientHasAccountDeletedAt() ? ({ accountDeletedAt: true } as const) : {};
 
+  // All 12 queries are independent — run them in a single round-trip instead of 4 sequential phases.
   const [
+    booking,
     activeMenteeCount,
     menteesJoinedThisMonth,
     reviewAgg,
@@ -106,76 +108,113 @@ export async function getMentorDashboardLiveData(mentorId: string): Promise<Ment
     upcomingList,
     threads,
     bookingCounts,
+    lastSessionByStudent,
+    recentBookings,
+    recentMsgs,
+    recentReviews,
   ] = await Promise.all([
-      prisma.chatThread.count({
-        where: { mentorId, status: CHAT_ACTIVE },
-      }),
-      prisma.chatThread.count({
-        where: {
-          mentorId,
-          status: CHAT_ACTIVE,
-          createdAt: { gte: startOfMonth },
+    getMentorBookingStats(mentorId),
+    prisma.chatThread.count({
+      where: { mentorId, status: CHAT_ACTIVE },
+    }),
+    prisma.chatThread.count({
+      where: {
+        mentorId,
+        status: CHAT_ACTIVE,
+        createdAt: { gte: startOfMonth },
+      },
+    }),
+    prisma.sessionReview.aggregate({
+      where: { mentorId },
+      _avg: { rating: true },
+      _count: { _all: true },
+    }),
+    prisma.mentoringBooking.count({
+      where: { mentorId, endAt: { gte: now } },
+    }),
+    prisma.mentoringBooking.findMany({
+      where: { mentorId, endAt: { gte: now } },
+      orderBy: { startAt: "asc" },
+      take: 8,
+      select: {
+        id: true,
+        startAt: true,
+        endAt: true,
+        title: true,
+        googleMeetLink: true,
+        googleEventId: true,
+        student: {
+          select: { id: true, name: true, image: true },
         },
-      }),
-      prisma.sessionReview.aggregate({
-        where: { mentorId },
-        _avg: { rating: true },
-        _count: { _all: true },
-      }),
-      prisma.mentoringBooking.count({
-        where: { mentorId, endAt: { gte: now } },
-      }),
-      prisma.mentoringBooking.findMany({
-        where: { mentorId, endAt: { gte: now } },
-        orderBy: { startAt: "asc" },
-        take: 8,
-        select: {
-          id: true,
-          startAt: true,
-          endAt: true,
-          title: true,
-          googleMeetLink: true,
-          googleEventId: true,
-          student: {
-            select: { id: true, name: true, image: true },
+      },
+    }),
+    prisma.chatThread.findMany({
+      where: { mentorId, status: CHAT_ACTIVE },
+      select: {
+        id: true,
+        studentId: true,
+        student: {
+          select: {
+            id: true,
+            name: true,
+            image: true,
+            university: true,
+            yearOfStudy: true,
+            major: true,
           },
         },
-      }),
-      prisma.chatThread.findMany({
-        where: { mentorId, status: CHAT_ACTIVE },
-        select: {
-          id: true,
-          studentId: true,
-          student: {
-            select: {
-              id: true,
-              name: true,
-              image: true,
-              university: true,
-              yearOfStudy: true,
-              major: true,
-            },
-          },
-        },
-      }),
-      prisma.mentoringBooking.groupBy({
-        by: ["studentId"],
-        where: { mentorId },
-        _count: { _all: true },
-      }),
-    ]);
+      },
+    }),
+    prisma.mentoringBooking.groupBy({
+      by: ["studentId"],
+      where: { mentorId },
+      _count: { _all: true },
+    }),
+    // Use groupBy+_max instead of loading all rows and deduplicating in memory.
+    prisma.mentoringBooking.groupBy({
+      by: ["studentId"],
+      where: { mentorId },
+      _max: { endAt: true },
+    }),
+    prisma.mentoringBooking.findMany({
+      where: { mentorId, endAt: { lte: now } },
+      orderBy: { endAt: "desc" },
+      take: 6,
+      select: {
+        endAt: true,
+        title: true,
+        student: { select: { name: true, ...userDelSelect } },
+      },
+    }),
+    prisma.chatMessage.findMany({
+      where: { thread: { mentorId } },
+      orderBy: { createdAt: "desc" },
+      take: 6,
+      select: {
+        createdAt: true,
+        body: true,
+        sender: { select: { name: true, ...userDelSelect } },
+        thread: { select: { student: { select: { name: true, ...userDelSelect } } } },
+      },
+    }),
+    prisma.sessionReview.findMany({
+      where: { mentorId },
+      orderBy: { createdAt: "desc" },
+      take: 6,
+      select: {
+        createdAt: true,
+        rating: true,
+        student: { select: { name: true, ...userDelSelect } },
+      },
+    }),
+  ]);
 
   const countByStudent = new Map(bookingCounts.map((g) => [g.studentId, g._count._all]));
-
-  const lastBookingByStudent = await prisma.mentoringBooking.findMany({
-    where: { mentorId },
-    orderBy: { endAt: "desc" },
-    select: { studentId: true, endAt: true },
-  });
-  const lastEnd = new Map<string, Date>();
-  for (const row of lastBookingByStudent) {
-    if (!lastEnd.has(row.studentId)) lastEnd.set(row.studentId, row.endAt);
-  }
+  const lastEnd = new Map<string, Date>(
+    lastSessionByStudent
+      .filter((g) => g._max.endAt != null)
+      .map((g) => [g.studentId, g._max.endAt!]),
+  );
 
   const mentees: MentorMenteeRow[] = threads.map((t) => {
     const s = t.student;
@@ -212,42 +251,6 @@ export async function getMentorDashboardLiveData(mentorId: string): Promise<Ment
 
   type RawAct = { at: Date; sort: number; title: string; tone: string; icon: MentorActivityRow["icon"] };
   const raw: RawAct[] = [];
-
-  const userDelSelect = prismaGeneratedClientHasAccountDeletedAt() ? ({ accountDeletedAt: true } as const) : {};
-
-  const [recentBookings, recentMsgs, recentReviews] = await Promise.all([
-    prisma.mentoringBooking.findMany({
-      where: { mentorId, endAt: { lte: now } },
-      orderBy: { endAt: "desc" },
-      take: 6,
-      select: {
-        endAt: true,
-        title: true,
-        student: { select: { name: true, ...userDelSelect } },
-      },
-    }),
-    prisma.chatMessage.findMany({
-      where: { thread: { mentorId } },
-      orderBy: { createdAt: "desc" },
-      take: 6,
-      select: {
-        createdAt: true,
-        body: true,
-        sender: { select: { name: true, ...userDelSelect } },
-        thread: { select: { student: { select: { name: true, ...userDelSelect } } } },
-      },
-    }),
-    prisma.sessionReview.findMany({
-      where: { mentorId },
-      orderBy: { createdAt: "desc" },
-      take: 6,
-      select: {
-        createdAt: true,
-        rating: true,
-        student: { select: { name: true, ...userDelSelect } },
-      },
-    }),
-  ]);
 
   for (const b of recentBookings) {
     const who = "accountDeletedAt" in b.student && b.student.accountDeletedAt
@@ -296,7 +299,8 @@ export async function getMentorDashboardLiveData(mentorId: string): Promise<Ment
     icon: x.icon,
   }));
 
-  await enrichMeetLinksOnBookings(upcomingList);
+  // 800 ms cap — Google Calendar API is not on the critical render path.
+  await enrichMeetLinksOnBookings(upcomingList, 8, 800);
 
   return {
     ...booking,
