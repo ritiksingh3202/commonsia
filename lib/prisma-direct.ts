@@ -1,5 +1,7 @@
 import { PrismaClient } from "@prisma/client";
 
+import { withConnectionRetry } from "@/lib/prisma-retry";
+
 /**
  * Secondary Prisma client, pinned to `DIRECT_URL` (Supabase session pool on port 5432, no
  * pgbouncer).
@@ -29,5 +31,8 @@ function buildFallbackClient(): PrismaClient {
   });
 }
 
-export const prismaDirect: PrismaClient = globalForDirect.prismaDirect ?? buildFallbackClient();
-globalForDirect.prismaDirect = prismaDirect;
+const baseDirectClient: PrismaClient = globalForDirect.prismaDirect ?? buildFallbackClient();
+globalForDirect.prismaDirect = baseDirectClient;
+
+/** Same auto-retry on stale-connection errors as the primary client (see lib/prisma-retry.ts). */
+export const prismaDirect: PrismaClient = withConnectionRetry(baseDirectClient);

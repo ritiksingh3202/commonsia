@@ -1,4 +1,5 @@
 import { ensureDirectUrlForPrismaRuntime, warnDatabaseUrlMisconfigDevOnce } from "@/lib/db-url-env";
+import { withConnectionRetry } from "@/lib/prisma-retry";
 import { initSoftDeleteRuntimeSupport } from "@/lib/user-active";
 import { PrismaClient } from "@prisma/client";
 
@@ -33,8 +34,15 @@ function buildRuntimeClient(): PrismaClient {
  * production caused extra client churn in some deployments; Prisma recommends a global singleton
  * for connection pooling / fewer "too many connections" flakes during auth.
  */
-export const prisma = globalForPrisma.prisma ?? buildRuntimeClient();
+const baseClient = globalForPrisma.prisma ?? buildRuntimeClient();
 
-initSoftDeleteRuntimeSupport(prisma);
+initSoftDeleteRuntimeSupport(baseClient);
 
-globalForPrisma.prisma = prisma;
+globalForPrisma.prisma = baseClient;
+
+/**
+ * Public client wrapped with auto-retry on stale-connection errors (P1017 etc.).
+ * The retry wrapper is a transparent Proxy — type signature is unchanged and there
+ * is no per-query overhead beyond a single property lookup.
+ */
+export const prisma = withConnectionRetry(baseClient);
