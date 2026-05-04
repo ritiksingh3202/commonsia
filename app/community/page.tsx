@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 
+import { auth } from "@/auth";
 import { CommunityCategoryNav } from "@/components/community/CommunityCategoryNav";
 import { CommunityFeed } from "@/components/community/CommunityFeed";
 import { CommunityStatsStrip } from "@/components/community/CommunityStats";
+import { StartThreadButton } from "@/components/community/StartThreadButton";
 import { MarketingShell } from "@/components/layout/MarketingShell";
 import { getCommunityStats, getPublicCommunityFeed } from "@/lib/forum-feed";
 
@@ -14,7 +16,13 @@ export const metadata: Metadata = {
 export const revalidate = 60;
 
 export default async function CommunityPage() {
-  const [posts, stats] = await Promise.all([getPublicCommunityFeed(), getCommunityStats()]);
+  const [posts, stats, session] = await Promise.all([
+    getPublicCommunityFeed(),
+    getCommunityStats(),
+    auth(),
+  ]);
+  const userId = session?.user?.id ?? null;
+
   return (
     <MarketingShell>
       <div className="bg-[#fafafa] pb-16 pt-8 sm:pt-10">
@@ -29,6 +37,9 @@ export default async function CommunityPage() {
         <div className="px-4 sm:px-6">
           <CommunityStatsStrip initial={stats} />
           <CommunityCategoryNav active={null} />
+          <div className="mx-auto mb-4 flex max-w-2xl justify-end">
+            <StartThreadButton userId={userId} callbackUrl="/community" />
+          </div>
           <CommunityFeed posts={posts} />
         </div>
       </div>

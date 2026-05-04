@@ -100,6 +100,7 @@ model User {
   sessionReviewsAuthored     SessionReview[]      @relation("SessionReviewStudent")
   sessionReviewsReceived     SessionReview[]      @relation("SessionReviewMentor")
   forumPosts                 ForumPost[]          @relation("ForumPostAuthor")
+  forumReplies               ForumReply[]         @relation("ForumReplyAuthor")
 
   /// Speeds up the public mentor directory + every "find by role" query;
   /// also lets the inbound WhatsApp webhook find a mentor by digit-suffix without a full scan.
@@ -130,8 +131,23 @@ model ForumPost {
   /// Soft-delete from an admin page later without a migration.
   deletedAt         DateTime?
 
+  replies ForumReply[]
+
   @@index([deletedAt, postedAt(sort: Desc)])
   @@index([category, deletedAt, postedAt(sort: Desc)])
+}
+
+model ForumReply {
+  id        String    @id @default(cuid())
+  postId    String
+  post      ForumPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  authorId  String
+  author    User      @relation("ForumReplyAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+  body      String    @db.Text
+  createdAt DateTime  @default(now())
+  deletedAt DateTime?
+
+  @@index([postId, createdAt])
 }
 
 /// Student–mentor session booked via Commonsia (persists even when Google Calendar is not connected).

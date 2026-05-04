@@ -160,8 +160,23 @@ export function CommunityFeed({ posts }: { posts: CommunityPost[] }) {
             </ul>
           ) : null}
 
-          {p.sourceUrl ? (
-            <div className="flex items-center justify-end border-t border-black/[0.04] px-5 py-2.5">
+          <div className="flex items-center justify-between border-t border-black/[0.04] px-5 py-2.5">
+            <Link
+              href={`/community/post/${p.id}`}
+              className="inline-flex items-center gap-1.5 text-[12px] font-medium text-neutral-500 transition hover:text-primary"
+            >
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden>
+                <path
+                  d="M12 9a1 1 0 01-1 1H4l-2 2V3a1 1 0 011-1h8a1 1 0 011 1v6z"
+                  stroke="currentColor"
+                  strokeWidth="1.25"
+                  strokeLinejoin="round"
+                />
+              </svg>
+              {p.replyCount > 0 ? `${p.replyCount} ${p.replyCount === 1 ? "reply" : "replies"}` : "Reply"}
+            </Link>
+
+            {p.sourceUrl ? (
               <Link
                 href={p.sourceUrl}
                 target="_blank"
@@ -170,8 +185,8 @@ export function CommunityFeed({ posts }: { posts: CommunityPost[] }) {
               >
                 Read on {p.sourceLabel ?? "source"} &rarr;
               </Link>
-            </div>
-          ) : null}
+            ) : null}
+          </div>
         </li>
       ))}
     </ul>

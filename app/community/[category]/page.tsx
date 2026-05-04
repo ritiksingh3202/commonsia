@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
+import { auth } from "@/auth";
 import { CommunityCategoryNav } from "@/components/community/CommunityCategoryNav";
 import { CommunityFeed } from "@/components/community/CommunityFeed";
 import { CommunityStatsStrip } from "@/components/community/CommunityStats";
+import { StartThreadButton } from "@/components/community/StartThreadButton";
 import { MarketingShell } from "@/components/layout/MarketingShell";
 import {
   FORUM_CATEGORIES,
@@ -36,8 +38,14 @@ export default async function CommunityCategoryPage({ params }: Props) {
   const { category } = await params;
   if (!isValidCategorySlug(category)) notFound();
   const slug = category as ForumCategorySlug;
-  const [posts, stats] = await Promise.all([getPublicCommunityFeed(slug), getCommunityStats()]);
+  const [posts, stats, session] = await Promise.all([
+    getPublicCommunityFeed(slug),
+    getCommunityStats(),
+    auth(),
+  ]);
   const meta = categoryMeta(slug);
+  const userId = session?.user?.id ?? null;
+  const callbackUrl = `/community/${slug}`;
 
   return (
     <MarketingShell>
@@ -53,6 +61,9 @@ export default async function CommunityCategoryPage({ params }: Props) {
         <div className="px-4 sm:px-6">
           <CommunityStatsStrip initial={stats} />
           <CommunityCategoryNav active={slug} />
+          <div className="mx-auto mb-4 flex max-w-2xl justify-end">
+            <StartThreadButton userId={userId} callbackUrl={callbackUrl} />
+          </div>
           <CommunityFeed posts={posts} />
         </div>
       </div>

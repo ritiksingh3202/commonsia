@@ -14,9 +14,21 @@ export type CommunityPost = {
   category: ForumCategorySlug | null;
   sourceLabel: string | null;
   sourceUrl: string | null;
+  replyCount: number;
   author: {
     name: string | null;
     image: string | null;
+  };
+};
+
+export type ForumReplyRow = {
+  id: string;
+  body: string;
+  createdAt: string;
+  author: {
+    name: string | null;
+    image: string | null;
+    role: string | null;
   };
 };
 
@@ -41,6 +53,7 @@ async function getPublicCommunityFeedImpl(category?: ForumCategorySlug | null): 
         sourceLabel: true,
         sourceUrl: true,
         author: { select: { name: true, image: true } },
+        _count: { select: { replies: { where: { deletedAt: null } } } },
       },
     });
     return rows.map((r) => ({
@@ -52,6 +65,7 @@ async function getPublicCommunityFeedImpl(category?: ForumCategorySlug | null): 
       category: (r.category as ForumCategorySlug | null) ?? null,
       sourceLabel: r.sourceLabel,
       sourceUrl: r.sourceUrl,
+      replyCount: r._count.replies,
       author: { name: r.author.name, image: r.author.image },
     }));
   } catch (e) {
@@ -85,3 +99,64 @@ async function getCommunityStatsImpl(): Promise<CommunityStats> {
 }
 
 export const getCommunityStats = cache(getCommunityStatsImpl);
+
+export async function getForumPost(id: string): Promise<(CommunityPost & { authorRole: string | null }) | null> {
+  try {
+    const r = await prisma.forumPost.findUnique({
+      where: { id, deletedAt: null },
+      select: {
+        id: true,
+        text: true,
+        imageUrl: true,
+        links: true,
+        postedAt: true,
+        category: true,
+        sourceLabel: true,
+        sourceUrl: true,
+        author: { select: { name: true, image: true, role: true } },
+        _count: { select: { replies: { where: { deletedAt: null } } } },
+      },
+    });
+    if (!r) return null;
+    return {
+      id: r.id,
+      text: r.text,
+      imageUrl: r.imageUrl,
+      links: r.links,
+      postedAt: r.postedAt.toISOString(),
+      category: (r.category as ForumCategorySlug | null) ?? null,
+      sourceLabel: r.sourceLabel,
+      sourceUrl: r.sourceUrl,
+      replyCount: r._count.replies,
+      author: { name: r.author.name, image: r.author.image },
+      authorRole: r.author.role,
+    };
+  } catch (e) {
+    console.error("[forum-feed] getForumPost failed:", e);
+    return null;
+  }
+}
+
+export async function getForumReplies(postId: string): Promise<ForumReplyRow[]> {
+  try {
+    const rows = await prisma.forumReply.findMany({
+      where: { postId, deletedAt: null },
+      orderBy: { createdAt: "asc" },
+      select: {
+        id: true,
+        body: true,
+        createdAt: true,
+        author: { select: { name: true, image: true, role: true } },
+      },
+    });
+    return rows.map((r) => ({
+      id: r.id,
+      body: r.body,
+      createdAt: r.createdAt.toISOString(),
+      author: { name: r.author.name, image: r.author.image, role: r.author.role },
+    }));
+  } catch (e) {
+    console.error("[forum-feed] getForumReplies failed:", e);
+    return [];
+  }
+}
