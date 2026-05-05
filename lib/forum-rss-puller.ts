@@ -1,5 +1,6 @@
 import { classifyForumPostText, type ForumCategorySlug } from "@/lib/forum-categories";
 import { detectRegistrationFee } from "@/lib/forum-fee-detector";
+import { isArchitectureRelevant } from "@/lib/forum-arch-filter";
 import { isRelevantForIndianAudience } from "@/lib/forum-geo-filter";
 import { prisma } from "@/lib/prisma";
 
@@ -17,6 +18,12 @@ export type RssSource = {
    * geo-relevance filter is skipped. Set this for India-specific feeds.
    */
   indiaFocused?: boolean;
+  /**
+   * When true, every item from this source is assumed architecture-relevant and
+   * the architecture filter is skipped. Set this for architecture-specific feeds
+   * (Bustler, ArchDaily, Dezeen, Bee Breeders).
+   */
+  archFocused?: boolean;
 };
 
 /**
@@ -133,6 +140,7 @@ export const FORUM_RSS_SOURCES: RssSource[] = [
     feedUrl: "https://bustler.net/feed",
     defaultCategory: "competitions",
     indiaFocused: false,
+    archFocused: true,   // 100% architecture competitions — skip arch filter
   },
 
   /**
@@ -145,6 +153,7 @@ export const FORUM_RSS_SOURCES: RssSource[] = [
     feedUrl: "https://www.archdaily.com/competitions.rss",
     defaultCategory: "competitions",
     indiaFocused: false,
+    archFocused: true,
   },
 
   /**
@@ -157,6 +166,7 @@ export const FORUM_RSS_SOURCES: RssSource[] = [
     feedUrl: "https://www.dezeen.com/competitions/feed/",
     defaultCategory: "competitions",
     indiaFocused: false,
+    archFocused: true,
   },
 
   /**
@@ -169,6 +179,7 @@ export const FORUM_RSS_SOURCES: RssSource[] = [
     feedUrl: "https://www.bee-breeders.com/feed/",
     defaultCategory: "competitions",
     indiaFocused: false,
+    archFocused: true,
   },
 
   // ── Global sources (geo filter applied) ──────────────────────────────────
@@ -332,7 +343,15 @@ export type RssPullSummary = {
   fetched: number;
   newPosts: number;
   skippedByGeoFilter: number;
-  perSource: Array<{ id: string; fetched: number; newPosts: number; skippedByGeoFilter: number; error?: string }>;
+  skippedByArchFilter: number;
+  perSource: Array<{
+    id: string;
+    fetched: number;
+    newPosts: number;
+    skippedByGeoFilter: number;
+    skippedByArchFilter: number;
+    error?: string;
+  }>;
 };
 
 /**
@@ -341,10 +360,10 @@ export type RssPullSummary = {
  * index), and insert. Idempotent: re-running won't duplicate posts.
  */
 export async function pullForumRssOnce(authorUserId: string): Promise<RssPullSummary> {
-  const summary: RssPullSummary = { fetched: 0, newPosts: 0, skippedByGeoFilter: 0, perSource: [] };
+  const summary: RssPullSummary = { fetched: 0, newPosts: 0, skippedByGeoFilter: 0, skippedByArchFilter: 0, perSource: [] };
 
   for (const source of FORUM_RSS_SOURCES) {
-    const sourceSummary = { id: source.id, fetched: 0, newPosts: 0, skippedByGeoFilter: 0 } as RssPullSummary["perSource"][number];
+    const sourceSummary = { id: source.id, fetched: 0, newPosts: 0, skippedByGeoFilter: 0, skippedByArchFilter: 0 } as RssPullSummary["perSource"][number];
     summary.perSource.push(sourceSummary);
 
     const xml = await fetchFeed(source.feedUrl);
@@ -357,7 +376,16 @@ export async function pullForumRssOnce(authorUserId: string): Promise<RssPullSum
     summary.fetched += items.length;
 
     for (const item of items) {
-      // Geo-relevance gate — skip items that are clearly not open to Indian users.
+      // Architecture-relevance gate — runs first, cheapest check.
+      // archFocused sources (Bustler, ArchDaily, Dezeen, Bee Breeders) bypass entirely.
+      if (!source.archFocused && !isArchitectureRelevant(item.title, item.description)) {
+        console.log(`[rss] skipped (not arch-relevant): "${item.title.slice(0, 60)}"`);
+        sourceSummary.skippedByArchFilter += 1;
+        summary.skippedByArchFilter += 1;
+        continue;
+      }
+
+      // Geo-relevance gate — skip items not open to Indian users.
       // India-focused sources (indiaFocused: true) bypass this check entirely.
       if (!source.indiaFocused && !isRelevantForIndianAudience(item.title, item.description)) {
         console.log(`[rss] skipped (not India-relevant): "${item.title.slice(0, 60)}"`);
