@@ -24,11 +24,15 @@ const HASHTAG_MAP: Record<string, ForumCategorySlug> = {
   undergrad: "bachelors",
   undergraduate: "bachelors",
   ug: "bachelors",
+  exchange: "bachelors",
+  internship: "bachelors",
   master: "masters",
   masters: "masters",
   pg: "masters",
   postgrad: "masters",
   postgraduate: "masters",
+  studyabroad: "masters",
+  fellowship: "masters",
   phd: "phd",
   doctorate: "phd",
   doctoral: "phd",
@@ -36,6 +40,7 @@ const HASHTAG_MAP: Record<string, ForumCategorySlug> = {
   proposal: "faculty",
   proposals: "faculty",
   research: "faculty",
+  grant: "faculty",
   startup: "startup",
   startups: "startup",
   founder: "startup",
@@ -81,7 +86,7 @@ export function classifyForumPostText(rawText: string | null | undefined): {
   if (has(/\b(startup|start-?up|incubator|accelerator|venture\s*(?:fund|capital)|seed\s*(?:fund|round)|pitch\s*competition|entrepreneurs?|founders?|hackathon|innovation\s*challenge)/)) {
     return { category: "startup", cleanedText: text };
   }
-  if (has(/\b(phd|ph\.d|doctoral|doctorate|d\.?phil|postdoc(toral)?)/)) {
+  if (has(/\b(phd|ph\.d\.?|doctoral|doctorate|d\.?phil|postdoc(toral)?|ph\.?\s*d\s*fellowship|doctoral\s*fellowship)/)) {
     return { category: "phd", cleanedText: text };
   }
   if (has(/\b(master'?s|m\.?sc\b|m\.?phil|m\.?a\.?\b|m\.?b\.?a\.?\b|postgrad(uate)?|graduate\s*program)/)) {
@@ -90,18 +95,24 @@ export function classifyForumPostText(rawText: string | null | undefined): {
   if (has(/\b(bachelor'?s|b\.?sc\b|b\.?a\.?\b|undergrad(uate)?\b|ug\b|high\s*school|secondary\s*school)/)) {
     return { category: "bachelors", cleanedText: text };
   }
-  if (has(/\b(faculty|professor|principal\s*investigator|project\s*proposal|research\s*grant|early[-\s]?career\s*researcher|tenure[-\s]?track)/)) {
+  if (has(/\b(faculty|professor|principal\s*investigator|project\s*proposal|research\s*grant|research\s*proposal|early[-\s]?career\s*researcher|tenure[-\s]?track|call\s*for\s*(?:proposals|applications\s*from\s*(?:researchers?|faculty|scholars?|investigators?))|funding\s*(?:call|opportunity|scheme)|serb|anrf|csir\b|icmr\b|dbt\b|icar\b)/)) {
     return { category: "faculty", cleanedText: text };
   }
 
   /** Tier 2 — broader keywords with sensible defaults. Looser, lower confidence. */
+  // Youth/school-level exchange and internship programs → bachelors
+  if (has(/\b(youth\s*exchange|student\s*exchange|school\s*exchange|high\s*school\s*exchange|cultural\s*exchange|afs\b|rotary\s*exchange)/)) {
+    return { category: "bachelors", cleanedText: text };
+  }
   if (has(/\b(youth|young\s*(?:leader|professional|innovator)|next\s*generation|teen|undergraduate\s*student|student\s*program|summer\s*school|winter\s*school|internship)/)) {
     return { category: "bachelors", cleanedText: text };
   }
-  if (has(/\b(scholarship|study\s*abroad|exchange\s*program|mba|graduate\s*school)/)) {
+  // Graduate-level exchange and study-abroad programs → masters
+  if (has(/\b(scholarship|study\s*abroad|exchange\s*program|academic\s*exchange|research\s*exchange|mba|graduate\s*school|fulbright|erasmus|daad|chevening|commonwealth\s*scholarship|dst\s*inspire)/)) {
     return { category: "masters", cleanedText: text };
   }
-  if (has(/\b(fellowship|research\s*award|academic\s*award|visiting\s*scholar|sabbatical)/)) {
+  // Research fellowships and visiting positions (no level indicator) → faculty
+  if (has(/\b(fellowship|research\s*award|academic\s*award|visiting\s*scholar|sabbatical|postdoctoral\s*(?:position|opportunity))/)) {
     return { category: "faculty", cleanedText: text };
   }
   if (has(/\b(grant|call\s*for\s*proposals|call\s*for\s*papers|conference|symposium|colloquium)/)) {
