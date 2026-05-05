@@ -127,6 +127,8 @@ model ForumPost {
   sourceLabel       String?
   /// Article URL when the post was auto-pulled from an RSS feed; the card title-links here.
   sourceUrl         String?  @db.Text
+  /// For competition posts: "free" | "paid" | null (unknown). Detected from RSS description.
+  registrationFee   String?
   postedAt          DateTime @default(now())
   /// Soft-delete from an admin page later without a migration.
   deletedAt         DateTime?

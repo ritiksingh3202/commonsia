@@ -1,4 +1,5 @@
 import { classifyForumPostText, type ForumCategorySlug } from "@/lib/forum-categories";
+import { detectRegistrationFee } from "@/lib/forum-fee-detector";
 import { isRelevantForIndianAudience } from "@/lib/forum-geo-filter";
 import { prisma } from "@/lib/prisma";
 
@@ -118,6 +119,56 @@ export const FORUM_RSS_SOURCES: RssSource[] = [
     feedUrl: "https://www.thebetterindia.com/topics/education/feed/",
     defaultCategory: null,
     indiaFocused: true,
+  },
+
+  // ── Architecture competitions (geo filter applied) ────────────────────────
+
+  /**
+   * Bustler — the leading aggregator for architecture and design competitions.
+   * Covers student and open competitions globally; most are open to all nationalities.
+   */
+  {
+    id: "bustler",
+    label: "Bustler",
+    feedUrl: "https://bustler.net/feed",
+    defaultCategory: "competitions",
+    indiaFocused: false,
+  },
+
+  /**
+   * ArchDaily Competitions — curated international architecture competitions
+   * posted alongside editorial coverage; high signal-to-noise ratio.
+   */
+  {
+    id: "archdaily-competitions",
+    label: "ArchDaily",
+    feedUrl: "https://www.archdaily.com/competitions.rss",
+    defaultCategory: "competitions",
+    indiaFocused: false,
+  },
+
+  /**
+   * Dezeen Awards / Competitions — international design and architecture
+   * competitions; open entry, covers student and professional categories.
+   */
+  {
+    id: "dezeen-competitions",
+    label: "Dezeen",
+    feedUrl: "https://www.dezeen.com/competitions/feed/",
+    defaultCategory: "competitions",
+    indiaFocused: false,
+  },
+
+  /**
+   * Bee Breeders — dedicated architecture competition organiser;
+   * runs multiple open calls per year, many free-to-enter student comps.
+   */
+  {
+    id: "beebreeders",
+    label: "Bee Breeders",
+    feedUrl: "https://www.bee-breeders.com/feed/",
+    defaultCategory: "competitions",
+    indiaFocused: false,
   },
 
   // ── Global sources (geo filter applied) ──────────────────────────────────
@@ -325,6 +376,10 @@ export async function pullForumRssOnce(authorUserId: string): Promise<RssPullSum
       const text = buildPostText(item, source.label);
       const { category } = classifyForumPostText(`${item.title}\n${item.description}`);
       const finalCategory = category ?? source.defaultCategory ?? null;
+      const registrationFee =
+        finalCategory === "competitions"
+          ? detectRegistrationFee(item.title, item.description)
+          : null;
 
       try {
         await prisma.forumPost.create({
@@ -335,6 +390,7 @@ export async function pullForumRssOnce(authorUserId: string): Promise<RssPullSum
             links: [item.link],
             whatsappMessageId: dedupeKey,
             category: finalCategory,
+            registrationFee,
             sourceLabel: source.label,
             sourceUrl: item.link,
             postedAt: item.pubDate ?? new Date(),

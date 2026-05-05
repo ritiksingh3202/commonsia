@@ -1,9 +1,40 @@
 export const FORUM_CATEGORIES = [
-  { slug: "bachelors", label: "Bachelors", accent: "#2563eb" },
-  { slug: "masters", label: "Masters", accent: "#16a34a" },
-  { slug: "phd", label: "PhD", accent: "#7c3aed" },
-  { slug: "faculty", label: "Faculty / Project Proposals", accent: "#ea580c" },
-  { slug: "startup", label: "Startup Calls", accent: "#db2777" },
+  {
+    slug: "competitions",
+    label: "Competitions",
+    accent: "#0891b2",
+    description: "Architecture and design competitions worldwide, tagged free or paid entry.",
+  },
+  {
+    slug: "bachelors",
+    label: "Bachelors",
+    accent: "#2563eb",
+    description: "Undergraduate scholarships, exchange programs, and internship opportunities.",
+  },
+  {
+    slug: "masters",
+    label: "Masters",
+    accent: "#16a34a",
+    description: "Postgraduate programs, study-abroad fellowships, and funded Masters seats.",
+  },
+  {
+    slug: "phd",
+    label: "PhD",
+    accent: "#7c3aed",
+    description: "Doctoral positions, research grants, and SERB / ANRF / ICMR funding calls.",
+  },
+  {
+    slug: "faculty",
+    label: "Faculty & Grants",
+    accent: "#ea580c",
+    description: "Faculty positions, project proposals, and institutional research funding.",
+  },
+  {
+    slug: "startup",
+    label: "Startup Calls",
+    accent: "#db2777",
+    description: "Incubators, accelerators, seed funding, and innovation challenges.",
+  },
 ] as const;
 
 export type ForumCategorySlug = (typeof FORUM_CATEGORIES)[number]["slug"];
@@ -19,6 +50,9 @@ export function categoryMeta(slug: string | null | undefined) {
 }
 
 const HASHTAG_MAP: Record<string, ForumCategorySlug> = {
+  competition: "competitions",
+  competitions: "competitions",
+  opencompetition: "competitions",
   bachelor: "bachelors",
   bachelors: "bachelors",
   undergrad: "bachelors",
@@ -83,6 +117,9 @@ export function classifyForumPostText(rawText: string | null | undefined): {
   const has = (re: RegExp) => re.test(lower);
 
   /** Tier 1 — explicit level keywords. Highest confidence. */
+  if (has(/\b(architecture\s*competition|design\s*competition|ideas?\s*competition|student\s*competition|open\s*competition|competition\s*brief|call\s*for\s*(entries|submissions|ideas)|open\s*call\b|design\s*challenge|architecture\s*award|design\s*award|prize\s*competition)/)) {
+    return { category: "competitions", cleanedText: text };
+  }
   if (has(/\b(startup|start-?up|incubator|accelerator|venture\s*(?:fund|capital)|seed\s*(?:fund|round)|pitch\s*competition|entrepreneurs?|founders?|hackathon|innovation\s*challenge)/)) {
     return { category: "startup", cleanedText: text };
   }

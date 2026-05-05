@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { auth } from "@/auth";
@@ -50,20 +51,37 @@ export default async function CommunityCategoryPage({ params }: Props) {
   return (
     <MarketingShell>
       <div className="bg-[#fafafa] pb-16 pt-8 sm:pt-10">
-        <header className="mx-auto mb-6 max-w-2xl px-4 text-center sm:mb-8 sm:px-6">
-          <h1 className="font-heading text-[1.5rem] font-semibold tracking-tight text-[#0a0a0a] sm:text-[1.75rem]">
-            {meta?.label ?? "Community"}
-          </h1>
-          <p className="mt-2 text-sm leading-relaxed text-neutral-600">
-            Posts, links, and opportunities tagged for {meta?.label.toLowerCase() ?? "this category"}.
-          </p>
+        <header className="mx-auto mb-6 max-w-2xl px-4 sm:mb-8 sm:px-6">
+          {/* Back link */}
+          <Link
+            href="/community"
+            className="mb-4 inline-flex items-center gap-1.5 text-[13px] font-medium text-neutral-500 transition hover:text-primary"
+          >
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden>
+              <path d="M9 2L4 7l5 5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            Community
+          </Link>
+
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h1 className="font-heading text-[1.5rem] font-semibold tracking-tight text-[#0a0a0a] sm:text-[1.75rem]">
+                {meta?.label ?? "Community"}
+              </h1>
+              {meta && "description" in meta && (
+                <p className="mt-1 text-sm leading-relaxed text-neutral-600">
+                  {(meta as { description?: string }).description}
+                </p>
+              )}
+            </div>
+            <div className="shrink-0 pt-1">
+              <StartThreadButton userId={userId} callbackUrl={callbackUrl} />
+            </div>
+          </div>
         </header>
         <div className="px-4 sm:px-6">
           <CommunityStatsStrip initial={stats} />
           <CommunityCategoryNav active={slug} />
-          <div className="mx-auto mb-4 flex max-w-2xl justify-end">
-            <StartThreadButton userId={userId} callbackUrl={callbackUrl} />
-          </div>
           <CommunityFeed posts={posts} />
         </div>
       </div>

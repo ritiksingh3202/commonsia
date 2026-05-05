@@ -107,13 +107,14 @@ export function CommunityFeed({ posts }: { posts: CommunityPost[] }) {
                 <p className="text-xs text-neutral-500">{formatRelative(p.postedAt)}</p>
               </div>
             </div>
+            <div className="flex shrink-0 flex-col items-end gap-1">
             {p.category ? (
               (() => {
                 const meta = categoryMeta(p.category);
                 if (!meta) return null;
                 return (
                   <span
-                    className="shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-white"
+                    className="rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-white"
                     style={{ backgroundColor: meta.accent }}
                   >
                     {meta.label}
@@ -121,6 +122,17 @@ export function CommunityFeed({ posts }: { posts: CommunityPost[] }) {
                 );
               })()
             ) : null}
+            {p.registrationFee === "free" && (
+              <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-emerald-700">
+                Free Entry
+              </span>
+            )}
+            {p.registrationFee === "paid" && (
+              <span className="rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-amber-700">
+                Paid Entry
+              </span>
+            )}
+          </div>
           </div>
 
           {p.imageUrl ? (

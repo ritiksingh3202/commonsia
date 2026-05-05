@@ -14,6 +14,8 @@ export type CommunityPost = {
   category: ForumCategorySlug | null;
   sourceLabel: string | null;
   sourceUrl: string | null;
+  /** "free" | "paid" | null — only set on competition posts */
+  registrationFee: "free" | "paid" | null;
   replyCount: number;
   author: {
     name: string | null;
@@ -52,6 +54,7 @@ async function getPublicCommunityFeedImpl(category?: ForumCategorySlug | null): 
         category: true,
         sourceLabel: true,
         sourceUrl: true,
+        registrationFee: true,
         author: { select: { name: true, image: true } },
         _count: { select: { replies: { where: { deletedAt: null } } } },
       },
@@ -65,6 +68,7 @@ async function getPublicCommunityFeedImpl(category?: ForumCategorySlug | null): 
       category: (r.category as ForumCategorySlug | null) ?? null,
       sourceLabel: r.sourceLabel,
       sourceUrl: r.sourceUrl,
+      registrationFee: (r.registrationFee as "free" | "paid" | null) ?? null,
       replyCount: r._count.replies,
       author: { name: r.author.name, image: r.author.image },
     }));
@@ -113,6 +117,7 @@ export async function getForumPost(id: string): Promise<(CommunityPost & { autho
         category: true,
         sourceLabel: true,
         sourceUrl: true,
+        registrationFee: true,
         author: { select: { name: true, image: true, role: true } },
         _count: { select: { replies: { where: { deletedAt: null } } } },
       },
@@ -127,6 +132,7 @@ export async function getForumPost(id: string): Promise<(CommunityPost & { autho
       category: (r.category as ForumCategorySlug | null) ?? null,
       sourceLabel: r.sourceLabel,
       sourceUrl: r.sourceUrl,
+      registrationFee: (r.registrationFee as "free" | "paid" | null) ?? null,
       replyCount: r._count.replies,
       author: { name: r.author.name, image: r.author.image },
       authorRole: r.author.role,
@@ -134,6 +140,25 @@ export async function getForumPost(id: string): Promise<(CommunityPost & { autho
   } catch (e) {
     console.error("[forum-feed] getForumPost failed:", e);
     return null;
+  }
+}
+
+/** Per-category post counts for the discovery grid on the community home page. */
+export async function getCategoryPostCounts(): Promise<Record<string, number>> {
+  try {
+    const rows = await prisma.forumPost.groupBy({
+      by: ["category"],
+      where: { deletedAt: null, category: { not: null } },
+      _count: { id: true },
+    });
+    const map: Record<string, number> = {};
+    for (const r of rows) {
+      if (r.category) map[r.category] = r._count.id;
+    }
+    return map;
+  } catch (e) {
+    console.error("[forum-feed] getCategoryPostCounts failed:", e);
+    return {};
   }
 }
 
