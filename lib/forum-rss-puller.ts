@@ -32,17 +32,58 @@ export type RssSource = {
  * share those via WhatsApp with a hashtag like #phd / #faculty.
  */
 export const FORUM_RSS_SOURCES: RssSource[] = [
+  // ── India-focused sources (geo filter skipped) ───────────────────────────
+
   /**
-   * OpportunityDesk — global youth fellowships, leadership programs, contests.
-   * Geo-filtered: only India-open items are inserted.
+   * PhDTalks — best indirect proxy for Indian government funding calls:
+   * ANRF/SERB (ARG, MATRICS), DST INSPIRE Faculty, ICMR fellowships,
+   * PhD positions at IITs/IISc, and research grants up to ₹5 crore.
    */
   {
-    id: "opportunitydesk",
-    label: "OpportunityDesk",
-    feedUrl: "https://opportunitydesk.org/feed/",
-    defaultCategory: "bachelors",
-    indiaFocused: false,
+    id: "phdtalks",
+    label: "PhDTalks",
+    feedUrl: "https://phdtalks.org/feed/",
+    defaultCategory: "phd",
+    indiaFocused: true,
   },
+
+  /**
+   * The Fellowships.in — aggregates India-specific fellowships:
+   * DST INSPIRE, SBI Youth for India, ICGEB, Chief Minister fellowships,
+   * and international fellowships open to Indian applicants.
+   */
+  {
+    id: "thefellowships",
+    label: "The Fellowships",
+    feedUrl: "https://thefellowships.in/feed/",
+    defaultCategory: "faculty",
+    indiaFocused: true,
+  },
+
+  /**
+   * LeapScholar Scholarships — scholarships and funding for Indian students
+   * studying or planning to study abroad (Masters / undergrad focus).
+   */
+  {
+    id: "leapscholar",
+    label: "LeapScholar",
+    feedUrl: "https://leapscholar.com/blog/category/scholarships/feed/",
+    defaultCategory: "masters",
+    indiaFocused: true,
+  },
+
+  /**
+   * Buddy4Study Study Abroad — study-abroad opportunities and exchange
+   * programs specifically curated for Indian students.
+   */
+  {
+    id: "buddy4study",
+    label: "Buddy4Study",
+    feedUrl: "https://admission.buddy4study.com/study-abroad/feed",
+    defaultCategory: "masters",
+    indiaFocused: true,
+  },
+
   /**
    * India Education Diary — India-specific education news, scholarships,
    * faculty positions, and research calls.
@@ -54,6 +95,7 @@ export const FORUM_RSS_SOURCES: RssSource[] = [
     defaultCategory: "masters",
     indiaFocused: true,
   },
+
   /**
    * Internshala Blog — internships, scholarships, and career opportunities
    * aimed squarely at Indian students and fresh graduates.
@@ -61,9 +103,48 @@ export const FORUM_RSS_SOURCES: RssSource[] = [
   {
     id: "internshala",
     label: "Internshala",
-    feedUrl: "https://blog.internshala.com/feed/",
+    feedUrl: "https://internshala.com/blog/feed/",
     defaultCategory: "bachelors",
     indiaFocused: true,
+  },
+
+  /**
+   * The Better India — Education — inspiring stories plus real opportunities
+   * in Indian education; study-abroad financing, women in STEM, grassroots.
+   */
+  {
+    id: "thebetterindia-edu",
+    label: "The Better India",
+    feedUrl: "https://www.thebetterindia.com/topics/education/feed/",
+    defaultCategory: null,
+    indiaFocused: true,
+  },
+
+  // ── Global sources (geo filter applied) ──────────────────────────────────
+
+  /**
+   * OpportunityDesk — global youth fellowships, leadership programs, contests.
+   * Geo-filtered: only India-open items are inserted.
+   */
+  {
+    id: "opportunitydesk",
+    label: "OpportunityDesk",
+    feedUrl: "https://opportunitydesk.org/feed/",
+    defaultCategory: "bachelors",
+    indiaFocused: false,
+  },
+
+  /**
+   * FundsForNGOs (www2) — research project-proposal calls, ICSSR grants,
+   * and India-specific NGO / academic funding opportunities.
+   * Geo-filtered: global feed but includes India-specific research calls.
+   */
+  {
+    id: "fundsforngos",
+    label: "FundsForNGOs",
+    feedUrl: "https://www2.fundsforngos.org/feed/",
+    defaultCategory: "faculty",
+    indiaFocused: false,
   },
 ];
 
