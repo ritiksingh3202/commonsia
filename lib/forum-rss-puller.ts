@@ -208,6 +208,9 @@ export const FORUM_RSS_SOURCES: RssSource[] = [
    * Runs DSpace; queried via OAI-PMH with a 2-year rolling window.
    * Contains B.Arch, M.Arch, M.Plan, and PhD thesis from 400+ Indian universities.
    * The arch filter is applied item-by-item to skip non-architecture records.
+   *
+   * maxFetch kept small (20) to stay well within serverless timeout — the OAI-PMH
+   * endpoint returns large XML pages. Increase only if running outside Vercel Hobby.
    */
   {
     id: "shodhganga",
@@ -218,7 +221,7 @@ export const FORUM_RSS_SOURCES: RssSource[] = [
     indiaFocused: true,
     archFocused: false,   // arch filter runs — Shodhganga has all disciplines
     protocol: "oai-pmh",
-    maxFetch: 80,         // scan 80 records; arch filter keeps ~8–15 relevant ones
+    maxFetch: 20,         // parse first 20 records; arch filter picks arch-relevant ones
     forceCategory: true,  // always route to thesis, not phd/faculty
   },
 
@@ -235,7 +238,7 @@ export const FORUM_RSS_SOURCES: RssSource[] = [
     indiaFocused: false,
     archFocused: false,
     protocol: "oai-pmh",
-    maxFetch: 60,
+    maxFetch: 15,
     forceCategory: true,
   },
 
@@ -252,7 +255,7 @@ export const FORUM_RSS_SOURCES: RssSource[] = [
     indiaFocused: false,
     archFocused: false,
     protocol: "oai-pmh",
-    maxFetch: 60,
+    maxFetch: 15,
     forceCategory: true,
   },
 
@@ -540,16 +543,40 @@ export type RssPullSummary = {
   }>;
 };
 
+/** Shape expected by prisma.forumPost.createMany */
+type PostCreateInput = {
+  authorUserId: string;
+  text: string;
+  imageUrl: string | null;
+  links: string[];
+  whatsappMessageId: string;
+  category: string | null;
+  registrationFee: string | null;
+  sourceLabel: string;
+  sourceUrl: string;
+  postedAt: Date;
+};
+
 /**
  * Fetch every configured RSS source, parse new items, dedupe against ForumPost via the
  * `rss:<sourceId>:<guid>` key (stored in `whatsappMessageId` to reuse the existing unique
  * index), and insert. Idempotent: re-running won't duplicate posts.
  *
- * All feeds are fetched in parallel (Promise.all) so total network time equals the
- * slowest single source rather than the sum of all sources. DB inserts remain sequential.
+ * Performance design:
+ *  - Phase 1: all feeds fetched in parallel (Promise.all) → total network time = slowest source
+ *  - Phase 2: parse + filter in-memory (pure JS, no DB calls)
+ *  - Phase 3: ONE createMany call with skipDuplicates:true → single DB round-trip
+ *
+ * This replaces the old per-item findUnique+create loop (N×M DB calls → 1 DB call).
  */
 export async function pullForumRssOnce(authorUserId: string): Promise<RssPullSummary> {
-  const summary: RssPullSummary = { fetched: 0, newPosts: 0, skippedByGeoFilter: 0, skippedByArchFilter: 0, perSource: [] };
+  const summary: RssPullSummary = {
+    fetched: 0,
+    newPosts: 0,
+    skippedByGeoFilter: 0,
+    skippedByArchFilter: 0,
+    perSource: [],
+  };
 
   // ── Phase 1: fetch all feeds in parallel ──────────────────────────────────
   const fetched = await Promise.all(
@@ -559,53 +586,55 @@ export async function pullForumRssOnce(authorUserId: string): Promise<RssPullSum
     })),
   );
 
-  // ── Phase 2: parse + insert sequentially ─────────────────────────────────
+  // ── Phase 2: parse + filter in-memory (zero DB calls) ────────────────────
+  const toInsert: PostCreateInput[] = [];
+
   for (const { source, xml } of fetched) {
-    const sourceSummary = { id: source.id, fetched: 0, newPosts: 0, skippedByGeoFilter: 0, skippedByArchFilter: 0 } as RssPullSummary["perSource"][number];
+    const sourceSummary = {
+      id: source.id,
+      fetched: 0,
+      newPosts: 0,
+      skippedByGeoFilter: 0,
+      skippedByArchFilter: 0,
+    } as RssPullSummary["perSource"][number];
     summary.perSource.push(sourceSummary);
 
     if (!xml) {
       sourceSummary.error = "fetch_failed";
       continue;
     }
+
     const maxFetch = source.maxFetch ?? MAX_ITEMS_PER_SOURCE;
     const items =
       source.protocol === "oai-pmh"
         ? parseOaiPmhItems(xml).slice(0, maxFetch)
         : parseRssItems(xml).slice(0, maxFetch);
+
     sourceSummary.fetched = items.length;
     summary.fetched += items.length;
 
     for (const item of items) {
-      // Architecture-relevance gate — runs first, cheapest check.
+      // Architecture-relevance gate (cheapest first).
       // archFocused sources (Bustler, ArchDaily, Dezeen, Bee Breeders) bypass entirely.
       if (!source.archFocused && !isArchitectureRelevant(item.title, item.description)) {
-        console.log(`[rss] skipped (not arch-relevant): "${item.title.slice(0, 60)}"`);
         sourceSummary.skippedByArchFilter += 1;
         summary.skippedByArchFilter += 1;
         continue;
       }
 
       // Geo-relevance gate — skip items not open to Indian users.
-      // India-focused sources (indiaFocused: true) bypass this check entirely.
+      // indiaFocused sources bypass this check entirely.
       if (!source.indiaFocused && !isRelevantForIndianAudience(item.title, item.description)) {
-        console.log(`[rss] skipped (not India-relevant): "${item.title.slice(0, 60)}"`);
         sourceSummary.skippedByGeoFilter += 1;
         summary.skippedByGeoFilter += 1;
         continue;
       }
 
       const dedupeKey = `rss:${source.id}:${item.guid}`;
-      const existing = await prisma.forumPost.findUnique({
-        where: { whatsappMessageId: dedupeKey },
-        select: { id: true },
-      });
-      if (existing) continue;
-
       const text = buildPostText(item, source.label);
       const { category } = classifyForumPostText(`${item.title}\n${item.description}`);
-      // forceCategory: always use source default (e.g. thesis sources should
-      // never be rerouted to phd/faculty by the keyword classifier).
+      // forceCategory: always use source default (thesis sources must not be
+      // rerouted to phd/faculty by the keyword classifier).
       const finalCategory = source.forceCategory
         ? (source.defaultCategory ?? null)
         : (category ?? source.defaultCategory ?? null);
@@ -614,27 +643,40 @@ export async function pullForumRssOnce(authorUserId: string): Promise<RssPullSum
           ? detectRegistrationFee(item.title, item.description)
           : null;
 
-      try {
-        await prisma.forumPost.create({
-          data: {
-            authorUserId,
-            text,
-            imageUrl: item.imageUrl,
-            links: [item.link],
-            whatsappMessageId: dedupeKey,
-            category: finalCategory,
-            registrationFee,
-            sourceLabel: source.label,
-            sourceUrl: item.link,
-            postedAt: item.pubDate ?? new Date(),
-          },
-        });
-        sourceSummary.newPosts += 1;
-        summary.newPosts += 1;
-      } catch (e) {
-        console.error(`[rss] insert failed for ${dedupeKey}:`, e);
-      }
+      toInsert.push({
+        authorUserId,
+        text,
+        imageUrl: item.imageUrl,
+        links: [item.link],
+        whatsappMessageId: dedupeKey,
+        category: finalCategory,
+        registrationFee,
+        sourceLabel: source.label,
+        sourceUrl: item.link,
+        postedAt: item.pubDate ?? new Date(),
+      });
+
+      // Optimistically count per-source; skipDuplicates may reduce the actual total.
+      sourceSummary.newPosts += 1;
     }
   }
+
+  // ── Phase 3: single batch insert, duplicates silently skipped ────────────
+  if (toInsert.length > 0) {
+    try {
+      const result = await prisma.forumPost.createMany({
+        data: toInsert,
+        skipDuplicates: true,
+      });
+      summary.newPosts = result.count;
+
+      // Back-fill per-source newPosts to reflect actual inserts (approximate —
+      // we don't know which specific rows were skipped, so keep the optimistic
+      // per-source counts; the top-level summary.newPosts is authoritative).
+    } catch (e) {
+      console.error("[rss] createMany failed:", e);
+    }
+  }
+
   return summary;
 }
