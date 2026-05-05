@@ -240,6 +240,43 @@ export const FORUM_RSS_SOURCES: RssSource[] = [
     englishOnly: true,    // drop Persian, Spanish, French etc. records
   },
 
+  /**
+   * A+BE Architecture and the Built Environment — TU Delft open-access
+   * PhD thesis journal. Every record is a full doctoral thesis in architecture,
+   * urbanism, building technology, or landscape architecture. 100% English.
+   * Using from=2024 to keep response size under the fetch timeout.
+   */
+  {
+    id: "tudelft-abe",
+    label: "TU Delft A+BE",
+    feedUrl:
+      "https://journals.open.tudelft.nl/abe/oai?verb=ListRecords&metadataPrefix=oai_dc&from=2024-01-01",
+    defaultCategory: "thesis",
+    indiaFocused: false,
+    archFocused: true,    // 100% architecture PhD thesis — skip arch filter
+    protocol: "oai-pmh",
+    maxFetch: 15,
+    forceCategory: true,
+    englishOnly: true,
+  },
+
+  /**
+   * Frontiers in Built Environment — open-access peer-reviewed journal covering
+   * urban engineering, structural systems, sustainable design, and housing policy.
+   * RSS feed with ~20 recent articles. Architecture-relevant by definition.
+   */
+  {
+    id: "frontiers-built-env",
+    label: "Frontiers in Built Environment",
+    feedUrl: "https://www.frontiersin.org/journals/built-environment/rss",
+    defaultCategory: "thesis",
+    indiaFocused: false,
+    archFocused: true,    // Built environment journal — skip arch filter
+    protocol: "rss",
+    maxFetch: 10,
+    forceCategory: true,
+  },
+
   // ── Global sources (geo filter applied) ──────────────────────────────────
 
   /**
