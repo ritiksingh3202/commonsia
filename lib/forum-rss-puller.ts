@@ -43,6 +43,12 @@ export type RssSource = {
    * be sent to faculty rather than thesis).
    */
   forceCategory?: boolean;
+  /**
+   * When true, OAI-PMH items whose dc:language is not English (en / eng) are
+   * dropped. Items with no language tag are kept (assumed English).
+   * Has no effect on RSS sources (language is rarely declared in RSS feeds).
+   */
+  englishOnly?: boolean;
 };
 
 /**
@@ -231,6 +237,7 @@ export const FORUM_RSS_SOURCES: RssSource[] = [
     protocol: "oai-pmh",
     maxFetch: 20,
     forceCategory: true,
+    englishOnly: true,    // drop Persian, Spanish, French etc. records
   },
 
   // ── Global sources (geo filter applied) ──────────────────────────────────
@@ -317,14 +324,26 @@ function pickImage(block: string): string | null {
   return img ? img[1] : null;
 }
 
+/** Language codes considered English for the englishOnly filter. */
+const ENGLISH_LANG_CODES = new Set(["en", "eng", "en-us", "en-gb", "english"]);
+
+function isEnglishRecord(block: string): boolean {
+  // dc:language may appear multiple times; accept if any value is English.
+  // Records with no dc:language tag are assumed English (most repos default to English).
+  const langMatches = [...block.matchAll(/<dc:language>([^<]+)<\/dc:language>/gi)];
+  if (langMatches.length === 0) return true; // no language declared → keep
+  return langMatches.some((m) => ENGLISH_LANG_CODES.has(m[1].trim().toLowerCase()));
+}
+
 /**
  * OAI-PMH / Dublin Core parser for DSpace-based repositories
  * (Shodhganga, NDLTD, DART-Europe, institutional repositories).
  *
  * Parses <record> blocks and maps Dublin Core fields to ParsedItem.
  * Skips deleted records and records missing both title and a URL identifier.
+ * Pass englishOnly=true to drop non-English records (filters on dc:language).
  */
-function parseOaiPmhItems(xml: string): ParsedItem[] {
+function parseOaiPmhItems(xml: string, englishOnly = false): ParsedItem[] {
   const items: ParsedItem[] = [];
   const recordRe = /<record\b[\s\S]*?<\/record>/gi;
 
@@ -333,6 +352,9 @@ function parseOaiPmhItems(xml: string): ParsedItem[] {
 
     // Skip deleted records
     if (/status\s*=\s*["']deleted["']/i.test(block)) continue;
+
+    // Language filter — drop non-English records when requested
+    if (englishOnly && !isEnglishRecord(block)) continue;
 
     // OAI identifier (used as guid)
     const oaiIdMatch = /<identifier>([^<]+)<\/identifier>/i.exec(block);
@@ -549,7 +571,7 @@ export async function pullForumRssOnce(authorUserId: string): Promise<RssPullSum
     const maxFetch = source.maxFetch ?? MAX_ITEMS_PER_SOURCE;
     const items =
       source.protocol === "oai-pmh"
-        ? parseOaiPmhItems(xml).slice(0, maxFetch)
+        ? parseOaiPmhItems(xml, source.englishOnly ?? false).slice(0, maxFetch)
         : parseRssItems(xml).slice(0, maxFetch);
 
     sourceSummary.fetched = items.length;
