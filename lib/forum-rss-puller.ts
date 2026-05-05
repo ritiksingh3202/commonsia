@@ -303,6 +303,42 @@ export const FORUM_RSS_SOURCES: RssSource[] = [
     defaultCategory: "faculty",
     indiaFocused: false,
   },
+
+  /**
+   * Mango Architecture Blog — organiser of the Architectural Thesis Award (ATA),
+   * India's national B.Arch thesis competition. Blog posts include competition
+   * results with student names, project titles, and winning thesis entries from
+   * Indian architecture colleges (SPA, NIT, CEPT, Jamia, AMU etc.).
+   * Also covers thesis competition calls, glamping/design challenges, and
+   * architecture opportunities for students.
+   */
+  {
+    id: "mango-architecture",
+    label: "Mango Architecture",
+    feedUrl: "https://www.mangoarchitecture.com/blog-feed.xml",
+    defaultCategory: "thesis",
+    indiaFocused: true,   // ATA is India-focused; no geo filter needed
+    archFocused: true,    // architecture thesis competition by definition
+    protocol: "rss",
+    maxFetch: 10,
+    forceCategory: true,
+  },
+
+  /**
+   * Architexturez.net — South Asia's largest architecture research network.
+   * RSS covers call-for-papers, symposia, and academic conference announcements
+   * in architecture, urban design, and allied fields. India-adjacent.
+   */
+  {
+    id: "architexturez",
+    label: "Architexturez",
+    feedUrl: "https://architexturez.net/rss.xml",
+    defaultCategory: "faculty",
+    indiaFocused: false,
+    archFocused: true,    // architecture research network — skip arch filter
+    protocol: "rss",
+    maxFetch: 10,
+  },
 ];
 
 type ParsedItem = {
