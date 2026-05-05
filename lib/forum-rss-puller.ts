@@ -24,6 +24,25 @@ export type RssSource = {
    * (Bustler, ArchDaily, Dezeen, Bee Breeders).
    */
   archFocused?: boolean;
+  /**
+   * "rss" (default) — standard RSS 2.0 / Atom feed.
+   * "oai-pmh" — OAI-PMH/Dublin Core format used by DSpace repositories
+   *             (Shodhganga, NDLTD, institutional repositories).
+   */
+  protocol?: "rss" | "oai-pmh";
+  /**
+   * Max items to pull from feed before filters are applied. Default: 8.
+   * OAI-PMH thesis sources need a higher value (50–100) because the arch
+   * filter has to scan through many records to find architecture-relevant ones.
+   */
+  maxFetch?: number;
+  /**
+   * When true, always assign defaultCategory regardless of the keyword
+   * classifier result. Use for thesis/specialised sources where the classifier
+   * would otherwise misroute (e.g. a thesis about "sustainable design" would
+   * be sent to faculty rather than thesis).
+   */
+  forceCategory?: boolean;
 };
 
 /**
@@ -182,6 +201,93 @@ export const FORUM_RSS_SOURCES: RssSource[] = [
     archFocused: true,
   },
 
+  // ── Thesis library sources ────────────────────────────────────────────────
+
+  /**
+   * Shodhganga (INFLIBNET) — India's national thesis repository.
+   * Runs DSpace; queried via OAI-PMH with a 2-year rolling window.
+   * Contains B.Arch, M.Arch, M.Plan, and PhD thesis from 400+ Indian universities.
+   * The arch filter is applied item-by-item to skip non-architecture records.
+   */
+  {
+    id: "shodhganga",
+    label: "Shodhganga",
+    feedUrl:
+      "https://shodhganga.inflibnet.ac.in/oai/request?verb=ListRecords&metadataPrefix=oai_dc&from=2022-01-01",
+    defaultCategory: "thesis",
+    indiaFocused: true,
+    archFocused: false,   // arch filter runs — Shodhganga has all disciplines
+    protocol: "oai-pmh",
+    maxFetch: 80,         // scan 80 records; arch filter keeps ~8–15 relevant ones
+    forceCategory: true,  // always route to thesis, not phd/faculty
+  },
+
+  /**
+   * NDLTD (Networked Digital Library of Theses and Dissertations) — global
+   * open-access thesis database. OAI-PMH queried for recent architecture records.
+   */
+  {
+    id: "ndltd",
+    label: "NDLTD",
+    feedUrl:
+      "https://oai.ndltd.org/oai/oai?verb=ListRecords&metadataPrefix=oai_dc&from=2023-01-01",
+    defaultCategory: "thesis",
+    indiaFocused: false,
+    archFocused: false,
+    protocol: "oai-pmh",
+    maxFetch: 60,
+    forceCategory: true,
+  },
+
+  /**
+   * DART-Europe — portal for European open-access research thesis.
+   * OAI-PMH endpoint; filtered by date and then by arch filter.
+   */
+  {
+    id: "dart-europe",
+    label: "DART-Europe",
+    feedUrl:
+      "https://www.dart-europe.org/oai.php?verb=ListRecords&metadataPrefix=oai_dc&from=2022-01-01",
+    defaultCategory: "thesis",
+    indiaFocused: false,
+    archFocused: false,
+    protocol: "oai-pmh",
+    maxFetch: 60,
+    forceCategory: true,
+  },
+
+  /**
+   * IIT Roorkee institutional repository — DSpace with RSS per community.
+   * Architecture & Planning department thesis and research outputs.
+   */
+  {
+    id: "iitr-dspace",
+    label: "IIT Roorkee",
+    feedUrl: "https://dspace.iitr.ac.in/feed/rss_2.0/handle/10266/4",
+    defaultCategory: "thesis",
+    indiaFocused: true,
+    archFocused: false,
+    protocol: "rss",
+    maxFetch: 20,
+    forceCategory: true,
+  },
+
+  /**
+   * CEPT University Research Cell — architecture and planning thesis
+   * from one of India's premier architecture institutions.
+   */
+  {
+    id: "cept-research",
+    label: "CEPT University",
+    feedUrl: "https://research.cept.ac.in/feed/",
+    defaultCategory: "thesis",
+    indiaFocused: true,
+    archFocused: false,
+    protocol: "rss",
+    maxFetch: 20,
+    forceCategory: true,
+  },
+
   // ── Global sources (geo filter applied) ──────────────────────────────────
 
   /**
@@ -264,6 +370,86 @@ function pickImage(block: string): string | null {
   const content = pickTag(block, "content:encoded") ?? pickTag(block, "description") ?? "";
   const img = /<img[^>]+src=["']([^"']+)["']/i.exec(content);
   return img ? img[1] : null;
+}
+
+/**
+ * OAI-PMH / Dublin Core parser for DSpace-based repositories
+ * (Shodhganga, NDLTD, DART-Europe, institutional repositories).
+ *
+ * Parses <record> blocks and maps Dublin Core fields to ParsedItem.
+ * Skips deleted records and records missing both title and a URL identifier.
+ */
+function parseOaiPmhItems(xml: string): ParsedItem[] {
+  const items: ParsedItem[] = [];
+  const recordRe = /<record\b[\s\S]*?<\/record>/gi;
+
+  for (const m of xml.matchAll(recordRe)) {
+    const block = m[0];
+
+    // Skip deleted records
+    if (/status\s*=\s*["']deleted["']/i.test(block)) continue;
+
+    // OAI identifier (used as guid)
+    const oaiIdMatch = /<identifier>([^<]+)<\/identifier>/i.exec(block);
+    const guid = oaiIdMatch ? oaiIdMatch[1].trim() : null;
+    if (!guid) continue;
+
+    // dc:title
+    const title = pickTag(block, "dc:title") ?? pickTag(block, "title");
+    if (!title) continue;
+
+    // dc:identifier — find the first http URL
+    let link: string | null = null;
+    for (const im of block.matchAll(/<dc:identifier>([^<]+)<\/dc:identifier>/gi)) {
+      const val = im[1].trim();
+      if (val.startsWith("http")) { link = val; break; }
+    }
+    if (!link) continue;
+
+    // Abstract / description
+    const abstract =
+      pickTag(block, "dc:description") ??
+      pickTag(block, "dc:abstract") ??
+      "";
+
+    // Author + institution for context
+    const creator = pickTag(block, "dc:creator") ?? "";
+    const publisher = pickTag(block, "dc:publisher") ?? "";
+
+    // Build a readable description
+    const descParts = [
+      abstract ? abstract.slice(0, 400).trim() : "",
+      creator ? `Author: ${creator}` : "",
+      publisher ? `Institution: ${publisher}` : "",
+    ].filter(Boolean);
+    const description = stripHtml(descParts.join("  ·  "));
+
+    // Date: header datestamp or dc:date (may be just "2022")
+    const datestampMatch = /<datestamp>([^<]+)<\/datestamp>/i.exec(block);
+    const dateRaw =
+      datestampMatch?.[1]?.trim() ??
+      pickTag(block, "dc:date") ??
+      null;
+    let pubDate: Date | null = null;
+    if (dateRaw) {
+      const d = new Date(dateRaw);
+      if (!Number.isNaN(d.getTime())) {
+        pubDate = d;
+      } else if (/^\d{4}$/.test(dateRaw.trim())) {
+        pubDate = new Date(`${dateRaw.trim()}-06-01`);
+      }
+    }
+
+    items.push({
+      guid,
+      title: decodeHtmlEntities(title),
+      link,
+      description,
+      imageUrl: null,
+      pubDate,
+    });
+  }
+  return items;
 }
 
 function parseRssItems(xml: string): ParsedItem[] {
@@ -371,7 +557,11 @@ export async function pullForumRssOnce(authorUserId: string): Promise<RssPullSum
       sourceSummary.error = "fetch_failed";
       continue;
     }
-    const items = parseRssItems(xml).slice(0, MAX_ITEMS_PER_SOURCE);
+    const maxFetch = source.maxFetch ?? MAX_ITEMS_PER_SOURCE;
+    const items =
+      source.protocol === "oai-pmh"
+        ? parseOaiPmhItems(xml).slice(0, maxFetch)
+        : parseRssItems(xml).slice(0, maxFetch);
     sourceSummary.fetched = items.length;
     summary.fetched += items.length;
 
@@ -403,7 +593,11 @@ export async function pullForumRssOnce(authorUserId: string): Promise<RssPullSum
 
       const text = buildPostText(item, source.label);
       const { category } = classifyForumPostText(`${item.title}\n${item.description}`);
-      const finalCategory = category ?? source.defaultCategory ?? null;
+      // forceCategory: always use source default (e.g. thesis sources should
+      // never be rerouted to phd/faculty by the keyword classifier).
+      const finalCategory = source.forceCategory
+        ? (source.defaultCategory ?? null)
+        : (category ?? source.defaultCategory ?? null);
       const registrationFee =
         finalCategory === "competitions"
           ? detectRegistrationFee(item.title, item.description)

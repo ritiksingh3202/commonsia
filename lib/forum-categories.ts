@@ -1,5 +1,12 @@
 export const FORUM_CATEGORIES = [
   {
+    slug: "thesis",
+    label: "Thesis Library",
+    degrees: "B.Arch · M.Arch · PhD Thesis",
+    accent: "#0f766e",
+    description: "B.Arch, M.Arch, and PhD architectural thesis from Indian universities and global institutions.",
+  },
+  {
     slug: "competitions",
     label: "Competitions",
     /** Short degree/type tags shown beneath the label on cards and category pages — also helps SEO. */
@@ -57,6 +64,9 @@ export function categoryMeta(slug: string | null | undefined) {
 }
 
 const HASHTAG_MAP: Record<string, ForumCategorySlug> = {
+  thesis: "thesis",
+  dissertation: "thesis",
+  archthesis: "thesis",
   competition: "competitions",
   competitions: "competitions",
   opencompetition: "competitions",
@@ -124,6 +134,9 @@ export function classifyForumPostText(rawText: string | null | undefined): {
   const has = (re: RegExp) => re.test(lower);
 
   /** Tier 1 — explicit level keywords. Highest confidence. */
+  if (has(/\b(architectural\s+thesis|architecture\s+thesis|m\.?arch\s+thesis|b\.?arch\s+thesis|phd\s+thesis|doctoral\s+thesis|master'?s?\s+thesis|thesis\s+(?:on|about|in)\s+arch|dissertation\s+(?:on|in)\s+arch)/)) {
+    return { category: "thesis", cleanedText: text };
+  }
   if (has(/\b(architecture\s*competition|design\s*competition|ideas?\s*competition|student\s*competition|open\s*competition|competition\s*brief|call\s*for\s*(entries|submissions|ideas)|open\s*call\b|design\s*challenge|architecture\s*award|design\s*award|prize\s*competition)/)) {
     return { category: "competitions", cleanedText: text };
   }
