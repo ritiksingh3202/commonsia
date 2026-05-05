@@ -2,38 +2,45 @@ export const FORUM_CATEGORIES = [
   {
     slug: "competitions",
     label: "Competitions",
+    /** Short degree/type tags shown beneath the label on cards and category pages — also helps SEO. */
+    degrees: "Architecture · Design · Planning",
     accent: "#0891b2",
     description: "Architecture and design competitions worldwide, tagged free or paid entry.",
   },
   {
     slug: "bachelors",
     label: "Bachelors",
+    degrees: "B.Arch · B.Plan · B.Des",
     accent: "#2563eb",
-    description: "Undergraduate scholarships, exchange programs, and internship opportunities.",
+    description: "B.Arch, B.Plan, and B.Des scholarships, exchange programs, and internship opportunities.",
   },
   {
     slug: "masters",
     label: "Masters",
+    degrees: "M.Arch · M.Plan · M.Des",
     accent: "#16a34a",
-    description: "Postgraduate programs, study-abroad fellowships, and funded Masters seats.",
+    description: "M.Arch, M.Plan, and M.Des programs, study-abroad fellowships, and funded postgraduate seats.",
   },
   {
     slug: "phd",
     label: "PhD",
+    degrees: "Research · Doctoral · Post-doc",
     accent: "#7c3aed",
-    description: "Doctoral positions, research grants, and SERB / ANRF / ICMR funding calls.",
+    description: "Doctoral positions, research grants, and SERB / ANRF / ICMR funding calls for architects and planners.",
   },
   {
     slug: "faculty",
     label: "Faculty & Grants",
+    degrees: "Project Proposals · SERB · ANRF",
     accent: "#ea580c",
-    description: "Faculty positions, project proposals, and institutional research funding.",
+    description: "Faculty positions, architecture research proposals, and institutional funding from SERB, ANRF, and ICMR.",
   },
   {
     slug: "startup",
     label: "Startup Calls",
+    degrees: "Design Startups · Incubators",
     accent: "#db2777",
-    description: "Incubators, accelerators, seed funding, and innovation challenges.",
+    description: "Incubators, accelerators, seed funding, and innovation challenges for design and architecture startups.",
   },
 ] as const;
 

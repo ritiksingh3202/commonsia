@@ -27,10 +27,12 @@ export function generateStaticParams() {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { category } = await params;
   const meta = isValidCategorySlug(category) ? categoryMeta(category) : null;
+  const degrees = meta && "degrees" in meta ? (meta as { degrees?: string }).degrees : null;
+  const titleLabel = degrees ? `${meta!.label} (${degrees})` : meta?.label;
   return {
-    title: { absolute: meta ? `${meta.label} — Community Forum` : "Community Forum" },
-    description: meta
-      ? `${meta.label} updates and opportunities shared with the Commonsia community.`
+    title: { absolute: titleLabel ? `${titleLabel} — Community Forum` : "Community Forum" },
+    description: meta && "description" in meta
+      ? (meta as { description?: string }).description ?? `${meta.label} opportunities for the architecture community.`
       : "Commonsia community forum.",
   };
 }
@@ -49,6 +51,7 @@ export default async function CommunityCategoryPage({ params }: Props) {
   const callbackUrl = `/community/${slug}`;
 
   const accentColor = meta && "accent" in meta ? (meta as { accent: string }).accent : "#ff6600";
+  const degrees = meta && "degrees" in meta ? (meta as { degrees?: string }).degrees : null;
 
   return (
     <MarketingShell>
@@ -73,8 +76,13 @@ export default async function CommunityCategoryPage({ params }: Props) {
         <h1 className="font-heading text-[clamp(1.75rem,3vw+1rem,2.75rem)] font-semibold tracking-tight text-[#0a0a0a]">
           {meta?.label ?? "Community"}
         </h1>
+        {degrees && (
+          <p className="mt-2 text-[13px] font-semibold text-primary sm:text-[14px]">
+            {degrees}
+          </p>
+        )}
         {meta && "description" in meta && (
-          <p className="mx-auto mt-3 max-w-sm text-[14px] leading-relaxed text-neutral-500 sm:max-w-md sm:text-[15px]">
+          <p className="mx-auto mt-2 max-w-sm text-[14px] leading-relaxed text-neutral-500 sm:max-w-md sm:text-[15px]">
             {(meta as { description?: string }).description}
           </p>
         )}

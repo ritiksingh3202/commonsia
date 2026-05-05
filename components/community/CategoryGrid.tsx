@@ -89,11 +89,16 @@ export function CategoryGrid({ counts }: { counts: Record<string, number> }) {
                 </span>
               </div>
 
-              {/* Label + description */}
+              {/* Label + degree tags + description */}
               <div>
                 <p className="text-[14px] font-semibold leading-snug text-[#0a0a0a] sm:text-[15px]">
                   {cat.label}
                 </p>
+                {"degrees" in cat && cat.degrees && (
+                  <p className="mt-0.5 text-[11px] font-medium text-primary sm:text-[12px]">
+                    {cat.degrees}
+                  </p>
+                )}
                 <p className="mt-1 text-[12px] leading-snug text-neutral-400 sm:text-[13px]">
                   {cat.description}
                 </p>
