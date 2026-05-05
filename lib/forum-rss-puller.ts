@@ -491,7 +491,7 @@ function parseRssItems(xml: string): ParsedItem[] {
 }
 
 const MAX_ITEMS_PER_SOURCE = 8;
-const FETCH_TIMEOUT_MS = 8000;
+const FETCH_TIMEOUT_MS = 6000;
 
 async function fetchFeed(url: string): Promise<string | null> {
   const ctrl = new AbortController();
@@ -544,15 +544,26 @@ export type RssPullSummary = {
  * Fetch every configured RSS source, parse new items, dedupe against ForumPost via the
  * `rss:<sourceId>:<guid>` key (stored in `whatsappMessageId` to reuse the existing unique
  * index), and insert. Idempotent: re-running won't duplicate posts.
+ *
+ * All feeds are fetched in parallel (Promise.all) so total network time equals the
+ * slowest single source rather than the sum of all sources. DB inserts remain sequential.
  */
 export async function pullForumRssOnce(authorUserId: string): Promise<RssPullSummary> {
   const summary: RssPullSummary = { fetched: 0, newPosts: 0, skippedByGeoFilter: 0, skippedByArchFilter: 0, perSource: [] };
 
-  for (const source of FORUM_RSS_SOURCES) {
+  // ── Phase 1: fetch all feeds in parallel ──────────────────────────────────
+  const fetched = await Promise.all(
+    FORUM_RSS_SOURCES.map(async (source) => ({
+      source,
+      xml: await fetchFeed(source.feedUrl),
+    })),
+  );
+
+  // ── Phase 2: parse + insert sequentially ─────────────────────────────────
+  for (const { source, xml } of fetched) {
     const sourceSummary = { id: source.id, fetched: 0, newPosts: 0, skippedByGeoFilter: 0, skippedByArchFilter: 0 } as RssPullSummary["perSource"][number];
     summary.perSource.push(sourceSummary);
 
-    const xml = await fetchFeed(source.feedUrl);
     if (!xml) {
       sourceSummary.error = "fetch_failed";
       continue;
