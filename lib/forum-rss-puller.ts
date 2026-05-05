@@ -201,92 +201,34 @@ export const FORUM_RSS_SOURCES: RssSource[] = [
     archFocused: true,
   },
 
-  // ── Thesis library sources ────────────────────────────────────────────────
+  // ── Thesis / Research library sources ────────────────────────────────────
+  //
+  // NOTE ON DEAD SOURCES (removed 2025-05):
+  //   Shodhganga OAI-PMH → 404 (URL changed, new path not yet confirmed)
+  //   NDLTD OAI-PMH      → connection refused (server down)
+  //   DART-Europe OAI-PMH → connection refused (server down)
+  //   IIT Roorkee DSpace  → connection refused (blocked or offline)
+  //   CEPT Research RSS   → connection refused (site down)
+  // Re-add when endpoints are confirmed working again.
 
   /**
-   * Shodhganga (INFLIBNET) — India's national thesis repository.
-   * Runs DSpace; queried via OAI-PMH with a 2-year rolling window.
-   * Contains B.Arch, M.Arch, M.Plan, and PhD thesis from 400+ Indian universities.
-   * The arch filter is applied item-by-item to skip non-architecture records.
+   * Zenodo — CERN's open research repository, "architecture" community.
+   * Covers thesis, conference papers, and research articles in architecture,
+   * urban design, and allied fields from global institutions. OAI-PMH returns
+   * records tagged with the "user-architecture" Zenodo community.
    *
-   * maxFetch kept small (20) to stay well within serverless timeout — the OAI-PMH
-   * endpoint returns large XML pages. Increase only if running outside Vercel Hobby.
+   * archFocused: true — every record in this community is architecture by definition.
+   * forceCategory: true — route all to thesis regardless of keyword classifier.
    */
   {
-    id: "shodhganga",
-    label: "Shodhganga",
+    id: "zenodo-architecture",
+    label: "Zenodo Architecture",
     feedUrl:
-      "https://shodhganga.inflibnet.ac.in/oai/request?verb=ListRecords&metadataPrefix=oai_dc&from=2022-01-01",
-    defaultCategory: "thesis",
-    indiaFocused: true,
-    archFocused: false,   // arch filter runs — Shodhganga has all disciplines
-    protocol: "oai-pmh",
-    maxFetch: 20,         // parse first 20 records; arch filter picks arch-relevant ones
-    forceCategory: true,  // always route to thesis, not phd/faculty
-  },
-
-  /**
-   * NDLTD (Networked Digital Library of Theses and Dissertations) — global
-   * open-access thesis database. OAI-PMH queried for recent architecture records.
-   */
-  {
-    id: "ndltd",
-    label: "NDLTD",
-    feedUrl:
-      "https://oai.ndltd.org/oai/oai?verb=ListRecords&metadataPrefix=oai_dc&from=2023-01-01",
+      "https://zenodo.org/oai2d?verb=ListRecords&metadataPrefix=oai_dc&set=user-architecture",
     defaultCategory: "thesis",
     indiaFocused: false,
-    archFocused: false,
+    archFocused: true,    // 100% architecture community — skip arch filter
     protocol: "oai-pmh",
-    maxFetch: 15,
-    forceCategory: true,
-  },
-
-  /**
-   * DART-Europe — portal for European open-access research thesis.
-   * OAI-PMH endpoint; filtered by date and then by arch filter.
-   */
-  {
-    id: "dart-europe",
-    label: "DART-Europe",
-    feedUrl:
-      "https://www.dart-europe.org/oai.php?verb=ListRecords&metadataPrefix=oai_dc&from=2022-01-01",
-    defaultCategory: "thesis",
-    indiaFocused: false,
-    archFocused: false,
-    protocol: "oai-pmh",
-    maxFetch: 15,
-    forceCategory: true,
-  },
-
-  /**
-   * IIT Roorkee institutional repository — DSpace with RSS per community.
-   * Architecture & Planning department thesis and research outputs.
-   */
-  {
-    id: "iitr-dspace",
-    label: "IIT Roorkee",
-    feedUrl: "https://dspace.iitr.ac.in/feed/rss_2.0/handle/10266/4",
-    defaultCategory: "thesis",
-    indiaFocused: true,
-    archFocused: false,
-    protocol: "rss",
-    maxFetch: 20,
-    forceCategory: true,
-  },
-
-  /**
-   * CEPT University Research Cell — architecture and planning thesis
-   * from one of India's premier architecture institutions.
-   */
-  {
-    id: "cept-research",
-    label: "CEPT University",
-    feedUrl: "https://research.cept.ac.in/feed/",
-    defaultCategory: "thesis",
-    indiaFocused: true,
-    archFocused: false,
-    protocol: "rss",
     maxFetch: 20,
     forceCategory: true,
   },
