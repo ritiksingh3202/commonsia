@@ -1,4 +1,5 @@
 import { classifyForumPostText, type ForumCategorySlug } from "@/lib/forum-categories";
+import { isRelevantForIndianAudience } from "@/lib/forum-geo-filter";
 import { prisma } from "@/lib/prisma";
 
 export type RssSource = {
@@ -10,25 +11,60 @@ export type RssSource = {
   feedUrl: string;
   /** Optional default category if keyword classification fails for this source. */
   defaultCategory?: ForumCategorySlug | null;
+  /**
+   * When true, every item from this source is assumed India-relevant and the
+   * geo-relevance filter is skipped. Set this for India-specific feeds.
+   */
+  indiaFocused?: boolean;
 };
 
 /**
- * Verified during build:
- *   opportunitydesk.org/feed/        -> 200 application/rss+xml
- *   globalopportunitydesk.com/feed/  -> 200
- *   cscuk.fcdo.gov.uk/feed/          -> 200 application/rss+xml
+ * RSS sources for the community feed.
  *
- * Sites without a working RSS feed (acu.ac.uk blocks scrapers; anrfonline.in /
- * icssr.org return 404 on /feed/) are excluded — feed those via WhatsApp forwarding
- * to the Commonsia number with a hashtag like #phd / #faculty.
+ * India-focused sources (indiaFocused: true) bypass the geo-relevance filter.
+ * Global sources are filtered by isRelevantForIndianAudience() before inserting.
+ *
+ * Removed:
+ *   - globalopportunitydesk.com  — too generic, low India signal
+ *   - cscuk.fcdo.gov.uk          — UK government scholarships, heavy UK/Commonwealth bias
+ *
+ * Sites without working RSS (acu.ac.uk, anrfonline.in, icssr.org) are excluded —
+ * share those via WhatsApp with a hashtag like #phd / #faculty.
  */
 export const FORUM_RSS_SOURCES: RssSource[] = [
-  /** OpportunityDesk skews young — youth fellowships, leadership programs, contests. */
-  { id: "opportunitydesk", label: "OpportunityDesk", feedUrl: "https://opportunitydesk.org/feed/", defaultCategory: "bachelors" },
-  /** Global Opportunity Desk leans grad-school / fellowships. */
-  { id: "globalopportunitydesk", label: "Global Opportunity Desk", feedUrl: "https://globalopportunitydesk.com/feed/", defaultCategory: "masters" },
-  /** Commonwealth Scholarships are mostly PhD / advanced study. */
-  { id: "cscuk", label: "Commonwealth Scholarships", feedUrl: "https://cscuk.fcdo.gov.uk/feed/", defaultCategory: "phd" },
+  /**
+   * OpportunityDesk — global youth fellowships, leadership programs, contests.
+   * Geo-filtered: only India-open items are inserted.
+   */
+  {
+    id: "opportunitydesk",
+    label: "OpportunityDesk",
+    feedUrl: "https://opportunitydesk.org/feed/",
+    defaultCategory: "bachelors",
+    indiaFocused: false,
+  },
+  /**
+   * India Education Diary — India-specific education news, scholarships,
+   * faculty positions, and research calls.
+   */
+  {
+    id: "indiaeducationdiary",
+    label: "India Education Diary",
+    feedUrl: "https://indiaeducationdiary.in/feed/",
+    defaultCategory: "masters",
+    indiaFocused: true,
+  },
+  /**
+   * Internshala Blog — internships, scholarships, and career opportunities
+   * aimed squarely at Indian students and fresh graduates.
+   */
+  {
+    id: "internshala",
+    label: "Internshala",
+    feedUrl: "https://blog.internshala.com/feed/",
+    defaultCategory: "bachelors",
+    indiaFocused: true,
+  },
 ];
 
 type ParsedItem = {
@@ -163,7 +199,8 @@ function buildPostText(item: ParsedItem, sourceLabel: string): string {
 export type RssPullSummary = {
   fetched: number;
   newPosts: number;
-  perSource: Array<{ id: string; fetched: number; newPosts: number; error?: string }>;
+  skippedByGeoFilter: number;
+  perSource: Array<{ id: string; fetched: number; newPosts: number; skippedByGeoFilter: number; error?: string }>;
 };
 
 /**
@@ -172,10 +209,10 @@ export type RssPullSummary = {
  * index), and insert. Idempotent: re-running won't duplicate posts.
  */
 export async function pullForumRssOnce(authorUserId: string): Promise<RssPullSummary> {
-  const summary: RssPullSummary = { fetched: 0, newPosts: 0, perSource: [] };
+  const summary: RssPullSummary = { fetched: 0, newPosts: 0, skippedByGeoFilter: 0, perSource: [] };
 
   for (const source of FORUM_RSS_SOURCES) {
-    const sourceSummary = { id: source.id, fetched: 0, newPosts: 0 } as RssPullSummary["perSource"][number];
+    const sourceSummary = { id: source.id, fetched: 0, newPosts: 0, skippedByGeoFilter: 0 } as RssPullSummary["perSource"][number];
     summary.perSource.push(sourceSummary);
 
     const xml = await fetchFeed(source.feedUrl);
@@ -188,6 +225,15 @@ export async function pullForumRssOnce(authorUserId: string): Promise<RssPullSum
     summary.fetched += items.length;
 
     for (const item of items) {
+      // Geo-relevance gate — skip items that are clearly not open to Indian users.
+      // India-focused sources (indiaFocused: true) bypass this check entirely.
+      if (!source.indiaFocused && !isRelevantForIndianAudience(item.title, item.description)) {
+        console.log(`[rss] skipped (not India-relevant): "${item.title.slice(0, 60)}"`);
+        sourceSummary.skippedByGeoFilter += 1;
+        summary.skippedByGeoFilter += 1;
+        continue;
+      }
+
       const dedupeKey = `rss:${source.id}:${item.guid}`;
       const existing = await prisma.forumPost.findUnique({
         where: { whatsappMessageId: dedupeKey },
