@@ -48,40 +48,57 @@ export default async function CommunityCategoryPage({ params }: Props) {
   const userId = session?.user?.id ?? null;
   const callbackUrl = `/community/${slug}`;
 
+  const accentColor = meta && "accent" in meta ? (meta as { accent: string }).accent : "#ff6600";
+
   return (
     <MarketingShell>
-      <div className="bg-[#fafafa] pb-16 pt-8 sm:pt-10">
-        <header className="mx-auto mb-6 max-w-2xl px-4 sm:mb-8 sm:px-6">
-          {/* Back link */}
+      {/* Category header — warm gradient with accent underline */}
+      <section className="home-hero-gradient px-4 pb-10 pt-12 text-center sm:pb-12 sm:pt-16 sm:px-6">
+        {/* Back link */}
+        <div className="mb-5 flex justify-center">
           <Link
             href="/community"
-            className="mb-4 inline-flex items-center gap-1.5 text-[13px] font-medium text-neutral-500 transition hover:text-primary"
+            className="inline-flex items-center gap-1.5 text-[13px] font-medium text-neutral-500 transition hover:text-primary"
           >
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden>
               <path d="M9 2L4 7l5 5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
-            Community
+            Community Forum
           </Link>
+        </div>
 
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <h1 className="font-heading text-[1.5rem] font-semibold tracking-tight text-[#0a0a0a] sm:text-[1.75rem]">
-                {meta?.label ?? "Community"}
-              </h1>
-              {meta && "description" in meta && (
-                <p className="mt-1 text-sm leading-relaxed text-neutral-600">
-                  {(meta as { description?: string }).description}
-                </p>
-              )}
-            </div>
-            <div className="shrink-0 pt-1">
-              <StartThreadButton userId={userId} callbackUrl={callbackUrl} />
-            </div>
-          </div>
-        </header>
+        {/* Accent bar */}
+        <div className="mx-auto mb-4 h-1 w-10 rounded-full" style={{ backgroundColor: accentColor }} />
+
+        <h1 className="font-heading text-[clamp(1.75rem,3vw+1rem,2.75rem)] font-semibold tracking-tight text-[#0a0a0a]">
+          {meta?.label ?? "Community"}
+        </h1>
+        {meta && "description" in meta && (
+          <p className="mx-auto mt-3 max-w-sm text-[14px] leading-relaxed text-neutral-500 sm:max-w-md sm:text-[15px]">
+            {(meta as { description?: string }).description}
+          </p>
+        )}
+        <div className="mt-6 flex justify-center">
+          <StartThreadButton userId={userId} callbackUrl={callbackUrl} />
+        </div>
+      </section>
+
+      {/* Body */}
+      <div className="bg-white pb-20">
+        {/* Stats — floats up over gradient seam */}
         <div className="px-4 sm:px-6">
-          <CommunityStatsStrip initial={stats} />
+          <div className="mx-auto -mt-6 max-w-2xl sm:-mt-7">
+            <CommunityStatsStrip initial={stats} />
+          </div>
+        </div>
+
+        {/* Category switcher tabs */}
+        <div className="mt-8 px-4 sm:mt-10 sm:px-6">
           <CommunityCategoryNav active={slug} />
+        </div>
+
+        {/* Feed */}
+        <div className="mt-4 px-4 sm:px-6">
           <CommunityFeed posts={posts} />
         </div>
       </div>

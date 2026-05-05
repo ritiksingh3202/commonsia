@@ -26,40 +26,44 @@ export default async function CommunityPage() {
 
   return (
     <MarketingShell>
-      <div className="bg-[#fafafa] pb-16 pt-8 sm:pt-10">
-        {/* Page header */}
-        <header className="mx-auto mb-6 max-w-4xl px-4 sm:mb-8 sm:px-6">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <h1 className="font-heading text-[1.5rem] font-semibold tracking-tight text-[#0a0a0a] sm:text-[1.75rem]">
-                Community Forum
-              </h1>
-              <p className="mt-1 text-sm leading-relaxed text-neutral-600">
-                Competitions, opportunities, and discussions for the architecture community.
-              </p>
-            </div>
-            <div className="shrink-0 pt-1">
-              <StartThreadButton userId={userId} callbackUrl="/community" />
-            </div>
-          </div>
-        </header>
+      {/* Hero header — same warm gradient as the front page */}
+      <section className="home-hero-gradient px-4 pb-12 pt-14 text-center sm:pb-14 sm:pt-20 sm:px-6">
+        <h1 className="font-heading text-[clamp(2rem,3.5vw+1rem,3rem)] font-semibold tracking-tight text-[#0a0a0a]">
+          Community Forum
+        </h1>
+        <p className="mx-auto mt-3 max-w-sm text-[15px] leading-relaxed text-neutral-500 sm:max-w-md sm:text-base">
+          Competitions, opportunities, and discussions for the architecture community.
+        </p>
+        <div className="mt-7 flex justify-center">
+          <StartThreadButton userId={userId} callbackUrl="/community" />
+        </div>
+      </section>
 
+      {/* Body */}
+      <div className="bg-white pb-20">
+        {/* Stats — floats up over the gradient seam */}
         <div className="px-4 sm:px-6">
-          {/* Live stats */}
-          <div className="mx-auto max-w-4xl">
+          <div className="mx-auto -mt-6 max-w-2xl sm:-mt-7">
             <CommunityStatsStrip initial={stats} />
           </div>
+        </div>
 
-          {/* Category discovery grid */}
-          <div className="mx-auto mb-10 max-w-4xl sm:mb-12">
+        {/* Category grid */}
+        <div className="mt-12 px-4 sm:mt-14 sm:px-6">
+          <div className="mx-auto max-w-4xl">
+            <p className="mb-5 text-[12px] font-semibold uppercase tracking-[0.12em] text-neutral-400">
+              Browse by Category
+            </p>
             <CategoryGrid counts={counts} />
           </div>
+        </div>
 
-          {/* Recent posts across all categories */}
-          <div className="mx-auto max-w-4xl">
-            <h2 className="mb-4 text-[13px] font-semibold uppercase tracking-widest text-neutral-400">
-              Latest
-            </h2>
+        {/* Latest posts */}
+        <div className="mt-14 px-4 sm:mt-16 sm:px-6">
+          <div className="mx-auto mb-6 flex max-w-2xl items-center gap-4">
+            <div className="h-px flex-1 bg-neutral-100" />
+            <p className="text-[12px] font-semibold uppercase tracking-[0.12em] text-neutral-400">Latest</p>
+            <div className="h-px flex-1 bg-neutral-100" />
           </div>
           <CommunityFeed posts={posts} />
         </div>

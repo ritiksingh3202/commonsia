@@ -11,11 +11,6 @@ function easeOutCubic(t: number): number {
   return 1 - Math.pow(1 - t, 3);
 }
 
-/**
- * Animates a numeric counter from its previous value up to `target` over ~1.2s on first
- * paint, and on every change after that. Uses requestAnimationFrame so it stays smooth
- * without re-rendering React on every tick.
- */
 function useCountUp(target: number): number {
   const [display, setDisplay] = useState(0);
   const fromRef = useRef(0);
@@ -38,23 +33,31 @@ function useCountUp(target: number): number {
     };
     raf = requestAnimationFrame(step);
     return () => cancelAnimationFrame(raf);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally only re-run on target change
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [target]);
 
   return display;
 }
 
-function StatCard({ label, value, accent }: { label: string; value: number; accent: string }) {
+function StatItem({
+  label,
+  value,
+  primary,
+}: {
+  label: string;
+  value: number;
+  primary?: boolean;
+}) {
   const display = useCountUp(value);
   return (
-    <div className="flex min-w-0 flex-1 flex-col items-center rounded-2xl border border-black/[0.06] bg-white px-4 py-5 text-center shadow-sm">
+    <div className="flex flex-1 flex-col items-center gap-0.5 px-2">
       <span
-        className="font-heading text-3xl font-semibold tabular-nums tracking-tight sm:text-4xl"
-        style={{ color: accent }}
+        className="font-heading text-[2rem] font-semibold tabular-nums leading-none tracking-tight sm:text-[2.25rem]"
+        style={{ color: primary ? "#ff6600" : "#0a0a0a" }}
       >
         {display.toLocaleString()}
       </span>
-      <span className="mt-1.5 text-xs font-medium uppercase tracking-wide text-neutral-500 sm:text-[13px]">
+      <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-neutral-400 sm:text-[12px]">
         {label}
       </span>
     </div>
@@ -91,10 +94,12 @@ export function CommunityStatsStrip({ initial }: { initial: CommunityStats }) {
   }, []);
 
   return (
-    <div className="mx-auto mb-8 grid max-w-2xl grid-cols-3 gap-3 sm:gap-4">
-      <StatCard label="Mentors" value={stats.mentorCount} accent="#ea580c" />
-      <StatCard label="Students" value={stats.studentCount} accent="#0a0a0a" />
-      <StatCard label="Posts" value={stats.postCount} accent="#0a0a0a" />
+    <div className="overflow-hidden rounded-2xl border border-[#ffe8d0] bg-[#fff8f2] shadow-[0_4px_24px_-8px_rgba(255,102,0,0.12)]">
+      <div className="flex items-stretch divide-x divide-[#ffe8d0] py-5 sm:py-6">
+        <StatItem label="Mentors" value={stats.mentorCount} primary />
+        <StatItem label="Students" value={stats.studentCount} />
+        <StatItem label="Posts" value={stats.postCount} />
+      </div>
     </div>
   );
 }

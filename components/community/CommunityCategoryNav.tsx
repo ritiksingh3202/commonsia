@@ -9,22 +9,26 @@ const TABS: Array<{ slug: ForumCategorySlug | null; label: string; href: string 
 
 export function CommunityCategoryNav({ active }: { active: ForumCategorySlug | null }) {
   return (
-    <nav
-      aria-label="Community categories"
-      className="mx-auto mb-6 max-w-3xl overflow-x-auto"
-    >
-      <ul className="mx-auto flex w-max min-w-full justify-center gap-2 px-4 sm:px-0">
+    <nav aria-label="Community categories" className="mx-auto max-w-4xl overflow-x-auto">
+      <ul className="flex w-max min-w-full gap-1.5 px-4 sm:px-0">
         {TABS.map((t) => {
           const isActive = active === t.slug;
+          const cat = FORUM_CATEGORIES.find((c) => c.slug === t.slug);
           return (
             <li key={t.href}>
               <Link
                 href={t.href}
                 aria-current={isActive ? "page" : undefined}
-                className={
+                className={[
+                  "inline-flex items-center whitespace-nowrap rounded-full px-4 py-1.5 text-[13px] font-medium transition-all",
                   isActive
-                    ? "inline-flex items-center rounded-full bg-[#0a0a0a] px-4 py-1.5 text-[13px] font-semibold text-white shadow-sm"
-                    : "inline-flex items-center rounded-full border border-neutral-200 bg-white px-4 py-1.5 text-[13px] font-medium text-neutral-700 transition hover:bg-neutral-50"
+                    ? "font-semibold text-white shadow-sm"
+                    : "border border-neutral-200 bg-white text-neutral-600 hover:border-neutral-300 hover:bg-neutral-50",
+                ].join(" ")}
+                style={
+                  isActive
+                    ? { backgroundColor: cat?.accent ?? "#0a0a0a" }
+                    : undefined
                 }
               >
                 {t.label}
