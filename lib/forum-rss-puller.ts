@@ -1,6 +1,7 @@
 import { classifyForumPostText, type ForumCategorySlug } from "@/lib/forum-categories";
 import { detectRegistrationFee } from "@/lib/forum-fee-detector";
 import { isArchitectureRelevant } from "@/lib/forum-arch-filter";
+import { isOpenCompetitionCall } from "@/lib/forum-competition-filter";
 import { isRelevantForIndianAudience } from "@/lib/forum-geo-filter";
 import { prisma } from "@/lib/prisma";
 
@@ -153,37 +154,20 @@ export const FORUM_RSS_SOURCES: RssSource[] = [
     indiaFocused: true,
   },
 
-  // ── Architecture competitions (geo filter applied) ────────────────────────
+  // ── Architecture competitions (open calls only) ──────────────────────────
+  //
+  // POLICY: only open-call posts are inserted (isOpenCompetitionCall filter).
+  // Results/showcase/winner-announcement posts are dropped at pull time.
+  //
+  // Dead sources (removed 2025-05):
+  //   bustler.net/feed          → 403 Forbidden
+  //   archdaily.com/competitions.rss → 0 items returned
+  //   bee-breeders.com/feed     → connection refused
 
   /**
-   * Bustler — the leading aggregator for architecture and design competitions.
-   * Covers student and open competitions globally; most are open to all nationalities.
-   */
-  {
-    id: "bustler",
-    label: "Bustler",
-    feedUrl: "https://bustler.net/feed",
-    defaultCategory: "competitions",
-    indiaFocused: false,
-    archFocused: true,   // 100% architecture competitions — skip arch filter
-  },
-
-  /**
-   * ArchDaily Competitions — curated international architecture competitions
-   * posted alongside editorial coverage; high signal-to-noise ratio.
-   */
-  {
-    id: "archdaily-competitions",
-    label: "ArchDaily",
-    feedUrl: "https://www.archdaily.com/competitions.rss",
-    defaultCategory: "competitions",
-    indiaFocused: false,
-    archFocused: true,
-  },
-
-  /**
-   * Dezeen Awards / Competitions — international design and architecture
-   * competitions; open entry, covers student and professional categories.
+   * Dezeen Competitions — international architecture + design open calls.
+   * 50 items per fetch; manually verified to be 100% open-call briefs.
+   * The open-call filter still runs as a safety net.
    */
   {
     id: "dezeen-competitions",
@@ -192,19 +176,22 @@ export const FORUM_RSS_SOURCES: RssSource[] = [
     defaultCategory: "competitions",
     indiaFocused: false,
     archFocused: true,
+    maxFetch: 12,
   },
 
   /**
-   * Bee Breeders — dedicated architecture competition organiser;
-   * runs multiple open calls per year, many free-to-enter student comps.
+   * ArchDaily main feed filtered to competitions in the pull loop.
+   * ArchDaily's dedicated competition RSS returns 0 items; the main feed
+   * occasionally carries competition open calls that pass the open-call filter.
    */
   {
-    id: "beebreeders",
-    label: "Bee Breeders",
-    feedUrl: "https://www.bee-breeders.com/feed/",
+    id: "archdaily-main",
+    label: "ArchDaily",
+    feedUrl: "http://feeds.feedburner.com/Archdaily",
     defaultCategory: "competitions",
     indiaFocused: false,
-    archFocused: true,
+    archFocused: false,   // general feed — arch filter + open-call filter both run
+    maxFetch: 12,
   },
 
   // ── Thesis / Research library sources ────────────────────────────────────
@@ -260,22 +247,9 @@ export const FORUM_RSS_SOURCES: RssSource[] = [
     englishOnly: true,
   },
 
-  /**
-   * Frontiers in Built Environment — open-access peer-reviewed journal covering
-   * urban engineering, structural systems, sustainable design, and housing policy.
-   * RSS feed with ~20 recent articles. Architecture-relevant by definition.
-   */
-  {
-    id: "frontiers-built-env",
-    label: "Frontiers in Built Environment",
-    feedUrl: "https://www.frontiersin.org/journals/built-environment/rss",
-    defaultCategory: "thesis",
-    indiaFocused: false,
-    archFocused: true,    // Built environment journal — skip arch filter
-    protocol: "rss",
-    maxFetch: 10,
-    forceCategory: true,
-  },
+  // NOTE: Frontiers in Built Environment removed 2025-05 — it publishes
+  // peer-reviewed research articles, not thesis. Thesis category should only
+  // contain actual student thesis and dissertation-level work.
 
   // ── Global sources (geo filter applied) ──────────────────────────────────
 
@@ -652,10 +626,20 @@ export async function pullForumRssOnce(authorUserId: string): Promise<RssPullSum
 
     for (const item of items) {
       // Architecture-relevance gate (cheapest first).
-      // archFocused sources (Bustler, ArchDaily, Dezeen, Bee Breeders) bypass entirely.
+      // archFocused sources (Dezeen, etc.) bypass entirely.
       if (!source.archFocused && !isArchitectureRelevant(item.title, item.description)) {
         sourceSummary.skippedByArchFilter += 1;
         summary.skippedByArchFilter += 1;
+        continue;
+      }
+
+      // Competition open-call gate — drop results/showcases/winner announcements.
+      // Only runs for items routed to the competitions category.
+      const tentativeCategory = source.forceCategory
+        ? (source.defaultCategory ?? null)
+        : (classifyForumPostText(`${item.title}\n${item.description}`).category ?? source.defaultCategory ?? null);
+      if (tentativeCategory === "competitions" && !isOpenCompetitionCall(item.title, item.description)) {
+        console.log(`[rss] skipped (not open call): "${item.title.slice(0, 60)}"`);
         continue;
       }
 
@@ -669,12 +653,8 @@ export async function pullForumRssOnce(authorUserId: string): Promise<RssPullSum
 
       const dedupeKey = `rss:${source.id}:${item.guid}`;
       const text = buildPostText(item, source.label);
-      const { category } = classifyForumPostText(`${item.title}\n${item.description}`);
-      // forceCategory: always use source default (thesis sources must not be
-      // rerouted to phd/faculty by the keyword classifier).
-      const finalCategory = source.forceCategory
-        ? (source.defaultCategory ?? null)
-        : (category ?? source.defaultCategory ?? null);
+      // finalCategory reuses tentativeCategory computed above for the open-call gate.
+      const finalCategory = tentativeCategory;
       const registrationFee =
         finalCategory === "competitions"
           ? detectRegistrationFee(item.title, item.description)
