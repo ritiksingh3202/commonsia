@@ -15,7 +15,7 @@ import { highResProfileImageUrl } from "@/lib/profile-image-url";
 import { PaginationArrowLeft, PaginationArrowRight } from "@/components/icons/PaginationArrowIcons";
 import { MentorCarouselArrows } from "@/components/mentors/MentorCarouselArrows";
 import type { HomepageStats } from "@/lib/homepage-stats";
-import { statLabel } from "@/lib/homepage-stats";
+import { statLabel } from "@/lib/stat-label";
 
 const FaqAccordion = dynamic(
   () => import("@/components/ui/FaqAccordion").then((m) => m.FaqAccordion),
