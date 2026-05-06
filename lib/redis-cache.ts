@@ -76,6 +76,15 @@ export const CacheKeys = {
   bookingActionRawToken: (bookingRequestId: string) => `${PREFIX}:booking:rawtok:v1:${bookingRequestId}`,
   /** Navbar notification bell summary per user — 15s TTL, invalidated on chat/booking events. */
   notificationsSummary: (userId: string) => `${PREFIX}:notif:summary:v1:${userId}`,
+  /**
+   * Community forum feed per category (or "all"). Busted after every successful cron pull.
+   * `category` should be a ForumCategorySlug or the literal "all".
+   */
+  communityFeed: (category: string) => `${PREFIX}:community:feed:v1:${category}`,
+  /** Aggregated community stats (mentor count, student count, post count). */
+  communityStats: () => `${PREFIX}:community:stats:v1`,
+  /** Per-category post counts for the community discovery grid. */
+  categoryPostCounts: () => `${PREFIX}:community:category-counts:v1`,
 } as const;
 
 export const CacheTtl = {
@@ -95,6 +104,12 @@ export const CacheTtl = {
   mentorPhotoBlob: 60 * 60 * 24 * 7,
   /** Mentor banner blob — same immutability contract as the photo blob. */
   mentorBannerBlob: 60 * 60 * 24 * 7,
+  /** Community forum feed per category — busted on cron pull, else refreshes every 5 min. */
+  communityFeed: 5 * 60,
+  /** Community stats (mentor/student/post counts) — 2 min; absorbs 60s navbar polling. */
+  communityStats: 2 * 60,
+  /** Per-category post counts — 5 min; changes only when cron runs or a post is created. */
+  categoryPostCounts: 5 * 60,
 } as const;
 
 /** CDN / browser hint for schedule JSON (pairs with removing `cache: "no-store"` on the client). */
@@ -355,6 +370,20 @@ export function mentorSlotKeysForCalendarMonth(mentorUserId: string, year: numbe
 }
 
 /** When mentor availability JSON changes, bust month grids + slot rows for this month ±1 (covers calendar navigation). */
+/**
+ * Bust all community-feed Redis keys after a cron pull or new post.
+ * Covers every known category slug + "all" so no stale slice lingers.
+ */
+export function invalidateCommunityFeedCache(): void {
+  const categorySlugs = ["all", "bachelors", "masters", "phd", "thesis", "competitions", "faculty", "startup"];
+  const keys = [
+    ...categorySlugs.map((s) => CacheKeys.communityFeed(s)),
+    CacheKeys.communityStats(),
+    CacheKeys.categoryPostCounts(),
+  ];
+  void delKeys(keys);
+}
+
 export function mentorScheduleCacheKeysAfterAvailabilitySave(mentorUserId: string, now: Date = new Date()): string[] {
   const keys = [...mentorMonthAvailabilityKeysForMentor(mentorUserId), ...slotCacheKeysAround(mentorUserId, now)];
   for (let dm = -1; dm <= 1; dm++) {

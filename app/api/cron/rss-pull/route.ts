@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 
 import { pullForumRssOnce } from "@/lib/forum-rss-puller";
+import { invalidateCommunityFeedCache } from "@/lib/redis-cache";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -36,7 +37,9 @@ export async function GET(req: Request) {
 
   const summary = await pullForumRssOnce(authorUserId);
   if (summary.newPosts > 0) {
+    // Bust Next.js data cache + Redis community keys so fresh posts appear immediately
     try { revalidatePath("/community"); } catch { /* noop */ }
+    invalidateCommunityFeedCache();
   }
   return NextResponse.json({ ok: true, ...summary }, { status: 200 });
 }

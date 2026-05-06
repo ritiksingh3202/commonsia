@@ -1,6 +1,7 @@
 import { cache } from "react";
 
 import { prisma } from "@/lib/prisma";
+import { CacheKeys, CacheTtl, withJsonCache } from "@/lib/redis-cache";
 import { getActiveUserWhere } from "@/lib/user-active";
 
 import type { ForumCategorySlug } from "@/lib/forum-categories";
@@ -36,7 +37,7 @@ export type ForumReplyRow = {
 
 const FEED_PAGE_SIZE = 50;
 
-async function getPublicCommunityFeedImpl(category?: ForumCategorySlug | null): Promise<CommunityPost[]> {
+async function queryPublicCommunityFeed(category?: ForumCategorySlug | null): Promise<CommunityPost[]> {
   try {
     const rows = await prisma.forumPost.findMany({
       where: {
@@ -78,7 +79,12 @@ async function getPublicCommunityFeedImpl(category?: ForumCategorySlug | null): 
   }
 }
 
-/** Request-scoped memoization so page + metadata renders share the query. */
+async function getPublicCommunityFeedImpl(category?: ForumCategorySlug | null): Promise<CommunityPost[]> {
+  const key = CacheKeys.communityFeed(category ?? "all");
+  return withJsonCache(key, CacheTtl.communityFeed, () => queryPublicCommunityFeed(category));
+}
+
+/** Redis-backed cache (5 min); request-scoped memo deduplicates within a single render. */
 export const getPublicCommunityFeed = cache(getPublicCommunityFeedImpl);
 
 export type CommunityStats = {
@@ -87,21 +93,26 @@ export type CommunityStats = {
   postCount: number;
 };
 
-async function getCommunityStatsImpl(): Promise<CommunityStats> {
+async function queryCommunityStats(): Promise<CommunityStats> {
   const activeWhere = getActiveUserWhere();
+  const [mentorCount, studentCount, postCount] = await Promise.all([
+    prisma.user.count({ where: { role: "mentor", mentorOnboardingComplete: true, ...activeWhere } }),
+    prisma.user.count({ where: { role: "student", ...activeWhere } }),
+    prisma.forumPost.count({ where: { deletedAt: null } }),
+  ]);
+  return { mentorCount, studentCount, postCount };
+}
+
+async function getCommunityStatsImpl(): Promise<CommunityStats> {
   try {
-    const [mentorCount, studentCount, postCount] = await Promise.all([
-      prisma.user.count({ where: { role: "mentor", mentorOnboardingComplete: true, ...activeWhere } }),
-      prisma.user.count({ where: { role: "student", ...activeWhere } }),
-      prisma.forumPost.count({ where: { deletedAt: null } }),
-    ]);
-    return { mentorCount, studentCount, postCount };
+    return await withJsonCache(CacheKeys.communityStats(), CacheTtl.communityStats, queryCommunityStats);
   } catch (e) {
     console.error("[forum-feed] stats read failed:", e);
     return { mentorCount: 0, studentCount: 0, postCount: 0 };
   }
 }
 
+/** Redis-backed (2 min TTL) — absorbs the 60 s polling from the community stats API. */
 export const getCommunityStats = cache(getCommunityStatsImpl);
 
 export async function getForumPost(id: string): Promise<(CommunityPost & { authorRole: string | null }) | null> {
@@ -146,16 +157,18 @@ export async function getForumPost(id: string): Promise<(CommunityPost & { autho
 /** Per-category post counts for the discovery grid on the community home page. */
 export async function getCategoryPostCounts(): Promise<Record<string, number>> {
   try {
-    const rows = await prisma.forumPost.groupBy({
-      by: ["category"],
-      where: { deletedAt: null, category: { not: null } },
-      _count: { id: true },
+    return await withJsonCache(CacheKeys.categoryPostCounts(), CacheTtl.categoryPostCounts, async () => {
+      const rows = await prisma.forumPost.groupBy({
+        by: ["category"],
+        where: { deletedAt: null, category: { not: null } },
+        _count: { id: true },
+      });
+      const map: Record<string, number> = {};
+      for (const r of rows) {
+        if (r.category) map[r.category] = r._count.id;
+      }
+      return map;
     });
-    const map: Record<string, number> = {};
-    for (const r of rows) {
-      if (r.category) map[r.category] = r._count.id;
-    }
-    return map;
   } catch (e) {
     console.error("[forum-feed] getCategoryPostCounts failed:", e);
     return {};
