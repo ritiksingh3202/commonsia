@@ -150,7 +150,7 @@ export const FORUM_RSS_SOURCES: RssSource[] = [
     id: "thebetterindia-edu",
     label: "The Better India",
     feedUrl: "https://www.thebetterindia.com/topics/education/feed/",
-    defaultCategory: null,
+    defaultCategory: "bachelors",
     indiaFocused: true,
   },
 

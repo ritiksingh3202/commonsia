@@ -14,6 +14,8 @@ import { MARKETING_SECTION_TITLE_CLASS } from "@/lib/marketing-section-title";
 import { highResProfileImageUrl } from "@/lib/profile-image-url";
 import { PaginationArrowLeft, PaginationArrowRight } from "@/components/icons/PaginationArrowIcons";
 import { MentorCarouselArrows } from "@/components/mentors/MentorCarouselArrows";
+import type { HomepageStats } from "@/lib/homepage-stats";
+import { statLabel } from "@/lib/homepage-stats";
 
 const FaqAccordion = dynamic(
   () => import("@/components/ui/FaqAccordion").then((m) => m.FaqAccordion),
@@ -108,7 +110,34 @@ const heroFadeUp = {
   },
 };
 
-export function HomePage({ testimonials }: { testimonials: HomeTestimonialCard[] }) {
+const communityCategories = [
+  {
+    href: "/community/competitions",
+    label: "Competitions",
+    desc: "Open architecture calls, student awards & paid briefs.",
+    emoji: "🏆",
+  },
+  {
+    href: "/community/thesis",
+    label: "Thesis Library",
+    desc: "Published B.Arch, M.Arch & PhD theses for research.",
+    emoji: "📚",
+  },
+  {
+    href: "/community/faculty-grants",
+    label: "Grants & Faculty",
+    desc: "Fellowships, research grants & faculty opportunities.",
+    emoji: "🎓",
+  },
+  {
+    href: "/community/startup-calls",
+    label: "Startup Calls",
+    desc: "Architecture startups & innovation open positions.",
+    emoji: "🚀",
+  },
+] as const;
+
+export function HomePage({ testimonials, stats }: { testimonials: HomeTestimonialCard[]; stats: HomepageStats }) {
   const router = useRouter();
   const { data: session, status: sessionStatus } = useSession();
   const [stepOpen, setStepOpen] = useState<number | null>(null);
@@ -208,6 +237,26 @@ export function HomePage({ testimonials }: { testimonials: HomeTestimonialCard[]
             </motion.div>
             </div>
           </motion.div>
+      </section>
+
+      {/* Stats strip — social proof numbers just below hero */}
+      <section aria-label="Platform stats" className="border-y border-neutral-100 bg-white px-4 py-5 sm:px-6 sm:py-6 lg:px-8">
+        <dl className="mx-auto flex max-w-3xl items-center justify-around gap-2 sm:gap-6">
+          {[
+            { value: statLabel(stats.mentorCount), label: "Verified Mentors" },
+            { value: statLabel(stats.postCount), label: "Free Resources" },
+            { value: "20+", label: "Cities Represented" },
+          ].map((s) => (
+            <div key={s.label} className="flex flex-col items-center gap-0.5 text-center">
+              <dt className="text-[clamp(1.5rem,4vw,2.1rem)] font-bold leading-none tracking-tight text-primary">
+                {s.value}
+              </dt>
+              <dd className="mt-1 text-[11px] font-medium uppercase tracking-widest text-neutral-500 sm:text-xs">
+                {s.label}
+              </dd>
+            </div>
+          ))}
+        </dl>
       </section>
 
       {/* Why us — `id` keeps /#who-we-are nav/footer links landing on meaningful content */}
@@ -495,6 +544,51 @@ export function HomePage({ testimonials }: { testimonials: HomeTestimonialCard[]
               </div>
             </SectionReveal>
           </div>
+        </div>
+      </section>
+
+      {/* Community Forum nudge — free resources teaser */}
+      <section className="overflow-x-hidden bg-[#FAFAFA] px-4 pb-8 pt-6 sm:px-6 sm:pb-10 sm:pt-8 lg:px-8 lg:pb-12 lg:pt-10">
+        <div className="mx-auto max-w-5xl">
+          <SectionReveal className="text-center">
+            <h2 className={`${MARKETING_SECTION_TITLE_CLASS} text-[#1a1a1a]`}>
+              Free <span className="text-primary">Community Resources</span>
+            </h2>
+            <p className="mx-auto mt-3 max-w-xl text-[14px] leading-relaxed text-neutral-500 sm:text-[15px]">
+              Not ready for 1-on-1 mentorship? Browse live architecture competitions, thesis
+              references, grants, and more — updated daily, no login required.
+            </p>
+          </SectionReveal>
+
+          <div className="mt-7 grid grid-cols-2 gap-3 sm:mt-8 sm:gap-4 lg:grid-cols-4">
+            {communityCategories.map((cat, i) => (
+              <SectionReveal key={cat.href} delay={i * 0.05}>
+                <Link
+                  href={cat.href}
+                  prefetch
+                  className="flex h-full flex-col rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-md sm:p-5"
+                >
+                  <span className="text-2xl" aria-hidden>{cat.emoji}</span>
+                  <span className="mt-2.5 text-[14px] font-semibold text-[#1a1a1a] sm:text-[15px]">
+                    {cat.label}
+                  </span>
+                  <span className="mt-1.5 text-[12px] leading-relaxed text-neutral-500 sm:text-[13px]">
+                    {cat.desc}
+                  </span>
+                </Link>
+              </SectionReveal>
+            ))}
+          </div>
+
+          <SectionReveal delay={0.18} className="mt-6 text-center sm:mt-7">
+            <Link
+              href="/community"
+              prefetch
+              className="inline-flex items-center gap-1.5 rounded-full border border-neutral-300 bg-white px-6 py-2.5 text-[13px] font-semibold text-[#1a1a1a] shadow-sm transition hover:border-primary/50 hover:text-primary sm:text-[14px]"
+            >
+              Browse Community Forum →
+            </Link>
+          </SectionReveal>
         </div>
       </section>
 
