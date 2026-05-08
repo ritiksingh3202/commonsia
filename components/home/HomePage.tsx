@@ -248,7 +248,11 @@ export function HomePage({ testimonials, stats }: { testimonials: HomeTestimonia
                   </span>
                 ))}
               </span>
-              <span>
+              <span className="flex items-center gap-1.5">
+                <span className="relative flex h-2 w-2">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-60" />
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-green-500" />
+                </span>
                 <span className="font-bold text-primary">{stats.mentorCount}</span>
                 {" "}verified professionals across architecture & design
               </span>
