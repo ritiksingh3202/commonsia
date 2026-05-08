@@ -238,16 +238,18 @@ export function HomePage({ testimonials, stats }: { testimonials: HomeTestimonia
               variants={heroFadeUp}
               className="mx-auto mt-5 flex items-center gap-2 text-[13px] font-medium text-neutral-500 sm:text-[14px]"
             >
-              <span className="flex -space-x-1.5">
-                {["/mentor_testimonial/saqib.jpeg", "/mentor_testimonial/sahil.jpeg"].map((src, i) => (
-                  <span
-                    key={i}
-                    className="inline-block h-6 w-6 overflow-hidden rounded-full border-2 border-white"
-                  >
-                    <Image src={src} alt="" width={24} height={24} className="h-full w-full object-cover" />
-                  </span>
-                ))}
-              </span>
+              {stats.mentorAvatars.length > 0 && (
+                <span className="flex -space-x-1.5">
+                  {stats.mentorAvatars.map((src, i) => (
+                    <span
+                      key={i}
+                      className="inline-block h-6 w-6 overflow-hidden rounded-full border-2 border-white"
+                    >
+                      <Image src={src} alt="" width={24} height={24} className="h-full w-full object-cover" unoptimized />
+                    </span>
+                  ))}
+                </span>
+              )}
               <span className="flex items-center gap-1.5">
                 <span className="relative flex h-2 w-2">
                   <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-60" />
