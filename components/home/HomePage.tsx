@@ -198,9 +198,6 @@ export function HomePage({ testimonials, stats }: { testimonials: HomeTestimonia
               <span className="block w-full min-w-0">
                 A community first mentorship platform connecting students with practicing architects.
               </span>
-              <span className="block w-full min-w-0">
-                Connect, gain mentorship, and learn from real world practice.
-              </span>
             </motion.p>
             <motion.div
               className="mx-auto mt-8 flex w-full max-w-md flex-col items-stretch justify-center gap-4 sm:mt-9 sm:max-w-none sm:flex-row sm:items-center sm:justify-center md:mt-10 md:gap-5"
@@ -253,7 +250,7 @@ export function HomePage({ testimonials, stats }: { testimonials: HomeTestimonia
               </span>
               <span>
                 <span className="font-bold text-primary">{stats.mentorCount}</span>
-                {" "}verified architects ready to mentor you
+                {" "}verified professionals across architecture & design
               </span>
             </motion.p>
 
