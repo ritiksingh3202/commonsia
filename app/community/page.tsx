@@ -3,10 +3,9 @@ import type { Metadata } from "next";
 import { auth } from "@/auth";
 import { CategoryGrid } from "@/components/community/CategoryGrid";
 import { CommunityFeed } from "@/components/community/CommunityFeed";
-import { CommunityStatsStrip } from "@/components/community/CommunityStats";
 import { StartThreadButton } from "@/components/community/StartThreadButton";
 import { MarketingShell } from "@/components/layout/MarketingShell";
-import { getCategoryPostCounts, getCommunityStats, getPublicCommunityFeed } from "@/lib/forum-feed";
+import { getCategoryPostCounts, getPublicCommunityFeed } from "@/lib/forum-feed";
 
 export const metadata: Metadata = {
   title: { absolute: "Community Forum" },
@@ -16,9 +15,8 @@ export const metadata: Metadata = {
 export const revalidate = 60;
 
 export default async function CommunityPage() {
-  const [posts, stats, counts, session] = await Promise.all([
+  const [posts, counts, session] = await Promise.all([
     getPublicCommunityFeed(),
-    getCommunityStats(),
     getCategoryPostCounts(),
     auth(),
   ]);
@@ -41,15 +39,8 @@ export default async function CommunityPage() {
 
       {/* Body */}
       <div className="bg-white pb-20">
-        {/* Stats — floats up over the gradient seam */}
-        <div className="px-4 sm:px-6">
-          <div className="mx-auto -mt-6 max-w-2xl sm:-mt-7">
-            <CommunityStatsStrip initial={stats} />
-          </div>
-        </div>
-
         {/* Category grid */}
-        <div className="mt-12 px-4 sm:mt-14 sm:px-6">
+        <div className="mt-10 px-4 sm:mt-12 sm:px-6">
           <div className="mx-auto max-w-4xl">
             <p className="mb-5 text-[12px] font-semibold uppercase tracking-[0.12em] text-neutral-400">
               Browse by Category

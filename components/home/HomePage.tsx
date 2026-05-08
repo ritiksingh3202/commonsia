@@ -235,6 +235,28 @@ export function HomePage({ testimonials, stats }: { testimonials: HomeTestimonia
               </Link>
               </motion.div>
             </motion.div>
+
+            {/* Mentor count social proof */}
+            <motion.p
+              variants={heroFadeUp}
+              className="mx-auto mt-5 flex items-center gap-2 text-[13px] font-medium text-neutral-500 sm:text-[14px]"
+            >
+              <span className="flex -space-x-1.5">
+                {["/mentor_testimonial/saqib.jpeg", "/mentor_testimonial/sahil.jpeg"].map((src, i) => (
+                  <span
+                    key={i}
+                    className="inline-block h-6 w-6 overflow-hidden rounded-full border-2 border-white"
+                  >
+                    <Image src={src} alt="" width={24} height={24} className="h-full w-full object-cover" />
+                  </span>
+                ))}
+              </span>
+              <span>
+                <span className="font-bold text-primary">{stats.mentorCount}</span>
+                {" "}verified architects ready to mentor you
+              </span>
+            </motion.p>
+
             </div>
           </motion.div>
       </section>

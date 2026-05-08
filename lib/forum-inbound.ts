@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { whatsappDigitsFromProfile } from "@/lib/zixflow";
 import { normalizeInboundWhatsAppDigits } from "@/lib/booking-inbound-whatsapp";
 import { classifyForumPostText, type ForumCategorySlug } from "@/lib/forum-categories";
+import { isArchitectureRelevant } from "@/lib/forum-arch-filter";
 
 /**
  * Verifies the inbound WhatsApp sender matches the configured community author.
@@ -105,6 +106,13 @@ export async function createForumPostFromInbound(opts: {
   const rawText = opts.text?.trim() || null;
   const imageUrl = opts.imageUrl?.trim() || null;
   if (!rawText && !imageUrl) return null;
+
+  // WhatsApp-origin posts (no forcedCategory) are filtered for architecture relevance.
+  // RSS-pulled posts already ran isArchitectureRelevant before reaching here (forcedCategory is set).
+  if (opts.forcedCategory === undefined && rawText && !isArchitectureRelevant(rawText, rawText)) {
+    console.info("[forum] inbound post skipped — not architecture relevant:", rawText.slice(0, 80));
+    return null;
+  }
 
   const { category: detected, cleanedText } = classifyForumPostText(rawText);
   const text = cleanedText ?? rawText;

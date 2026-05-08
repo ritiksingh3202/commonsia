@@ -5,7 +5,6 @@ import { notFound } from "next/navigation";
 import { auth } from "@/auth";
 import { CommunityCategoryNav } from "@/components/community/CommunityCategoryNav";
 import { CommunityFeed } from "@/components/community/CommunityFeed";
-import { CommunityStatsStrip } from "@/components/community/CommunityStats";
 import { StartThreadButton } from "@/components/community/StartThreadButton";
 import { MarketingShell } from "@/components/layout/MarketingShell";
 import {
@@ -14,7 +13,7 @@ import {
   isValidCategorySlug,
   type ForumCategorySlug,
 } from "@/lib/forum-categories";
-import { getCommunityStats, getPublicCommunityFeed } from "@/lib/forum-feed";
+import { getPublicCommunityFeed } from "@/lib/forum-feed";
 
 type Props = { params: Promise<{ category: string }> };
 
@@ -41,9 +40,8 @@ export default async function CommunityCategoryPage({ params }: Props) {
   const { category } = await params;
   if (!isValidCategorySlug(category)) notFound();
   const slug = category as ForumCategorySlug;
-  const [posts, stats, session] = await Promise.all([
+  const [posts, session] = await Promise.all([
     getPublicCommunityFeed(slug),
-    getCommunityStats(),
     auth(),
   ]);
   const meta = categoryMeta(slug);
@@ -93,13 +91,6 @@ export default async function CommunityCategoryPage({ params }: Props) {
 
       {/* Body */}
       <div className="bg-white pb-20">
-        {/* Stats — floats up over gradient seam */}
-        <div className="px-4 sm:px-6">
-          <div className="mx-auto -mt-6 max-w-2xl sm:-mt-7">
-            <CommunityStatsStrip initial={stats} />
-          </div>
-        </div>
-
         {/* Category switcher tabs */}
         <div className="mt-8 px-4 sm:mt-10 sm:px-6">
           <CommunityCategoryNav active={slug} />
