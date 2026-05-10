@@ -10,13 +10,8 @@ import {
 import { getActiveUserWhere } from "@/lib/user-active";
 
 export const runtime = "nodejs";
-/**
- * Always compute fresh on request — the whole point of this endpoint is "as of right now,
- * what is the next available slot?". Static/ISR caching would defeat the real-time intent
- * on the mentor profile page. The DB payload is tiny (one `user` row + 6mo bookings), so
- * the cost is well within what polling every 45s can absorb.
- */
-export const dynamic = "force-dynamic";
+// No `dynamic = "force-dynamic"` — we rely on Cache-Control s-maxage=60 / stale-while-revalidate
+// at the CDN/edge layer instead of forcing a fresh DB hit on every request.
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -94,10 +89,12 @@ export async function GET(_req: Request, ctx: Ctx) {
       {
         headers: {
           /**
-           * Never cache at the browser or CDN — the value is only useful if it reflects
-           * current wall-clock time. Polling clients set their own interval.
+           * 60-second shared cache with stale-while-revalidate: CDN/browser can serve a cached
+           * response immediately while a background revalidation runs. Slots only change when
+           * a mentor edits availability or a booking is made — 60s staleness is unnoticeable
+           * in practice and eliminates the ~2s serverless cold-start hit on every mentor profile.
            */
-          "Cache-Control": "private, no-store, must-revalidate",
+          "Cache-Control": "public, s-maxage=60, stale-while-revalidate=120",
         },
       },
     );

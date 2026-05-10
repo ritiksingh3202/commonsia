@@ -10,10 +10,12 @@ import { BrandLogo } from "@/components/brand/BrandLogo";
 import { NavNotificationsBell } from "@/components/navbar/NavNotificationsBell";
 
 const nav = [
-  { href: "/mentors", label: "Mentors" },
-  { href: "/community", label: "Community Forum" },
-  { href: "/who-we-are", label: "Who We Are" },
-  { href: "/contact", label: "Contact Us" },
+  { href: "/mentors", label: "Mentors", prefetch: true },
+  // Community RSC payload is large (~600KB); skip nav prefetch to avoid wasting bandwidth on
+  // every page. The warm-cache cron keeps Redis hot so first paint is still fast.
+  { href: "/community", label: "Community Forum", prefetch: false },
+  { href: "/who-we-are", label: "Who We Are", prefetch: true },
+  { href: "/contact", label: "Contact Us", prefetch: true },
 ];
 
 function isActive(pathname: string, href: string) {
@@ -140,7 +142,7 @@ export function Navbar() {
             <Link
               key={item.href}
               href={item.href}
-              prefetch
+              prefetch={item.prefetch}
               className={`rounded-full px-3 py-1.5 text-center font-normal transition-colors hover:text-primary lg:px-4 ${
                 isActive(pathname, item.href) ? "font-semibold text-primary" : ""
               }`}
@@ -277,7 +279,7 @@ export function Navbar() {
                   <Link
                     key={item.href}
                     href={item.href}
-                    prefetch
+                    prefetch={item.prefetch}
                     className={`rounded-xl px-3 py-3 text-[15px] hover:bg-neutral-50 ${
                       isActive(pathname, item.href) ? "font-semibold text-primary" : "font-normal text-ink"
                     }`}
