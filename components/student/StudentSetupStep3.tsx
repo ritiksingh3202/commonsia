@@ -119,6 +119,7 @@ export function StudentSetupStep3({
                 setSaving(false);
                 return;
               }
+              router.refresh();
               router.push("/student?welcome=1");
             } catch {
               window.alert("Network error. Check your connection and try again.");
