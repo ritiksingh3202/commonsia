@@ -673,7 +673,6 @@ export function MentorAvailabilityForm({ initialJson, mentorOnboardingComplete }
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          role: "mentor",
           mentorAvailabilityJson: av as unknown as Record<string, unknown>,
           mentorOnboardingComplete: true,
         }),

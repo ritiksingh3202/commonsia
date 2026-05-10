@@ -108,7 +108,6 @@ export function StudentSetupStep3({
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                  role: "student",
                   bio: text,
                   linkedinUrl: li,
                   portfolioUrl: portfolioUrl.trim() || null,
