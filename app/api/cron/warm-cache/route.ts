@@ -12,8 +12,8 @@ const CATEGORY_SLUGS: (ForumCategorySlug | null)[] = [
   "phd",
   "thesis",
   "competitions",
-  "faculty-grants",
-  "startup-calls",
+  "faculty",
+  "startup",
 ];
 
 /**

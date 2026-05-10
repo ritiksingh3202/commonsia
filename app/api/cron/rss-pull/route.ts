@@ -7,7 +7,7 @@ import { getCategoryPostCounts, getCommunityStats, getPublicCommunityFeed } from
 import type { ForumCategorySlug } from "@/lib/forum-categories";
 
 const CATEGORY_SLUGS: (ForumCategorySlug | null)[] = [
-  null, "bachelors", "masters", "phd", "thesis", "competitions", "faculty-grants", "startup-calls",
+  null, "bachelors", "masters", "phd", "thesis", "competitions", "faculty", "startup",
 ];
 
 export const runtime = "nodejs";
