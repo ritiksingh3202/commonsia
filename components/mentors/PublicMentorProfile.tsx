@@ -194,7 +194,8 @@ export function PublicMentorProfile({
       const token = ++lastSlotRequestTokenRef.current;
       try {
         const res = await fetch(`/api/mentors/${encodeURIComponent(mentor.id)}/next-slot`, {
-          cache: "no-store",
+          // Use default cache mode so Vercel's CDN s-maxage=60 / stale-while-revalidate=120
+          // can serve cached slot responses — eliminates 2-3s cold-start on first visit.
           signal: abort.signal,
           headers: { accept: "application/json" },
         });

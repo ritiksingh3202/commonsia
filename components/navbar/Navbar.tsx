@@ -128,7 +128,7 @@ export function Navbar() {
       <div className="relative z-[100] mx-auto flex min-w-0 max-w-7xl items-center justify-between gap-2 bg-[#ffffff] px-3 py-2.5 sm:gap-4 sm:px-6 sm:py-3 lg:px-8">
         <Link
           href="/"
-          prefetch
+          prefetch={false}
           className="relative z-10 flex min-w-0 max-w-[min(72vw,280px)] shrink-0 items-center"
         >
           <BrandLogo priority />
@@ -269,7 +269,7 @@ export function Navbar() {
               >
                 <Link
                   href="/"
-                  prefetch
+                  prefetch={false}
                   className="rounded-xl px-3 py-3 text-[15px] font-normal text-ink hover:bg-neutral-50"
                   onClick={() => setMenuOpen(false)}
                 >
