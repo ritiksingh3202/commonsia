@@ -104,8 +104,8 @@ export const CacheTtl = {
   mentorPhotoBlob: 60 * 60 * 24 * 7,
   /** Mentor banner blob — same immutability contract as the photo blob. */
   mentorBannerBlob: 60 * 60 * 24 * 7,
-  /** Community forum feed per category — busted on cron pull, else refreshes every 5 min. */
-  communityFeed: 5 * 60,
+  /** Community forum feed per category — busted on cron pull, else refreshes every 30 min. */
+  communityFeed: 30 * 60,
   /** Community stats (mentor/student/post counts) — 2 min; absorbs 60s navbar polling. */
   communityStats: 2 * 60,
   /** Per-category post counts — 5 min; changes only when cron runs or a post is created. */

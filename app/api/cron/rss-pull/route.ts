@@ -3,6 +3,12 @@ import { revalidatePath } from "next/cache";
 
 import { pullForumRssOnce } from "@/lib/forum-rss-puller";
 import { invalidateCommunityFeedCache } from "@/lib/redis-cache";
+import { getCategoryPostCounts, getCommunityStats, getPublicCommunityFeed } from "@/lib/forum-feed";
+import type { ForumCategorySlug } from "@/lib/forum-categories";
+
+const CATEGORY_SLUGS: (ForumCategorySlug | null)[] = [
+  null, "bachelors", "masters", "phd", "thesis", "competitions", "faculty-grants", "startup-calls",
+];
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -36,10 +42,16 @@ export async function GET(req: Request) {
   }
 
   const summary = await pullForumRssOnce(authorUserId);
-  if (summary.newPosts > 0) {
-    // Bust Next.js data cache + Redis community keys so fresh posts appear immediately
-    try { revalidatePath("/community"); } catch { /* noop */ }
-    invalidateCommunityFeedCache();
-  }
+
+  // Always bust + re-warm after a pull so the next visitor hits Redis, not the DB
+  try { revalidatePath("/community"); } catch { /* noop */ }
+  invalidateCommunityFeedCache();
+  // Re-warm in background — don't await so the cron response returns quickly
+  void Promise.all([
+    ...CATEGORY_SLUGS.map((slug) => getPublicCommunityFeed(slug ?? undefined)),
+    getCommunityStats(),
+    getCategoryPostCounts(),
+  ]);
+
   return NextResponse.json({ ok: true, ...summary }, { status: 200 });
 }

@@ -3,6 +3,10 @@
     {
       "path": "/api/cron/rss-pull",
       "schedule": "0 */6 * * *"
+    },
+    {
+      "path": "/api/cron/warm-cache",
+      "schedule": "*/25 * * * *"
     }
   ]
 }

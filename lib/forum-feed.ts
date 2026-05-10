@@ -35,7 +35,7 @@ export type ForumReplyRow = {
   };
 };
 
-const FEED_PAGE_SIZE = 50;
+const FEED_PAGE_SIZE = 20;
 
 async function queryPublicCommunityFeed(category?: ForumCategorySlug | null): Promise<CommunityPost[]> {
   try {
