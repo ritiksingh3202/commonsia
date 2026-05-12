@@ -15,6 +15,7 @@ import {
   CacheKeys,
   CacheTtl,
   readJsonCache,
+  withJsonCache,
   writeJsonCacheEntry,
 } from "@/lib/redis-cache";
 import { prismaGeneratedClientHasAccountDeletedAt } from "@/lib/user-active";
@@ -92,6 +93,14 @@ export async function getMentorBookingStats(mentorId: string): Promise<MentorBoo
 }
 
 export async function getMentorDashboardLiveData(mentorId: string): Promise<MentorDashboardLiveData> {
+  return withJsonCache(
+    CacheKeys.mentorDashboardLive(mentorId),
+    CacheTtl.mentorDashboardLive,
+    () => _fetchMentorDashboardLiveData(mentorId),
+  );
+}
+
+async function _fetchMentorDashboardLiveData(mentorId: string): Promise<MentorDashboardLiveData> {
   const now = new Date();
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
   startOfMonth.setHours(0, 0, 0, 0);

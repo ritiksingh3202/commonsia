@@ -114,7 +114,20 @@ export function ProfileCoverStrip({ bannerImageUrl, onSave }: Props) {
     setBusy(true);
     try {
       const dataUrl = await getCroppedCoverDataUrl(imageSrc, croppedAreaPixels);
-      await onSave(dataUrl);
+      // Upload to Supabase Storage and pass the CDN URL to onSave instead of the base64 string.
+      const blob = await fetch(dataUrl).then((r) => r.blob());
+      const fd = new FormData();
+      fd.set("file", blob, "banner.jpg");
+      const res = await fetch("/api/profile/upload-image?type=banner", {
+        method: "POST",
+        body: fd,
+      });
+      if (!res.ok) {
+        const j = (await res.json().catch(() => ({}))) as { error?: string };
+        throw new Error(j.error ?? "Could not save cover.");
+      }
+      const { url } = (await res.json()) as { url: string };
+      await onSave(url);
       closeModal();
     } catch (err) {
       window.alert(err instanceof Error ? err.message : "Could not process cover image.");

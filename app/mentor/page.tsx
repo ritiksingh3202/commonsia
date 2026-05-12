@@ -5,7 +5,6 @@ import { Suspense } from "react";
 import { auth } from "@/auth";
 import { MentorDashboard } from "@/components/mentor/MentorDashboard";
 import { ProfileCompletionWelcome } from "@/components/onboarding/ProfileCompletionWelcome";
-import { getMentorDashboardLiveData } from "@/lib/mentor-dashboard-stats";
 import { getMentorOnboardingRedirectPath } from "@/lib/mentor-onboarding";
 import { prisma } from "@/lib/prisma";
 
@@ -55,11 +54,13 @@ export default async function MentorHomePage() {
     redirect(next);
   }
 
-  const dashboardLive = await getMentorDashboardLiveData(session.user.id);
+  // dashboardLive is omitted from SSR — the client component fetches it on mount via
+  // /api/mentor/dashboard-live (cached 30 s in Redis). This keeps the SSR response fast
+  // (~100 ms for a single user row) rather than blocking for 12 parallel DB queries.
 
   return (
     <>
-      <MentorDashboard user={{ ...user, dashboardLive }} />
+      <MentorDashboard user={{ ...user }} />
       <Suspense fallback={null}>
         <ProfileCompletionWelcome variant="mentor" />
       </Suspense>

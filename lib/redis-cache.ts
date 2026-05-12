@@ -77,6 +77,12 @@ export const CacheKeys = {
   /** Navbar notification bell summary per user — 15s TTL, invalidated on chat/booking events. */
   notificationsSummary: (userId: string) => `${PREFIX}:notif:summary:v1:${userId}`,
   /**
+   * Live mentor dashboard payload (stats, mentees, upcoming sessions, activity).
+   * 30s TTL — near-realtime for polling while avoiding 12 parallel DB queries on every
+   * 35s poll tick. Bust on booking create / accept / cancel.
+   */
+  mentorDashboardLive: (mentorId: string) => `${PREFIX}:mentor:dashboard-live:v1:${mentorId}`,
+  /**
    * Community forum feed per category (or "all"). Busted after every successful cron pull.
    * `category` should be a ForumCategorySlug or the literal "all".
    */
@@ -95,11 +101,11 @@ export const CacheTtl = {
   mentorSlots: 120,
   mentorMonthAvailability: 180,
   /** Mentor directory list — safe to cache longer (invalidated on mentor profile / signup). */
-  publicMentorsList: 300,
-  /** Public mentor profile — short but helpful: serialize once per 60s instead of per request. */
-  publicMentorProfile: 60,
+  publicMentorsList: 600,
+  /** Public mentor profile — 5 min; invalidated explicitly on profile save. */
+  publicMentorProfile: 300,
   /** Public booking totals — only change after a session ends; bookings APIs also invalidate explicitly. */
-  publicMentorBookingStats: 90,
+  publicMentorBookingStats: 300,
   /** Mentor photo blob — URL is content-hashed, so entries are immutable for their TTL window. */
   mentorPhotoBlob: 60 * 60 * 24 * 7,
   /** Mentor banner blob — same immutability contract as the photo blob. */
@@ -110,6 +116,8 @@ export const CacheTtl = {
   communityStats: 2 * 60,
   /** Per-category post counts — 5 min; changes only when cron runs or a post is created. */
   categoryPostCounts: 5 * 60,
+  /** Live mentor dashboard — 30s keeps it near-realtime while cutting repeated DB round-trips. */
+  mentorDashboardLive: 30,
 } as const;
 
 /** CDN / browser hint for schedule JSON (pairs with removing `cache: "no-store"` on the client). */
@@ -311,6 +319,11 @@ export function invalidateNotificationsSummary(...userIds: string[]): void {
   if (keys.length > 0) void delKeys(keys);
 }
 
+/** Drop the live mentor dashboard cache (call after a booking is made, accepted, or cancelled). */
+export function invalidateMentorDashboardLive(mentorId: string): void {
+  void delKeys([CacheKeys.mentorDashboardLive(mentorId)]);
+}
+
 export function invalidateSessionWithMentor(studentId: string, mentorUserId: string): void {
   void delKeys([CacheKeys.sessionWithMentor(studentId, mentorUserId)]);
 }
@@ -323,6 +336,8 @@ export function invalidateAfterBooking(studentId: string, mentorUserId: string):
   invalidatePublicMentorBookingStats(mentorUserId);
   /** Navbar bell shows the "Session scheduled" card — bust the notifications summary too. */
   invalidateNotificationsSummary(studentId, mentorUserId);
+  /** Mentor dashboard live shows upcoming sessions — bust so the new booking appears immediately. */
+  invalidateMentorDashboardLive(mentorUserId);
 }
 
 /** Slot cache keys for a mentor around `when` (±1 local calendar day). */

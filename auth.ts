@@ -14,25 +14,7 @@ import { getGoogleOAuthClient, getLinkedInOAuthClient } from "@/lib/oauth-creden
 import { prisma } from "@/lib/prisma";
 import { highResProfileImageUrl } from "@/lib/profile-image-url";
 
-/**
- * OAuth (Auth.js v5):
- * - AUTH_SECRET — required in production (or NEXTAUTH_SECRET). Generate: `npx auth secret`
- * - AUTH_URL — e.g. https://www.commonsia.com (no trailing slash). Must match the hostname in the browser (www vs apex).
- * - GOOGLE_LOGIN_CLIENT_ID / GOOGLE_LOGIN_CLIENT_SECRET (or GOOGLE_CLIENT_* / AUTH_GOOGLE_*)
- * - LINKEDIN_CLIENT_ID / LINKEDIN_CLIENT_SECRET (fallback: AUTH_LINKEDIN_*)
- * - DATABASE_URL — Postgres (e.g. Supabase; see `.env.example`)
- *
- * LinkedIn app must include the "Sign in with LinkedIn using OpenID Connect" product.
- * That product only returns lite OpenID claims (name, picture, email, locale) — not headline, employer, cover, or phone.
- *
- * Callback URLs:
- * - Google: {AUTH_URL}/api/auth/callback/google
- * - LinkedIn: {AUTH_URL}/api/auth/callback/linkedin
- *
- * Google Calendar: **not** requested on sign-in — calendar access uses the separate
- * `/api/calendar/google/authorize` flow so Google “Sign in” stays on basic scopes (`openid email profile`)
- * and works without Google’s sensitive-scope verification for the main OAuth client.
- */
+
 function cookieConfig(useSecureCookies: boolean) {
   const cookiePrefix = useSecureCookies ? "__Secure-" : "";
   const csrfPrefix = useSecureCookies ? "__Host-" : "";
@@ -71,13 +53,7 @@ function cookieConfig(useSecureCookies: boolean) {
 const googleOAuth = getGoogleOAuthClient();
 const linkedinOAuth = getLinkedInOAuthClient();
 
-/**
- * OAuth providers send thumbnails in `picture` by default — LinkedIn `shrink_100_100` (100×100) and
- * Google `=s96-c` (96×96). Persisting those as `User.image` makes retina avatars look blurry on
- * the 200–320 px card thumbnails and the profile hero. `highResProfileImageUrl` rewrites the URL
- * to a ~400px max-edge variant before the PrismaAdapter writes it to the DB (enough for 2× retina
- * at card width without storing 800px sources).
- */
+
 function pickHighResPicture(value: unknown): string | null {
   if (typeof value !== "string") return null;
   const trimmed = value.trim();
@@ -88,54 +64,49 @@ function pickHighResPicture(value: unknown): string | null {
 const oauthProviders = [
   ...(googleOAuth
     ? [
-        GoogleProvider({
-          clientId: googleOAuth.clientId,
-          clientSecret: googleOAuth.clientSecret,
-          /**
-           * Link Google to an existing user with the same verified email (e.g. they registered with password first).
-           * @see https://authjs.dev/concepts#security
-           */
-          allowDangerousEmailAccountLinking: true,
-          authorization: {
-            params: {
-              access_type: "offline",
-              /** Basic scopes only — avoids “app not verified” / blocked sign-in for sensitive Calendar scope. */
-              scope: "openid email profile",
-            },
+      GoogleProvider({
+        clientId: googleOAuth.clientId,
+        clientSecret: googleOAuth.clientSecret,
+        /**
+         * Link Google to an existing user with the same verified email (e.g. they registered with password first).
+         * @see https://authjs.dev/concepts#security
+         */
+        allowDangerousEmailAccountLinking: true,
+        authorization: {
+          params: {
+            access_type: "offline",
+            /** Basic scopes only — avoids “app not verified” / blocked sign-in for sensitive Calendar scope. */
+            scope: "openid email profile",
           },
-          profile(profile) {
-            return {
-              id: profile.sub,
-              name: profile.name ?? null,
-              email: profile.email ?? null,
-              image: pickHighResPicture(profile.picture),
-            };
-          },
-        }),
-      ]
+        },
+        profile(profile) {
+          return {
+            id: profile.sub,
+            name: profile.name ?? null,
+            email: profile.email ?? null,
+            image: pickHighResPicture(profile.picture),
+          };
+        },
+      }),
+    ]
     : []),
   ...(linkedinOAuth
     ? [
-        LinkedInProvider({
-          clientId: linkedinOAuth.clientId,
-          clientSecret: linkedinOAuth.clientSecret,
-          allowDangerousEmailAccountLinking: true,
-          /**
-           * LinkedIn OIDC returns `picture` as a signed `media.licdn.com` URL with a time-limited
-           * signature (`?e=…&v=beta&t=…`). The default Auth.js profile() only maps `picture → image`
-           * with no upscaling — it saves the 100×100 thumbnail, which looks fuzzy on retina cards.
-           * We upgrade to the 800×800 variant here so new signups get a sharp avatar out of the box.
-           */
-          profile(profile) {
-            return {
-              id: profile.sub,
-              name: profile.name ?? null,
-              email: profile.email ?? null,
-              image: pickHighResPicture(profile.picture),
-            };
-          },
-        }),
-      ]
+      LinkedInProvider({
+        clientId: linkedinOAuth.clientId,
+        clientSecret: linkedinOAuth.clientSecret,
+        allowDangerousEmailAccountLinking: true,
+
+        profile(profile) {
+          return {
+            id: profile.sub,
+            name: profile.name ?? null,
+            email: profile.email ?? null,
+            image: pickHighResPicture(profile.picture),
+          };
+        },
+      }),
+    ]
     : []),
 ];
 
@@ -188,7 +159,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth((req) => {
   if (!secret) {
     console.error(
       "[auth] Missing AUTH_SECRET / NEXTAUTH_SECRET in production (non-local host). " +
-        "Sign-in will fail with error=Configuration until this is set (e.g. `npx auth secret`).",
+      "Sign-in will fail with error=Configuration until this is set (e.g. `npx auth secret`).",
     );
   }
 

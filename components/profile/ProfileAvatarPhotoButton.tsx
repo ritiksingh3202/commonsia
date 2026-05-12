@@ -86,13 +86,21 @@ export function ProfileAvatarPhotoButton({
     setBusy(true);
     try {
       const dataUrl = await getCroppedAvatarDataUrl(imageSrc, croppedAreaPixels);
-      const res = await fetch("/api/profile", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ image: dataUrl }),
+      // Convert the canvas data URL to a binary blob and upload to Supabase Storage.
+      // The server writes the resulting CDN URL back to User.image — no base64 in Postgres.
+      const blob = await fetch(dataUrl).then((r) => r.blob());
+      const fd = new FormData();
+      fd.set("file", blob, "avatar.jpg");
+      const res = await fetch("/api/profile/upload-image?type=avatar", {
+        method: "POST",
+        body: fd,
       });
-      if (!res.ok) throw new Error("Could not save photo.");
-      onUploaded?.(dataUrl);
+      if (!res.ok) {
+        const j = (await res.json().catch(() => ({}))) as { error?: string };
+        throw new Error(j.error ?? "Could not save photo.");
+      }
+      const { url } = (await res.json()) as { url: string };
+      onUploaded?.(url);
       closeModal();
       router.refresh();
     } catch (err) {
