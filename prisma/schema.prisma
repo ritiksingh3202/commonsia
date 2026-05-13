@@ -83,7 +83,8 @@ model User {
   mentorCertifications     String?
   /// Step 4 — scheduling (duration, weekly/specific dates, slots, etc.)
   mentorAvailabilityJson   Json?
-  mentorOnboardingComplete Boolean   @default(false)
+  studentOnboardingComplete Boolean   @default(false)
+  mentorOnboardingComplete  Boolean   @default(false)
   /// Google Calendar OAuth refresh token (mentor “Connect Calendar” flow)
   googleCalendarRefreshToken String? @db.Text
   /// Set when the user closes their account; row kept for history / FKs. Excluded from public UI and sign-in.

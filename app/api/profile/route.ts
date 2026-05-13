@@ -164,7 +164,11 @@ export async function PATCH(req: Request) {
   if (body.portfolioVisibleToOthers !== undefined) {
     data.portfolioVisibleToOthers = body.portfolioVisibleToOthers;
   }
-  if (body.profileComplete !== undefined) data.profileComplete = body.profileComplete;
+  if (body.profileComplete !== undefined) {
+    data.profileComplete = body.profileComplete;
+    // Mirror into the dedicated student column so the admin table is readable at a glance.
+    if (body.profileComplete === true) data.studentOnboardingComplete = true;
+  }
   if (body.bannerImageUrl !== undefined) data.bannerImageUrl = body.bannerImageUrl;
   if (body.whatsappUrl !== undefined) data.whatsappUrl = body.whatsappUrl;
   if (body.linkedinUrl !== undefined) data.linkedinUrl = body.linkedinUrl;
