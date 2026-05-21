@@ -49,8 +49,7 @@ export function isOpenCompetitionCall(title: string, description: string): boole
   );
   if (isOpenCall) return true;
 
-  // ── 3. Default: include (ambiguous titles like "Steel Architectural Awards" are
-  //    open calls until proven otherwise — the source-level archFocused flag means
-  //    the item is already from a competition-specific feed)
-  return true;
+  // ── 3. Default: exclude — ambiguous items should not appear in Competitions.
+  //    Only items with explicit open-call language are shown.
+  return false;
 }

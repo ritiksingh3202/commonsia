@@ -180,15 +180,17 @@ export const FORUM_RSS_SOURCES: RssSource[] = [
   },
 
   /**
-   * ArchDaily main feed filtered to competitions in the pull loop.
+   * ArchDaily main feed — general architecture editorial.
    * ArchDaily's dedicated competition RSS returns 0 items; the main feed
    * occasionally carries competition open calls that pass the open-call filter.
+   * defaultCategory is null so editorial articles that don't match any keyword
+   * go uncategorised (shown under "All" only) rather than landing in Competitions.
    */
   {
     id: "archdaily-main",
     label: "ArchDaily",
     feedUrl: "http://feeds.feedburner.com/Archdaily",
-    defaultCategory: "competitions",
+    defaultCategory: null,
     indiaFocused: false,
     archFocused: false,   // general feed — arch filter + open-call filter both run
     maxFetch: 12,
