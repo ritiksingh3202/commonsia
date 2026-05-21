@@ -2,7 +2,6 @@
 
 import { SectionReveal } from "@/components/motion/SectionReveal";
 import { motion } from "framer-motion";
-import type { LucideIcon } from "lucide-react";
 import {
   Calendar,
   CheckCircle2,
@@ -60,10 +59,7 @@ type TeamMember = {
   name: string;
   role: string;
   description: string;
-  initial: string;
   imageSrc: string;
-  tags: string[];
-  footerIcon: LucideIcon;
   /** Extra Tailwind `object-*` / `object-[x_y]` for per-photo framing. */
   photoObjectClass?: string;
 };
@@ -89,10 +85,7 @@ const founder: TeamMember = {
   name: "Shuja Rehman",
   role: "Founder",
   description: "Leads vision, community, and the direction of the platform.",
-  initial: "SR",
   imageSrc: whoWeAreImg("Shuja.png"),
-  tags: ["Vision", "Community", "Strategy"],
-  footerIcon: Users,
   photoObjectClass:
     "object-cover object-[50%_10%] scale-[1.08] sm:scale-[1.06] [transform-origin:50%_24%]",
 };
@@ -208,9 +201,9 @@ export function WhoWeArePage() {
               <span className="text-primary">Commonsia</span> is where architecture
             </span>
             <span className="block whitespace-normal sm:whitespace-nowrap">
-              students find the <span className="text-primary">answers</span> their
+              students find <span className="text-primary">mentors</span> who&apos;ve
             </span>
-            <span className="block whitespace-normal sm:whitespace-nowrap">colleges can&apos;t give them.</span>
+            <span className="block whitespace-normal sm:whitespace-nowrap">been where they&apos;re going.</span>
           </motion.h1>
           <motion.p
             initial={{ opacity: 0, y: 12 }}
@@ -218,8 +211,8 @@ export function WhoWeArePage() {
             transition={{ duration: 0.7, delay: 0.08, ease: [0.22, 1, 0.36, 1] }}
             className="mx-auto max-w-2xl text-pretty text-sm leading-relaxed text-neutral-600 sm:text-base md:text-lg"
           >
-            We connect architecture students with mentors for portfolio reviews, career conversations, design crits, and
-            honest guidance.
+            Real conversations with practising architects — for portfolio reviews, career guidance, design crits, and
+            the kind of mentorship that shapes a career.
           </motion.p>
         </div>
       </section>
@@ -313,46 +306,39 @@ export function WhoWeArePage() {
           </SectionReveal>
 
           <div className="mb-12 flex justify-center">
-            <SectionReveal className="w-full max-w-sm flex flex-col overflow-hidden rounded-2xl border border-neutral-200/90 bg-white shadow-sm transition-all hover:-translate-y-1 hover:shadow-xl">
-              {(() => {
-                const FooterIcon = founder.footerIcon;
-                return (
-                  <>
-                    <div className="relative isolate h-[16.5rem] w-full shrink-0 overflow-hidden sm:h-[17.5rem]">
-                      <TeamCardPhotoBackdrop />
-                      <div className="absolute inset-0">
-                        <div className="relative h-full w-full">
-                          <Image
-                            src={founder.imageSrc}
-                            alt={founder.name}
-                            fill
-                            sizes="384px"
-                            className={`drop-shadow-[0_6px_18px_rgba(0,0,0,0.12)] ${founder.photoObjectClass ?? "object-cover object-[50%_18%]"}`}
-                            priority
-                          />
-                        </div>
-                      </div>
+            <SectionReveal className="w-full max-w-sm overflow-hidden rounded-2xl border border-neutral-200/90 bg-white shadow-sm transition-all hover:-translate-y-1 hover:shadow-xl">
+              <Link
+                href="https://www.linkedin.com/in/shujarehman12/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex flex-col"
+                aria-label="View Shuja Rehman on LinkedIn"
+              >
+                <div className="relative isolate h-[16.5rem] w-full shrink-0 overflow-hidden sm:h-[17.5rem]">
+                  <TeamCardPhotoBackdrop />
+                  <div className="absolute inset-0">
+                    <div className="relative h-full w-full">
+                      <Image
+                        src={founder.imageSrc}
+                        alt={founder.name}
+                        fill
+                        sizes="384px"
+                        className={`drop-shadow-[0_6px_18px_rgba(0,0,0,0.12)] ${founder.photoObjectClass ?? "object-cover object-[50%_18%]"}`}
+                        priority
+                      />
                     </div>
-                    <div className="flex flex-none flex-col px-5 py-4 sm:px-5 sm:py-5 md:px-6">
-                      <h3 className="text-lg font-bold tracking-tight text-neutral-950 sm:text-xl">{founder.name}</h3>
-                      <p className="mt-1.5 text-[11px] font-bold uppercase tracking-[0.12em] text-primary sm:text-xs">
-                        {founder.role}
-                      </p>
-                      <p className="mt-2.5 text-sm leading-relaxed text-neutral-600 sm:mt-3 sm:text-[0.9375rem]">
-                        {founder.description}
-                      </p>
-                      <div className="mt-3 flex items-start gap-2.5 border-t border-neutral-100 pt-3.5 sm:mt-4 sm:pt-4">
-                        <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary text-white shadow-sm">
-                          <FooterIcon className="size-3.5" aria-hidden strokeWidth={2.25} />
-                        </span>
-                        <p className="text-left text-xs font-medium leading-snug text-neutral-600 sm:text-sm">
-                          {founder.tags.join(" • ")}
-                        </p>
-                      </div>
-                    </div>
-                  </>
-                );
-              })()}
+                  </div>
+                </div>
+                <div className="flex flex-none flex-col items-center px-5 py-5 text-center sm:px-6 sm:py-6">
+                  <h3 className="text-lg font-bold tracking-tight text-neutral-950 sm:text-xl">{founder.name}</h3>
+                  <p className="mt-1.5 text-[11px] font-bold uppercase tracking-[0.12em] text-primary sm:text-xs">
+                    {founder.role}
+                  </p>
+                  <p className="mt-2.5 text-sm leading-relaxed text-neutral-500 sm:mt-3 sm:text-[0.9375rem]">
+                    {founder.description}
+                  </p>
+                </div>
+              </Link>
             </SectionReveal>
           </div>
 
