@@ -146,6 +146,8 @@ export function isArchitectureRelevant(title: string, description: string): bool
     return false;
   }
 
-  // ── 4. Default: include ────────────────────────────────────────────────────
-  return true;
+  // ── 4. Default: exclude — only items that positively match architecture or
+  //    allied fields are included. Over-including pollutes the feed with
+  //    off-topic content from general sources (Internshala, LeapScholar, etc.).
+  return false;
 }

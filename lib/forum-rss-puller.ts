@@ -45,6 +45,14 @@ export type RssSource = {
    */
   forceCategory?: boolean;
   /**
+   * When true, the open-call filter (isOpenCompetitionCall) is skipped for
+   * items from this source. Use for dedicated competition feeds (e.g. Dezeen
+   * Competitions) where every item is by definition an open call — running the
+   * filter would drop legitimate competition briefs that lack explicit
+   * "call for entries" language.
+   */
+  competitionFocused?: boolean;
+  /**
    * When true, OAI-PMH items whose dc:language is not English (en / eng) are
    * dropped. Items with no language tag are kept (assumed English).
    * Has no effect on RSS sources (language is rarely declared in RSS feeds).
@@ -85,12 +93,14 @@ export const FORUM_RSS_SOURCES: RssSource[] = [
    * The Fellowships.in — aggregates India-specific fellowships:
    * DST INSPIRE, SBI Youth for India, ICGEB, Chief Minister fellowships,
    * and international fellowships open to Indian applicants.
+   * defaultCategory is "masters" not "faculty" — these are student/early-career
+   * fellowships, not faculty positions or research grants.
    */
   {
     id: "thefellowships",
     label: "The Fellowships",
     feedUrl: "https://thefellowships.in/feed/",
-    defaultCategory: "faculty",
+    defaultCategory: "masters",
     indiaFocused: true,
   },
 
@@ -166,8 +176,9 @@ export const FORUM_RSS_SOURCES: RssSource[] = [
 
   /**
    * Dezeen Competitions — international architecture + design open calls.
-   * 50 items per fetch; manually verified to be 100% open-call briefs.
-   * The open-call filter still runs as a safety net.
+   * Every item in this feed is by definition an open call brief.
+   * competitionFocused: true bypasses the open-call filter so competition
+   * briefs without explicit "call for entries" language aren't dropped.
    */
   {
     id: "dezeen-competitions",
@@ -176,6 +187,7 @@ export const FORUM_RSS_SOURCES: RssSource[] = [
     defaultCategory: "competitions",
     indiaFocused: false,
     archFocused: true,
+    competitionFocused: true,
     maxFetch: 12,
   },
 
@@ -637,10 +649,16 @@ export async function pullForumRssOnce(authorUserId: string): Promise<RssPullSum
 
       // Competition open-call gate — drop results/showcases/winner announcements.
       // Only runs for items routed to the competitions category.
+      // Skipped entirely for competitionFocused sources (e.g. Dezeen Competitions)
+      // where every item is by definition an open call.
       const tentativeCategory = source.forceCategory
         ? (source.defaultCategory ?? null)
         : (classifyForumPostText(`${item.title}\n${item.description}`).category ?? source.defaultCategory ?? null);
-      if (tentativeCategory === "competitions" && !isOpenCompetitionCall(item.title, item.description)) {
+      if (
+        !source.competitionFocused &&
+        tentativeCategory === "competitions" &&
+        !isOpenCompetitionCall(item.title, item.description)
+      ) {
         console.log(`[rss] skipped (not open call): "${item.title.slice(0, 60)}"`);
         continue;
       }
