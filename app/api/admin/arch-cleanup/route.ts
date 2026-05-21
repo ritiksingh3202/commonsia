@@ -31,6 +31,20 @@ export async function GET(req: Request) {
   const url = new URL(req.url);
   const dryRun = url.searchParams.get("dry") === "true";
 
+  // Sources whose content is 100% architecture by definition — never remove.
+  // Short post text from these sources (e.g. "Bondi Beach Villa / Common Office — ArchDaily")
+  // won't contain enough keywords to pass the filter even though it's legitimate content.
+  const ARCH_FOCUSED_LABELS = new Set([
+    "ArchDaily",
+    "Dezeen",
+    "Zenodo Architecture",
+    "TU Delft A+BE",
+    "Mango Architecture",
+    "Architexturez",
+    "Bustler",
+    "Bee Breeders",
+  ]);
+
   // Fetch all live posts
   const posts = await prisma.forumPost.findMany({
     where: { deletedAt: null },
@@ -42,6 +56,11 @@ export async function GET(req: Request) {
 
   for (const post of posts) {
     const text = post.text ?? "";
+    // Always keep posts from architecture-focused RSS sources.
+    if (post.sourceLabel && ARCH_FOCUSED_LABELS.has(post.sourceLabel)) {
+      kept.push({ id: post.id, preview: text.slice(0, 60) });
+      continue;
+    }
     if (!isArchitectureRelevant(text, text)) {
       toDelete.push(post.id);
     } else {
