@@ -88,7 +88,7 @@ const beliefs = [
   },
 ];
 
-function LiveMentorBanner() {
+export function WhoWeArePage() {
   const [mentorCount, setMentorCount] = useState<number | null>(null);
 
   useEffect(() => {
@@ -101,54 +101,39 @@ function LiveMentorBanner() {
   }, []);
 
   return (
-    <div className="rounded-2xl border border-black/[0.07] bg-neutral-50 px-6 py-5 text-center">
-      <p className="text-base font-semibold text-gray-900">
-        1 Founder
-        {mentorCount !== null && (
-          <>
-            {" "}
-            <span className="text-primary">+ {mentorCount} mentors</span>
-          </>
-        )}
-      </p>
-      <p className="mt-1 text-sm text-gray-500">
-        Every mentor on Commonsia is a practising architect or design professional.
-      </p>
-    </div>
-  );
-}
-
-export function WhoWeArePage() {
-  return (
     <div className="min-h-screen bg-white">
 
       {/* ── Hero ── */}
-      <section className="relative overflow-hidden bg-white px-6 py-16 sm:py-20">
-        {/* Subtle grid texture */}
+      <section className="relative overflow-hidden bg-white px-6 py-14 sm:py-18">
         <div
           className="pointer-events-none absolute inset-0 opacity-[0.07] bg-center bg-repeat"
-          style={{
-            backgroundImage: `url(${WHO_WE_ARE_BASE}/hero_bg.png)`,
-            backgroundSize: "520px auto",
-          }}
+          style={{ backgroundImage: `url(${WHO_WE_ARE_BASE}/hero_bg.png)`, backgroundSize: "520px auto" }}
           aria-hidden
         />
-        <div className="relative mx-auto max-w-3xl text-center">
+        <div className="relative mx-auto max-w-2xl text-center">
+          <motion.p
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+            className="mb-4 text-xs font-bold uppercase tracking-[0.18em] text-primary"
+          >
+            About us
+          </motion.p>
           <motion.h1
             initial={{ opacity: 0, y: 14 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.65, ease: [0.22, 1, 0.36, 1] }}
-            className="text-4xl font-semibold leading-[1.05] tracking-tight text-black sm:text-5xl md:text-6xl"
+            className="text-3xl font-semibold leading-[1.1] tracking-tight text-black sm:text-4xl"
           >
-            <span className="text-primary">Commonsia</span> is where architecture
-            students find <span className="text-primary">mentors</span> who&apos;ve
-            been where they&apos;re going.
+            Where architecture students find{" "}
+            <span className="text-primary">mentors</span> who&apos;ve been where
+            they&apos;re going.
           </motion.h1>
           <motion.p
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.65, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
-            className="mx-auto mt-5 max-w-xl text-base leading-relaxed text-neutral-500 sm:text-lg"
+            className="mx-auto mt-4 max-w-lg text-sm leading-relaxed text-neutral-500 sm:text-base"
           >
             Real conversations with practising architects — for portfolio reviews,
             career guidance, design crits, and the kind of mentorship that shapes a career.
@@ -156,32 +141,84 @@ export function WhoWeArePage() {
         </div>
       </section>
 
-      {/* ── Story / Timeline ── */}
+      {/* ── Founder ── */}
       <section className="border-t border-black/[0.06] bg-white px-6 py-12 sm:py-14">
+        <div className="mx-auto max-w-3xl">
+          <SectionReveal>
+            <div className="flex flex-col items-center gap-8 sm:flex-row sm:items-center sm:gap-10">
+
+              {/* Photo */}
+              <Link
+                href="https://www.linkedin.com/in/shujarehman12/"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="View Shuja Rehman on LinkedIn"
+                className="group shrink-0"
+              >
+                <div className="relative h-64 w-[13.5rem] overflow-hidden rounded-2xl border border-neutral-200/80 shadow-md transition-all group-hover:-translate-y-1 group-hover:shadow-xl sm:h-72 sm:w-60">
+                  <TeamCardPhotoBackdrop />
+                  <Image
+                    src={whoWeAreImg("Shuja.png")}
+                    alt="Shuja Rehman"
+                    fill
+                    sizes="240px"
+                    className="object-cover object-[50%_10%] scale-[1.08] [transform-origin:50%_24%] drop-shadow-[0_8px_24px_rgba(0,0,0,0.13)]"
+                    priority
+                  />
+                </div>
+              </Link>
+
+              {/* Info */}
+              <div className="text-center sm:text-left">
+                <h2 className="text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
+                  Shuja Rehman
+                </h2>
+                <p className="mt-1.5 text-[11px] font-bold uppercase tracking-[0.16em] text-neutral-400">
+                  Founder
+                </p>
+                {mentorCount !== null && (
+                  <p className="mt-3 text-base font-semibold text-primary sm:text-lg">
+                    + {mentorCount} mentors
+                  </p>
+                )}
+                {mentorCount === null && (
+                  <p className="mt-3 text-base font-semibold text-neutral-300 sm:text-lg">
+                    &nbsp;
+                  </p>
+                )}
+                <p className="mt-3 max-w-xs text-sm leading-relaxed text-neutral-400 sm:max-w-sm sm:text-[0.9375rem]">
+                  Every mentor on Commonsia is a practising architect or design professional.
+                </p>
+              </div>
+
+            </div>
+          </SectionReveal>
+        </div>
+      </section>
+
+      {/* ── Story / Timeline ── */}
+      <section className="border-t border-black/[0.06] bg-neutral-50 px-6 py-12 sm:py-14">
         <div className="mx-auto max-w-2xl">
           <SectionReveal>
-            <h2 className="mb-8 text-center text-2xl font-bold text-gray-900 sm:text-3xl">
+            <h2 className="mb-8 text-center text-xl font-bold text-gray-900 sm:text-2xl">
               How we got here
             </h2>
           </SectionReveal>
 
-          <div className="relative space-y-0">
-            {/* Vertical rail */}
+          <div className="relative">
             <div
-              className="absolute bottom-0 left-[1.1rem] top-0 w-px bg-gradient-to-b from-neutral-200 via-neutral-200 to-transparent"
+              className="absolute bottom-0 left-[1.1rem] top-0 w-px bg-gradient-to-b from-neutral-300 via-neutral-200 to-transparent"
               aria-hidden
             />
 
             {timeline.map((item, i) => (
               <SectionReveal key={item.year} delay={i * 0.05}>
-                <div className="relative flex gap-6 pb-8 last:pb-0">
-                  {/* Year dot */}
-                  <div className="relative z-10 flex size-9 shrink-0 items-center justify-center rounded-full border border-black/[0.09] bg-white shadow-sm">
-                    <span className="text-[10px] font-bold text-primary">{item.year}</span>
+                <div className="relative flex gap-5 pb-7 last:pb-0">
+                  <div className="relative z-10 flex size-[2.2rem] shrink-0 items-center justify-center rounded-full border border-black/[0.09] bg-white shadow-sm">
+                    <span className="text-[9px] font-bold leading-none text-primary">{item.year}</span>
                   </div>
-                  {/* Content */}
-                  <div className="pt-1.5">
-                    <p className="mb-1 text-sm font-bold text-gray-900">{item.title}</p>
+                  <div className="pt-1">
+                    <p className="mb-0.5 text-sm font-semibold text-gray-900">{item.title}</p>
                     <p className="text-sm leading-relaxed text-gray-500">{item.description}</p>
                   </div>
                 </div>
@@ -192,24 +229,24 @@ export function WhoWeArePage() {
       </section>
 
       {/* ── Beliefs ── */}
-      <section className="border-t border-black/[0.06] bg-neutral-50 px-6 py-12 sm:py-14">
+      <section className="border-t border-black/[0.06] bg-white px-6 py-12 sm:py-14">
         <div className="mx-auto max-w-4xl">
           <SectionReveal>
-            <h2 className="mb-8 text-center text-2xl font-bold text-gray-900 sm:text-3xl">
+            <h2 className="mb-8 text-center text-xl font-bold text-gray-900 sm:text-2xl">
               What we believe
             </h2>
           </SectionReveal>
 
-          <div className="grid gap-5 sm:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-3">
             {beliefs.map((b, i) => {
               const Icon = b.icon;
               return (
                 <SectionReveal key={b.title} delay={i * 0.06}>
-                  <div className="rounded-2xl border border-black/[0.07] bg-white px-5 py-5">
-                    <div className="mb-3 flex size-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                  <div className="rounded-2xl border border-black/[0.07] bg-neutral-50 px-5 py-5">
+                    <div className="mb-3 flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
                       <Icon className="size-4" aria-hidden />
                     </div>
-                    <p className="mb-1.5 text-sm font-bold text-gray-900">{b.title}</p>
+                    <p className="mb-1 text-sm font-bold text-gray-900">{b.title}</p>
                     <p className="text-sm leading-relaxed text-gray-500">{b.description}</p>
                   </div>
                 </SectionReveal>
@@ -219,76 +256,22 @@ export function WhoWeArePage() {
         </div>
       </section>
 
-      {/* ── Founder ── */}
-      <section className="border-t border-black/[0.06] bg-white px-6 py-12 sm:py-14">
-        <div className="mx-auto max-w-4xl">
-          <SectionReveal>
-            <div className="flex flex-col items-center gap-6 sm:flex-row sm:items-start sm:gap-8">
-              {/* Photo card */}
-              <Link
-                href="https://www.linkedin.com/in/shujarehman12/"
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label="View Shuja Rehman on LinkedIn"
-                className="group shrink-0"
-              >
-                <div className="relative h-48 w-40 overflow-hidden rounded-2xl border border-neutral-200/90 shadow-sm transition-all group-hover:-translate-y-0.5 group-hover:shadow-md sm:h-52 sm:w-44">
-                  <TeamCardPhotoBackdrop />
-                  <Image
-                    src={whoWeAreImg("Shuja.png")}
-                    alt="Shuja Rehman"
-                    fill
-                    sizes="176px"
-                    className="object-cover object-[50%_10%] scale-[1.08] [transform-origin:50%_24%] drop-shadow-[0_6px_18px_rgba(0,0,0,0.12)]"
-                    priority
-                  />
-                </div>
-              </Link>
-
-              {/* Text */}
-              <div className="flex-1 text-center sm:text-left">
-                <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-primary">
-                  Our team
-                </p>
-                <h2 className="mt-1.5 text-2xl font-bold text-gray-900 sm:text-3xl">
-                  Shuja Rehman
-                </h2>
-                <p className="mt-1 text-xs font-bold uppercase tracking-[0.12em] text-neutral-400">
-                  Founder
-                </p>
-                <p className="mt-3 max-w-md text-sm leading-relaxed text-neutral-500 sm:mt-4 sm:text-base">
-                  Leads vision, community, and the direction of the platform.
-                </p>
-
-                <div className="mt-6">
-                  <LiveMentorBanner />
-                </div>
-              </div>
-            </div>
-          </SectionReveal>
-        </div>
-      </section>
-
       {/* ── CTA ── */}
       <section className="relative overflow-hidden bg-neutral-950 px-6 py-12 sm:py-14">
-        <div
-          className="pointer-events-none absolute inset-0 opacity-20"
-          aria-hidden
-        >
+        <div className="pointer-events-none absolute inset-0 opacity-20" aria-hidden>
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_1px_1px,rgba(255,255,255,0.12)_1px,transparent_0)] [background-size:54px_54px]" />
           <div className="absolute left-1/2 top-[-16rem] h-[34rem] w-[34rem] -translate-x-1/2 rounded-full bg-primary/15 blur-3xl" />
         </div>
-
         <SectionReveal className="relative z-10 mx-auto max-w-2xl text-center text-white">
-          <Rocket className="mx-auto mb-5 size-9 text-white/80" aria-hidden />
+          <Rocket className="mx-auto mb-4 size-8 text-white/70" aria-hidden />
           <h2 className="text-2xl font-black leading-tight sm:text-3xl">
             We&apos;re building it.
           </h2>
-          <p className="mx-auto mt-3 max-w-lg text-sm leading-relaxed text-white/70 sm:text-base">
+          <p className="mx-auto mt-3 max-w-lg text-sm leading-relaxed text-white/60 sm:text-base">
             Join us in reshaping architectural education — with real mentors, real
             conversations, and the structure to make guidance accessible.
           </p>
-          <div className="mt-7">
+          <div className="mt-6">
             <Link
               href="/auth"
               className="inline-block rounded-xl bg-white px-8 py-3 text-sm font-bold text-neutral-950 shadow-xl transition-all hover:scale-[1.02] hover:bg-neutral-100 sm:px-10 sm:py-3.5 sm:text-base"
