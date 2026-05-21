@@ -54,10 +54,23 @@ export async function GET(req: Request) {
   const toDelete: string[] = [];
   const kept: Array<{ id: string; preview: string }> = [];
 
+  // Text patterns that indicate the post came from an arch-focused source even
+  // when sourceLabel is null (e.g. legacy posts pre-dating the column).
+  const ARCH_FOCUSED_TEXT_PATTERNS = [
+    /—\s*ArchDaily\s*$/m,                 // "Title\n\n— ArchDaily"
+    /^Dezeen\s+(Architecture|Competitions?|Design):/i, // "Dezeen Competitions: …"
+    /—\s*Dezeen\s*$/m,                    // "Title\n\n— Dezeen"
+    /\bBustler\b/i,
+    /\bBee\s+Breeders\b/i,
+  ];
+
   for (const post of posts) {
     const text = post.text ?? "";
     // Always keep posts from architecture-focused RSS sources.
-    if (post.sourceLabel && ARCH_FOCUSED_LABELS.has(post.sourceLabel)) {
+    const isArchFocused =
+      (post.sourceLabel && ARCH_FOCUSED_LABELS.has(post.sourceLabel)) ||
+      ARCH_FOCUSED_TEXT_PATTERNS.some((re) => re.test(text));
+    if (isArchFocused) {
       kept.push({ id: post.id, preview: text.slice(0, 60) });
       continue;
     }
