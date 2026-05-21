@@ -12,7 +12,6 @@ function whoWeAreImg(filename: string) {
   return `${WHO_WE_ARE_BASE}/${filename}?v=20260429`;
 }
 
-/** Warm orange gradient + soft arcs behind the founder portrait. */
 function TeamCardPhotoBackdrop() {
   return (
     <div className="pointer-events-none absolute inset-0" aria-hidden>
@@ -25,17 +24,8 @@ function TeamCardPhotoBackdrop() {
       >
         <title>Decorative arcs</title>
         {[95, 118, 142, 168, 195, 225, 258].map((ry, i) => (
-          <ellipse
-            key={ry}
-            cx="200"
-            cy="420"
-            rx="340"
-            ry={ry}
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1"
-            opacity={0.55 - i * 0.06}
-          />
+          <ellipse key={ry} cx="200" cy="420" rx="340" ry={ry}
+            fill="none" stroke="currentColor" strokeWidth="1" opacity={0.55 - i * 0.06} />
         ))}
       </svg>
     </div>
@@ -46,44 +36,39 @@ const timeline = [
   {
     year: "2019",
     title: "The Beginning",
-    description:
-      "Started in a thesis room at Jamia Millia Islamia. A seaplane airport thesis and a realisation: architectural knowledge is scattered, access is luck.",
+    description: "A thesis room at Jamia Millia Islamia. One seaplane airport project. A realisation that architectural knowledge is scattered — and access is luck.",
   },
   {
     year: "2021",
     title: "A Community Forms",
-    description:
-      "Open sessions for juniors. A WhatsApp group sharing opportunities. Nearly 400 students, colleagues, and practitioners — and growing.",
+    description: "Open sessions for juniors. A WhatsApp group. Nearly 400 students, colleagues, and practitioners finding each other.",
   },
   {
     year: "2024",
     title: "The Limits Show",
-    description:
-      "WhatsApp groups don't scale. Mentors burn out. Students with the right contacts find answers; students without them don't.",
+    description: "WhatsApp doesn't scale. Mentors burn out. Students with the right contacts find answers; students without them don't.",
   },
   {
     year: "2026",
     title: "Commonsia Today",
-    description:
-      "Verified mentors, structured sessions, fair compensation, honest feedback. The same generosity — now with infrastructure behind it.",
+    description: "Verified mentors. Structured sessions. Fair compensation. The same generosity — now with infrastructure behind it.",
   },
 ];
 
 const beliefs = [
   {
     title: "Access over luck",
-    description: "A career shouldn't be decided by who you happen to know.",
+    description: "A career shouldn't be decided by who you happen to know. The right senior at the right moment shouldn't be a matter of luck.",
     icon: Users,
   },
   {
     title: "Beyond the studio",
-    description:
-      "A jury teaches you to defend a project. A mentor teaches you to build a life around one.",
+    description: "A jury teaches you to defend a project. A mentor teaches you to build a life around one. The most important conversations happen outside the studio.",
     icon: MessageCircle,
   },
   {
     title: "Structure sustains generosity",
-    description: "Mentors give their time and honesty. Our job is to make that worth their while.",
+    description: "Mentors give their time, their experience, their honesty. Our job is to make that worth their while — every single time.",
     icon: Heart,
   },
 ];
@@ -104,7 +89,7 @@ export function WhoWeArePage() {
     <div className="min-h-screen bg-white">
 
       {/* ── Hero ── */}
-      <section className="relative overflow-hidden bg-white px-6 py-14 sm:py-18">
+      <section className="relative overflow-hidden bg-white px-6 py-14 sm:py-20">
         <div
           className="pointer-events-none absolute inset-0 opacity-[0.07] bg-center bg-repeat"
           style={{ backgroundImage: `url(${WHO_WE_ARE_BASE}/hero_bg.png)`, backgroundSize: "520px auto" }}
@@ -112,22 +97,21 @@ export function WhoWeArePage() {
         />
         <div className="relative mx-auto max-w-2xl text-center">
           <motion.p
-            initial={{ opacity: 0, y: 8 }}
+            initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-            className="mb-4 text-xs font-bold uppercase tracking-[0.18em] text-primary"
+            transition={{ duration: 0.5 }}
+            className="mb-4 text-[11px] font-bold uppercase tracking-[0.2em] text-primary"
           >
-            About us
+            About Commonsia
           </motion.p>
           <motion.h1
             initial={{ opacity: 0, y: 14 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.65, ease: [0.22, 1, 0.36, 1] }}
-            className="text-3xl font-semibold leading-[1.1] tracking-tight text-black sm:text-4xl"
+            className="text-balance text-3xl font-semibold leading-[1.12] tracking-tight text-black sm:text-4xl"
           >
-            Where architecture students find{" "}
-            <span className="text-primary">mentors</span> who&apos;ve been where
-            they&apos;re going.
+            Good mentors
+            shouldn&apos;t be a privilege.
           </motion.h1>
           <motion.p
             initial={{ opacity: 0, y: 10 }}
@@ -135,8 +119,9 @@ export function WhoWeArePage() {
             transition={{ duration: 0.65, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
             className="mx-auto mt-4 max-w-lg text-sm leading-relaxed text-neutral-500 sm:text-base"
           >
-            Real conversations with practising architects — for portfolio reviews,
-            career guidance, design crits, and the kind of mentorship that shapes a career.
+            We connect architecture students with practising architects — for portfolio
+            reviews, career guidance, design crits, and the kind of conversation that
+            shapes a career.
           </motion.p>
         </div>
       </section>
@@ -176,19 +161,13 @@ export function WhoWeArePage() {
                 <p className="mt-1.5 text-[11px] font-bold uppercase tracking-[0.16em] text-neutral-400">
                   Founder
                 </p>
-                {mentorCount !== null && (
-                  <p className="mt-3 text-base font-semibold text-primary sm:text-lg">
+                {mentorCount !== null ? (
+                  <p className="mt-3 text-lg font-semibold text-primary sm:text-xl">
                     + {mentorCount} mentors
                   </p>
+                ) : (
+                  <p className="mt-3 h-7" aria-hidden />
                 )}
-                {mentorCount === null && (
-                  <p className="mt-3 text-base font-semibold text-neutral-300 sm:text-lg">
-                    &nbsp;
-                  </p>
-                )}
-                <p className="mt-3 max-w-xs text-sm leading-relaxed text-neutral-400 sm:max-w-sm sm:text-[0.9375rem]">
-                  Every mentor on Commonsia is a practising architect or design professional.
-                </p>
               </div>
 
             </div>
@@ -196,34 +175,38 @@ export function WhoWeArePage() {
         </div>
       </section>
 
-      {/* ── Story / Timeline ── */}
+      {/* ── Timeline (horizontal) ── */}
       <section className="border-t border-black/[0.06] bg-neutral-50 px-6 py-12 sm:py-14">
-        <div className="mx-auto max-w-2xl">
+        <div className="mx-auto max-w-5xl">
           <SectionReveal>
-            <h2 className="mb-8 text-center text-xl font-bold text-gray-900 sm:text-2xl">
+            <h2 className="mb-10 text-center text-2xl font-bold text-gray-900 sm:text-3xl">
               How we got here
             </h2>
           </SectionReveal>
 
           <div className="relative">
+            {/* Horizontal rail — desktop only, runs through the dots */}
             <div
-              className="absolute bottom-0 left-[1.1rem] top-0 w-px bg-gradient-to-b from-neutral-300 via-neutral-200 to-transparent"
+              className="absolute top-[1.35rem] hidden h-px w-full bg-neutral-200 md:block"
+              style={{ left: "12.5%", width: "75%" }}
               aria-hidden
             />
 
-            {timeline.map((item, i) => (
-              <SectionReveal key={item.year} delay={i * 0.05}>
-                <div className="relative flex gap-5 pb-7 last:pb-0">
-                  <div className="relative z-10 flex size-[2.2rem] shrink-0 items-center justify-center rounded-full border border-black/[0.09] bg-white shadow-sm">
-                    <span className="text-[9px] font-bold leading-none text-primary">{item.year}</span>
+            <div className="grid grid-cols-2 gap-x-5 gap-y-8 md:grid-cols-4 md:gap-x-6">
+              {timeline.map((item, i) => (
+                <SectionReveal key={item.year} delay={i * 0.07}>
+                  <div className="flex flex-col items-start md:items-center md:text-center">
+                    {/* Year dot */}
+                    <div className="relative z-10 mb-4 flex h-[2.7rem] w-[2.7rem] shrink-0 items-center justify-center rounded-full border border-black/[0.09] bg-white shadow-sm">
+                      <span className="text-[9px] font-bold leading-none text-primary">{item.year}</span>
+                    </div>
+                    {/* Content */}
+                    <p className="mb-1.5 text-sm font-bold text-gray-900">{item.title}</p>
+                    <p className="text-[13px] leading-relaxed text-gray-500">{item.description}</p>
                   </div>
-                  <div className="pt-1">
-                    <p className="mb-0.5 text-sm font-semibold text-gray-900">{item.title}</p>
-                    <p className="text-sm leading-relaxed text-gray-500">{item.description}</p>
-                  </div>
-                </div>
-              </SectionReveal>
-            ))}
+                </SectionReveal>
+              ))}
+            </div>
           </div>
         </div>
       </section>
@@ -232,21 +215,21 @@ export function WhoWeArePage() {
       <section className="border-t border-black/[0.06] bg-white px-6 py-12 sm:py-14">
         <div className="mx-auto max-w-4xl">
           <SectionReveal>
-            <h2 className="mb-8 text-center text-xl font-bold text-gray-900 sm:text-2xl">
+            <h2 className="mb-8 text-center text-2xl font-bold text-gray-900 sm:text-3xl">
               What we believe
             </h2>
           </SectionReveal>
 
-          <div className="grid gap-4 sm:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             {beliefs.map((b, i) => {
               const Icon = b.icon;
               return (
-                <SectionReveal key={b.title} delay={i * 0.06}>
-                  <div className="rounded-2xl border border-black/[0.07] bg-neutral-50 px-5 py-5">
-                    <div className="mb-3 flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                <SectionReveal key={b.title} delay={i * 0.06} className="flex">
+                  <div className="flex h-full w-full flex-col rounded-2xl border border-black/[0.07] bg-neutral-50 px-5 py-5">
+                    <div className="mb-3 flex size-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
                       <Icon className="size-4" aria-hidden />
                     </div>
-                    <p className="mb-1 text-sm font-bold text-gray-900">{b.title}</p>
+                    <p className="mb-2 text-sm font-bold text-gray-900">{b.title}</p>
                     <p className="text-sm leading-relaxed text-gray-500">{b.description}</p>
                   </div>
                 </SectionReveal>
