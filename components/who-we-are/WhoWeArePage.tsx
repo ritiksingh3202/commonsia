@@ -4,10 +4,8 @@ import { SectionReveal } from "@/components/motion/SectionReveal";
 import { motion } from "framer-motion";
 import type { LucideIcon } from "lucide-react";
 import {
-  Award,
   Calendar,
   CheckCircle2,
-  Code2,
   Globe,
   Heart,
   MapPin,
@@ -18,6 +16,7 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
+import { useEffect, useState } from "react";
 
 /** Warm orange gradient behind team portraits (no grid texture) + soft arcs. */
 function TeamCardPhotoBackdrop({ className }: { className?: string }) {
@@ -86,41 +85,17 @@ function SoftGrid() {
   );
 }
 
-const team: TeamMember[] = [
-  {
-    name: "Shuja Rehman",
-    role: "Founder & CEO",
-    description: "Leads vision, community, and the direction of the platform.",
-    initial: "SR",
-    imageSrc: whoWeAreImg("Shuja.png"),
-    tags: ["Vision", "Community", "Strategy"],
-    footerIcon: Users,
-    photoObjectClass:
-      "object-cover object-[50%_10%] scale-[1.08] sm:scale-[1.06] [transform-origin:50%_24%]",
-  },
-  {
-    name: "Ritik Raj",
-    role: "Co-Founder & CTO",
-    description: "Leads engineering and platform infrastructure.",
-    initial: "RR",
-    imageSrc: whoWeAreImg("Ritik.png"),
-    tags: ["Engineering", "Platform", "Systems"],
-    footerIcon: Code2,
-    photoObjectClass:
-      "object-cover object-[50%_10%] scale-[1.08] sm:scale-[1.06] [transform-origin:50%_24%]",
-  },
-  {
-    name: "Arnav Singh",
-    role: "Co-Founder & CPO",
-    description: "Leads the development and experience of students and mentors.",
-    initial: "AS",
-    imageSrc: whoWeAreImg("Arnav.png"),
-    tags: ["Product", "Experience", "Growth"],
-    footerIcon: Heart,
-    photoObjectClass:
-      "object-cover object-[50%_8%] scale-[1.06] sm:scale-[1.04] [transform-origin:50%_20%]",
-  },
-];
+const founder: TeamMember = {
+  name: "Shuja Rehman",
+  role: "Founder",
+  description: "Leads vision, community, and the direction of the platform.",
+  initial: "SR",
+  imageSrc: whoWeAreImg("Shuja.png"),
+  tags: ["Vision", "Community", "Strategy"],
+  footerIcon: Users,
+  photoObjectClass:
+    "object-cover object-[50%_10%] scale-[1.08] sm:scale-[1.06] [transform-origin:50%_24%]",
+};
 
 const timeline = [
   {
@@ -180,6 +155,38 @@ const beliefs = [
     icon: Heart,
   },
 ];
+
+/** Live "1 Founder + N mentors" banner — fetches from /api/stats on mount. */
+function LiveMentorBanner() {
+  const [mentorCount, setMentorCount] = useState<number | null>(null);
+
+  useEffect(() => {
+    fetch("/api/stats")
+      .then((r) => r.json())
+      .then((d: { mentorCount?: number }) => {
+        if (typeof d.mentorCount === "number") setMentorCount(d.mentorCount);
+      })
+      .catch(() => {/* silently keep null */});
+  }, []);
+
+  return (
+    <SectionReveal className="rounded-2xl border border-black/[0.08] bg-neutral-50 p-8 text-center shadow-sm">
+      <Users className="mx-auto mb-4 size-11 text-primary" aria-hidden />
+      <p className="text-2xl font-bold text-gray-900 sm:text-3xl">
+        1 Founder
+        {mentorCount !== null && (
+          <>
+            {" "}
+            <span className="text-primary">+ {mentorCount} mentors</span>
+          </>
+        )}
+      </p>
+      <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-gray-500">
+        and growing — every mentor on Commonsia is a practising architect or design professional.
+      </p>
+    </SectionReveal>
+  );
+}
 
 /** Marketing body only — `MarketingShell` supplies global Navbar + SiteFooter. */
 export function WhoWeArePage() {
@@ -302,68 +309,54 @@ export function WhoWeArePage() {
         <div className="mx-auto max-w-6xl">
           <SectionReveal className="mb-10 text-center sm:mb-12 md:mb-14">
             <p className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-primary">Our team</p>
-            <h2 className="text-3xl font-bold leading-tight text-gray-900 md:text-4xl lg:text-5xl">Meet the Team</h2>
-            <p className="mx-auto mt-4 max-w-2xl text-pretty text-base leading-relaxed text-neutral-600 md:text-lg">
-              Architects, technologists and builders — committed to creating a mentorship platform that empowers the
-              next generation of architects.
-            </p>
+            <h2 className="text-3xl font-bold leading-tight text-gray-900 md:text-4xl lg:text-5xl">Meet the Founder</h2>
           </SectionReveal>
 
-          <div className="mb-12 grid grid-cols-1 items-start gap-8 sm:grid-cols-2 md:grid-cols-3 md:gap-6 lg:gap-8">
-            {team.map((member, idx) => {
-              const FooterIcon = member.footerIcon;
-              return (
-                <SectionReveal
-                  key={member.name}
-                  delay={idx * 0.05}
-                  className="flex h-full flex-col overflow-hidden rounded-2xl border border-neutral-200/90 bg-white shadow-sm transition-all hover:-translate-y-1 hover:shadow-xl"
-                >
-                  <div className="relative isolate h-[16.5rem] w-full shrink-0 overflow-hidden sm:h-[17.5rem] md:h-[18.25rem] lg:h-[19rem]">
-                    <TeamCardPhotoBackdrop />
-                    <div className="absolute inset-0">
-                      <div className="relative h-full w-full">
-                        <Image
-                          src={member.imageSrc}
-                          alt={member.name}
-                          fill
-                          sizes="(min-width: 1024px) 340px, (min-width: 768px) 33vw, (min-width: 640px) 50vw, 100vw"
-                          className={`drop-shadow-[0_6px_18px_rgba(0,0,0,0.12)] ${member.photoObjectClass ?? "object-cover object-[50%_18%]"}`}
-                          priority={idx < 2}
-                        />
+          <div className="mb-12 flex justify-center">
+            <SectionReveal className="w-full max-w-sm flex flex-col overflow-hidden rounded-2xl border border-neutral-200/90 bg-white shadow-sm transition-all hover:-translate-y-1 hover:shadow-xl">
+              {(() => {
+                const FooterIcon = founder.footerIcon;
+                return (
+                  <>
+                    <div className="relative isolate h-[16.5rem] w-full shrink-0 overflow-hidden sm:h-[17.5rem]">
+                      <TeamCardPhotoBackdrop />
+                      <div className="absolute inset-0">
+                        <div className="relative h-full w-full">
+                          <Image
+                            src={founder.imageSrc}
+                            alt={founder.name}
+                            fill
+                            sizes="384px"
+                            className={`drop-shadow-[0_6px_18px_rgba(0,0,0,0.12)] ${founder.photoObjectClass ?? "object-cover object-[50%_18%]"}`}
+                            priority
+                          />
+                        </div>
                       </div>
                     </div>
-                  </div>
-                  <div className="flex flex-none flex-col px-5 py-4 sm:px-5 sm:py-5 md:px-6">
-                    <h3 className="text-lg font-bold tracking-tight text-neutral-950 sm:text-xl">{member.name}</h3>
-                    <p className="mt-1.5 text-[11px] font-bold uppercase tracking-[0.12em] text-primary sm:text-xs">
-                      {member.role}
-                    </p>
-                    <p className="mt-2.5 text-sm leading-relaxed text-neutral-600 sm:mt-3 sm:text-[0.9375rem]">
-                      {member.description}
-                    </p>
-                    <div className="mt-3 flex items-start gap-2.5 border-t border-neutral-100 pt-3.5 sm:mt-4 sm:pt-4">
-                      <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary text-white shadow-sm">
-                        <FooterIcon className="size-3.5" aria-hidden strokeWidth={2.25} />
-                      </span>
-                      <p className="text-left text-xs font-medium leading-snug text-neutral-600 sm:text-sm">
-                        {member.tags.join(" • ")}
+                    <div className="flex flex-none flex-col px-5 py-4 sm:px-5 sm:py-5 md:px-6">
+                      <h3 className="text-lg font-bold tracking-tight text-neutral-950 sm:text-xl">{founder.name}</h3>
+                      <p className="mt-1.5 text-[11px] font-bold uppercase tracking-[0.12em] text-primary sm:text-xs">
+                        {founder.role}
                       </p>
+                      <p className="mt-2.5 text-sm leading-relaxed text-neutral-600 sm:mt-3 sm:text-[0.9375rem]">
+                        {founder.description}
+                      </p>
+                      <div className="mt-3 flex items-start gap-2.5 border-t border-neutral-100 pt-3.5 sm:mt-4 sm:pt-4">
+                        <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary text-white shadow-sm">
+                          <FooterIcon className="size-3.5" aria-hidden strokeWidth={2.25} />
+                        </span>
+                        <p className="text-left text-xs font-medium leading-snug text-neutral-600 sm:text-sm">
+                          {founder.tags.join(" • ")}
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                </SectionReveal>
-              );
-            })}
+                  </>
+                );
+              })()}
+            </SectionReveal>
           </div>
 
-          <SectionReveal className="rounded-2xl border border-black/[0.08] bg-neutral-50 p-8 text-center shadow-sm">
-            <Award className="mx-auto mb-4 size-11 text-black" aria-hidden />
-            <p className="mx-auto max-w-3xl text-lg leading-relaxed text-gray-700">
-              Backed by a circle of{" "}
-              <span className="font-semibold text-gray-900">
-                architecture-industry advisors, practising principals, design educators, and researchers.
-              </span>
-            </p>
-          </SectionReveal>
+          <LiveMentorBanner />
         </div>
       </section>
 
