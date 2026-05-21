@@ -116,6 +116,8 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "lh4.googleusercontent.com", pathname: "/**" },
       { protocol: "https", hostname: "lh5.googleusercontent.com", pathname: "/**" },
       { protocol: "https", hostname: "lh6.googleusercontent.com", pathname: "/**" },
+      /** Supabase Storage — uploaded avatars and banner images */
+      { protocol: "https", hostname: "*.supabase.co", pathname: "/storage/v1/object/public/**" },
     ],
   },
 };
