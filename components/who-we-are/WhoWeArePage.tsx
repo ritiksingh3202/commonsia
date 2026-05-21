@@ -2,25 +2,20 @@
 
 import { SectionReveal } from "@/components/motion/SectionReveal";
 import { motion } from "framer-motion";
-import {
-  Calendar,
-  CheckCircle2,
-  Globe,
-  Heart,
-  MapPin,
-  MessageCircle,
-  Rocket,
-  TrendingUp,
-  Users,
-} from "lucide-react";
+import { Heart, MessageCircle, Rocket, Users } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
-/** Warm orange gradient behind team portraits (no grid texture) + soft arcs. */
-function TeamCardPhotoBackdrop({ className }: { className?: string }) {
+const WHO_WE_ARE_BASE = "/who_we_are_assets" as const;
+function whoWeAreImg(filename: string) {
+  return `${WHO_WE_ARE_BASE}/${filename}?v=20260429`;
+}
+
+/** Warm orange gradient + soft arcs behind the founder portrait. */
+function TeamCardPhotoBackdrop() {
   return (
-    <div className={`pointer-events-none absolute inset-0 ${className ?? ""}`} aria-hidden>
+    <div className="pointer-events-none absolute inset-0" aria-hidden>
       <div className="absolute inset-0 bg-gradient-to-b from-orange-50 via-[#fff0e0] to-[#ffe4cc]" />
       <div className="absolute inset-0 bg-gradient-to-t from-primary/[0.06] via-transparent to-white/40" />
       <svg
@@ -29,25 +24,17 @@ function TeamCardPhotoBackdrop({ className }: { className?: string }) {
         preserveAspectRatio="xMidYMax slice"
       >
         <title>Decorative arcs</title>
-        {[
-          { ry: 95, opacity: 0.55 },
-          { ry: 118, opacity: 0.45 },
-          { ry: 142, opacity: 0.38 },
-          { ry: 168, opacity: 0.32 },
-          { ry: 195, opacity: 0.26 },
-          { ry: 225, opacity: 0.2 },
-          { ry: 258, opacity: 0.14 },
-        ].map((ring, i) => (
+        {[95, 118, 142, 168, 195, 225, 258].map((ry, i) => (
           <ellipse
-            key={i}
+            key={ry}
             cx="200"
             cy="420"
             rx="340"
-            ry={ring.ry}
+            ry={ry}
             fill="none"
             stroke="currentColor"
             strokeWidth="1"
-            opacity={ring.opacity}
+            opacity={0.55 - i * 0.06}
           />
         ))}
       </svg>
@@ -55,101 +42,52 @@ function TeamCardPhotoBackdrop({ className }: { className?: string }) {
   );
 }
 
-type TeamMember = {
-  name: string;
-  role: string;
-  description: string;
-  imageSrc: string;
-  /** Extra Tailwind `object-*` / `object-[x_y]` for per-photo framing. */
-  photoObjectClass?: string;
-};
-
-const WHO_WE_ARE_BASE = "/who_we_are_assets" as const;
-
-function whoWeAreImg(filename: string) {
-  return `${WHO_WE_ARE_BASE}/${filename}?v=20260429`;
-}
-
-function SoftGrid() {
-  return (
-    <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
-      <div
-        className="absolute inset-0 bg-center bg-repeat opacity-[0.12]"
-        style={{ backgroundImage: `url(${WHO_WE_ARE_BASE}/hero_bg.png)`, backgroundSize: "520px auto" }}
-      />
-    </div>
-  );
-}
-
-const founder: TeamMember = {
-  name: "Shuja Rehman",
-  role: "Founder",
-  description: "Leads vision, community, and the direction of the platform.",
-  imageSrc: whoWeAreImg("Shuja.png"),
-  photoObjectClass:
-    "object-cover object-[50%_10%] scale-[1.08] sm:scale-[1.06] [transform-origin:50%_24%]",
-};
-
 const timeline = [
   {
     year: "2019",
     title: "The Beginning",
     description:
-      "Started in a thesis room at Faculty of Architecture and Ekistics, Jamia Millia Islamia. Shuja Rehman's unconventional seaplane-based airport thesis revealed the scattered nature of architectural knowledge.",
-    icon: MapPin,
-  },
-  {
-    year: "2020",
-    title: "First Sessions",
-    description:
-      "Open sessions for juniors on thesis fundamentals. Students who'd been quietly stuck started showing up.",
-    icon: MessageCircle,
+      "Started in a thesis room at Jamia Millia Islamia. A seaplane airport thesis and a realisation: architectural knowledge is scattered, access is luck.",
   },
   {
     year: "2021",
-    title: "Community Growth",
+    title: "A Community Forms",
     description:
-      "A WhatsApp group sharing architectural opportunities grew from a handful to nearly 400 students, colleagues, and practitioners.",
-    icon: Users,
+      "Open sessions for juniors. A WhatsApp group sharing opportunities. Nearly 400 students, colleagues, and practitioners — and growing.",
   },
   {
     year: "2024",
-    title: "The Limits",
+    title: "The Limits Show",
     description:
       "WhatsApp groups don't scale. Mentors burn out. Students with the right contacts find answers; students without them don't.",
-    icon: TrendingUp,
   },
   {
     year: "2026",
     title: "Commonsia Today",
     description:
-      "Verified mentors, structured sessions, fair compensation, honest feedback. The same generosity — now with infrastructure to reach every architecture student.",
-    icon: Rocket,
+      "Verified mentors, structured sessions, fair compensation, honest feedback. The same generosity — now with infrastructure behind it.",
   },
 ];
 
 const beliefs = [
   {
     title: "Access over luck",
-    description:
-      "A career shouldn't be decided by who you happen to know. The right senior at the right moment shouldn't be a matter of luck.",
+    description: "A career shouldn't be decided by who you happen to know.",
     icon: Users,
   },
   {
     title: "Beyond the studio",
     description:
-      "The most important conversations in architecture happen outside the studio. A jury teaches you to defend a project. A mentor teaches you to build a life around one.",
+      "A jury teaches you to defend a project. A mentor teaches you to build a life around one.",
     icon: MessageCircle,
   },
   {
     title: "Structure sustains generosity",
-    description:
-      "Generosity needs structure to last. Mentors give their time, their experience, their honesty. Our job is to make that worth their while — every single time.",
+    description: "Mentors give their time and honesty. Our job is to make that worth their while.",
     icon: Heart,
   },
 ];
 
-/** Live "1 Founder + N mentors" banner — fetches from /api/stats on mount. */
 function LiveMentorBanner() {
   const [mentorCount, setMentorCount] = useState<number | null>(null);
 
@@ -159,13 +97,12 @@ function LiveMentorBanner() {
       .then((d: { mentorCount?: number }) => {
         if (typeof d.mentorCount === "number") setMentorCount(d.mentorCount);
       })
-      .catch(() => {/* silently keep null */});
+      .catch(() => {});
   }, []);
 
   return (
-    <SectionReveal className="rounded-2xl border border-black/[0.08] bg-neutral-50 p-8 text-center shadow-sm">
-      <Users className="mx-auto mb-4 size-11 text-primary" aria-hidden />
-      <p className="text-2xl font-bold text-gray-900 sm:text-3xl">
+    <div className="rounded-2xl border border-black/[0.07] bg-neutral-50 px-6 py-5 text-center">
+      <p className="text-base font-semibold text-gray-900">
         1 Founder
         {mentorCount !== null && (
           <>
@@ -174,121 +111,106 @@ function LiveMentorBanner() {
           </>
         )}
       </p>
-      <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-gray-500">
-        and growing — every mentor on Commonsia is a practising architect or design professional.
+      <p className="mt-1 text-sm text-gray-500">
+        Every mentor on Commonsia is a practising architect or design professional.
       </p>
-    </SectionReveal>
+    </div>
   );
 }
 
-/** Marketing body only — `MarketingShell` supplies global Navbar + SiteFooter. */
 export function WhoWeArePage() {
   return (
     <div className="min-h-screen bg-white">
-      {/* Hero */}
-      <section className="relative min-h-[calc(100svh-4.5rem)] overflow-hidden bg-white px-6 py-10 sm:py-12 md:py-14">
-        <div className="pointer-events-none absolute inset-0" aria-hidden>
-          <SoftGrid />
-        </div>
-        <div className="relative mx-auto flex h-full max-w-6xl flex-col items-center justify-center gap-6 pt-16 text-center sm:pt-20 md:pt-24">
+
+      {/* ── Hero ── */}
+      <section className="relative overflow-hidden bg-white px-6 py-16 sm:py-20">
+        {/* Subtle grid texture */}
+        <div
+          className="pointer-events-none absolute inset-0 opacity-[0.07] bg-center bg-repeat"
+          style={{
+            backgroundImage: `url(${WHO_WE_ARE_BASE}/hero_bg.png)`,
+            backgroundSize: "520px auto",
+          }}
+          aria-hidden
+        />
+        <div className="relative mx-auto max-w-3xl text-center">
           <motion.h1
             initial={{ opacity: 0, y: 14 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-            className="mx-auto text-4xl font-semibold leading-[0.98] tracking-tight text-black sm:text-5xl md:text-6xl lg:text-7xl"
+            transition={{ duration: 0.65, ease: [0.22, 1, 0.36, 1] }}
+            className="text-4xl font-semibold leading-[1.05] tracking-tight text-black sm:text-5xl md:text-6xl"
           >
-            <span className="block whitespace-normal sm:whitespace-nowrap">
-              <span className="text-primary">Commonsia</span> is where architecture
-            </span>
-            <span className="block whitespace-normal sm:whitespace-nowrap">
-              students find <span className="text-primary">mentors</span> who&apos;ve
-            </span>
-            <span className="block whitespace-normal sm:whitespace-nowrap">been where they&apos;re going.</span>
+            <span className="text-primary">Commonsia</span> is where architecture
+            students find <span className="text-primary">mentors</span> who&apos;ve
+            been where they&apos;re going.
           </motion.h1>
           <motion.p
-            initial={{ opacity: 0, y: 12 }}
+            initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, delay: 0.08, ease: [0.22, 1, 0.36, 1] }}
-            className="mx-auto max-w-2xl text-pretty text-sm leading-relaxed text-neutral-600 sm:text-base md:text-lg"
+            transition={{ duration: 0.65, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
+            className="mx-auto mt-5 max-w-xl text-base leading-relaxed text-neutral-500 sm:text-lg"
           >
-            Real conversations with practising architects — for portfolio reviews, career guidance, design crits, and
-            the kind of mentorship that shapes a career.
+            Real conversations with practising architects — for portfolio reviews,
+            career guidance, design crits, and the kind of mentorship that shapes a career.
           </motion.p>
         </div>
       </section>
 
-      {/* Timeline */}
-      <section id="our-journey" className="scroll-mt-28 bg-white px-6 py-14 sm:py-18 md:py-20">
-        <div className="mx-auto max-w-6xl">
-          <SectionReveal className="mb-10 text-center sm:mb-12">
-            <h2 className="mb-4 text-3xl font-bold leading-tight text-gray-900 md:text-4xl lg:text-5xl">
-              The Story Behind Commonsia
+      {/* ── Story / Timeline ── */}
+      <section className="border-t border-black/[0.06] bg-white px-6 py-12 sm:py-14">
+        <div className="mx-auto max-w-2xl">
+          <SectionReveal>
+            <h2 className="mb-8 text-center text-2xl font-bold text-gray-900 sm:text-3xl">
+              How we got here
             </h2>
-            <p className="mx-auto max-w-3xl text-lg text-gray-600 md:text-xl">
-              From a thesis room to a movement that&apos;s reshaping architectural education
-            </p>
           </SectionReveal>
 
-          <div className="relative">
+          <div className="relative space-y-0">
+            {/* Vertical rail */}
             <div
-              className="absolute bottom-0 left-8 top-0 w-0.5 bg-gradient-to-b from-neutral-200 via-neutral-200 to-transparent md:left-1/2 md:-translate-x-1/2"
+              className="absolute bottom-0 left-[1.1rem] top-0 w-px bg-gradient-to-b from-neutral-200 via-neutral-200 to-transparent"
               aria-hidden
             />
 
-            <div className="space-y-12">
-              {timeline.map((item, index) => {
-                const Icon = item.icon;
-                return (
-                  <div
-                    key={item.year + item.title}
-                    className={`relative flex items-center ${index % 2 === 0 ? "md:flex-row" : "md:flex-row-reverse"}`}
-                  >
-                    <div className="absolute left-8 z-10 flex size-16 items-center justify-center rounded-full border border-black/[0.10] bg-white shadow-lg md:left-1/2 md:-translate-x-1/2">
-                      <div className="flex size-10 items-center justify-center rounded-2xl bg-primary/10 shadow-sm">
-                        <Icon className="size-6 text-primary" aria-hidden />
-                      </div>
-                    </div>
-
-                    <div
-                      className={`ml-24 md:ml-0 md:w-5/12 ${index % 2 === 0 ? "md:mr-auto md:pr-16" : "md:ml-auto md:pl-16"}`}
-                    >
-                      <SectionReveal
-                        delay={index * 0.04}
-                        className="rounded-2xl border border-black/[0.08] bg-white p-6 shadow-sm transition-all hover:shadow-lg sm:p-8"
-                      >
-                        <span className="mb-4 inline-block rounded-full bg-primary px-4 py-1 text-sm font-bold text-white">
-                          {item.year}
-                        </span>
-                        <h3 className="mb-3 text-xl font-bold text-gray-900 sm:text-2xl">{item.title}</h3>
-                        <p className="leading-relaxed text-gray-600">{item.description}</p>
-                      </SectionReveal>
-                    </div>
+            {timeline.map((item, i) => (
+              <SectionReveal key={item.year} delay={i * 0.05}>
+                <div className="relative flex gap-6 pb-8 last:pb-0">
+                  {/* Year dot */}
+                  <div className="relative z-10 flex size-9 shrink-0 items-center justify-center rounded-full border border-black/[0.09] bg-white shadow-sm">
+                    <span className="text-[10px] font-bold text-primary">{item.year}</span>
                   </div>
-                );
-              })}
-            </div>
+                  {/* Content */}
+                  <div className="pt-1.5">
+                    <p className="mb-1 text-sm font-bold text-gray-900">{item.title}</p>
+                    <p className="text-sm leading-relaxed text-gray-500">{item.description}</p>
+                  </div>
+                </div>
+              </SectionReveal>
+            ))}
           </div>
         </div>
       </section>
 
-      {/* Beliefs */}
-      <section id="beliefs" className="scroll-mt-28 bg-white px-6 py-14 sm:py-18 md:py-20">
-        <div className="mx-auto max-w-6xl">
-          <SectionReveal className="mb-10 text-center sm:mb-12">
-            <h2 className="text-3xl font-bold leading-tight text-gray-900 md:text-4xl lg:text-5xl">What We Believe</h2>
+      {/* ── Beliefs ── */}
+      <section className="border-t border-black/[0.06] bg-neutral-50 px-6 py-12 sm:py-14">
+        <div className="mx-auto max-w-4xl">
+          <SectionReveal>
+            <h2 className="mb-8 text-center text-2xl font-bold text-gray-900 sm:text-3xl">
+              What we believe
+            </h2>
           </SectionReveal>
 
-          <div className="grid gap-8 md:grid-cols-3">
-            {beliefs.map((belief, idx) => {
-              const Icon = belief.icon;
+          <div className="grid gap-5 sm:grid-cols-3">
+            {beliefs.map((b, i) => {
+              const Icon = b.icon;
               return (
-                <SectionReveal key={belief.title} delay={idx * 0.05} className="group relative">
-                  <div className="h-full rounded-2xl border border-black/[0.08] bg-white p-8 shadow-sm transition-all group-hover:-translate-y-1.5 group-hover:shadow-xl">
-                    <div className="mb-6 flex size-14 items-center justify-center rounded-2xl bg-primary/10 text-primary shadow-sm transition-all group-hover:scale-[1.03] group-hover:bg-primary group-hover:text-white">
-                      <Icon className="size-7" aria-hidden />
+                <SectionReveal key={b.title} delay={i * 0.06}>
+                  <div className="rounded-2xl border border-black/[0.07] bg-white px-5 py-5">
+                    <div className="mb-3 flex size-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                      <Icon className="size-4" aria-hidden />
                     </div>
-                    <h3 className="mb-4 text-xl font-bold text-gray-900 sm:text-2xl">{belief.title}</h3>
-                    <p className="leading-relaxed text-gray-600">{belief.description}</p>
+                    <p className="mb-1.5 text-sm font-bold text-gray-900">{b.title}</p>
+                    <p className="text-sm leading-relaxed text-gray-500">{b.description}</p>
                   </div>
                 </SectionReveal>
               );
@@ -297,142 +219,49 @@ export function WhoWeArePage() {
         </div>
       </section>
 
-      {/* Team */}
-      <section id="team" className="scroll-mt-28 bg-white px-6 py-14 sm:py-18 md:py-20">
-        <div className="mx-auto max-w-6xl">
-          <SectionReveal className="mb-10 text-center sm:mb-12 md:mb-14">
-            <p className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-primary">Our team</p>
-            <h2 className="text-3xl font-bold leading-tight text-gray-900 md:text-4xl lg:text-5xl">Meet the Founder</h2>
-          </SectionReveal>
-
-          <div className="mb-12 flex justify-center">
-            <SectionReveal className="w-full max-w-sm overflow-hidden rounded-2xl border border-neutral-200/90 bg-white shadow-sm transition-all hover:-translate-y-1 hover:shadow-xl">
+      {/* ── Founder ── */}
+      <section className="border-t border-black/[0.06] bg-white px-6 py-12 sm:py-14">
+        <div className="mx-auto max-w-4xl">
+          <SectionReveal>
+            <div className="flex flex-col items-center gap-6 sm:flex-row sm:items-start sm:gap-8">
+              {/* Photo card */}
               <Link
                 href="https://www.linkedin.com/in/shujarehman12/"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex flex-col"
                 aria-label="View Shuja Rehman on LinkedIn"
+                className="group shrink-0"
               >
-                <div className="relative isolate h-[16.5rem] w-full shrink-0 overflow-hidden sm:h-[17.5rem]">
+                <div className="relative h-48 w-40 overflow-hidden rounded-2xl border border-neutral-200/90 shadow-sm transition-all group-hover:-translate-y-0.5 group-hover:shadow-md sm:h-52 sm:w-44">
                   <TeamCardPhotoBackdrop />
-                  <div className="absolute inset-0">
-                    <div className="relative h-full w-full">
-                      <Image
-                        src={founder.imageSrc}
-                        alt={founder.name}
-                        fill
-                        sizes="384px"
-                        className={`drop-shadow-[0_6px_18px_rgba(0,0,0,0.12)] ${founder.photoObjectClass ?? "object-cover object-[50%_18%]"}`}
-                        priority
-                      />
-                    </div>
-                  </div>
-                </div>
-                <div className="flex flex-none flex-col items-center px-5 py-5 text-center sm:px-6 sm:py-6">
-                  <h3 className="text-lg font-bold tracking-tight text-neutral-950 sm:text-xl">{founder.name}</h3>
-                  <p className="mt-1.5 text-[11px] font-bold uppercase tracking-[0.12em] text-primary sm:text-xs">
-                    {founder.role}
-                  </p>
-                  <p className="mt-2.5 text-sm leading-relaxed text-neutral-500 sm:mt-3 sm:text-[0.9375rem]">
-                    {founder.description}
-                  </p>
+                  <Image
+                    src={whoWeAreImg("Shuja.png")}
+                    alt="Shuja Rehman"
+                    fill
+                    sizes="176px"
+                    className="object-cover object-[50%_10%] scale-[1.08] [transform-origin:50%_24%] drop-shadow-[0_6px_18px_rgba(0,0,0,0.12)]"
+                    priority
+                  />
                 </div>
               </Link>
-            </SectionReveal>
-          </div>
 
-          <LiveMentorBanner />
-        </div>
-      </section>
+              {/* Text */}
+              <div className="flex-1 text-center sm:text-left">
+                <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-primary">
+                  Our team
+                </p>
+                <h2 className="mt-1.5 text-2xl font-bold text-gray-900 sm:text-3xl">
+                  Shuja Rehman
+                </h2>
+                <p className="mt-1 text-xs font-bold uppercase tracking-[0.12em] text-neutral-400">
+                  Founder
+                </p>
+                <p className="mt-3 max-w-md text-sm leading-relaxed text-neutral-500 sm:mt-4 sm:text-base">
+                  Leads vision, community, and the direction of the platform.
+                </p>
 
-      {/* Future */}
-      <section id="future" className="scroll-mt-28 bg-white px-6 py-14 sm:py-18 md:py-20">
-        <div className="mx-auto max-w-6xl">
-          <SectionReveal className="mb-10 text-center sm:mb-12">
-            <h2 className="mb-4 text-3xl font-bold leading-tight text-gray-900 md:text-4xl lg:text-5xl">
-              Where We&apos;re Going
-            </h2>
-          </SectionReveal>
-
-          <div className="grid gap-8 md:grid-cols-3">
-            <div className="rounded-2xl border border-black/[0.08] bg-white p-8 shadow-sm transition-all hover:shadow-xl">
-              <div className="mb-6 flex items-center gap-3">
-                <div className="flex size-12 items-center justify-center rounded-xl bg-primary/10 text-primary shadow-sm">
-                  <Calendar className="size-6" aria-hidden />
-                </div>
-                <h3 className="text-2xl font-bold text-gray-900">Today</h3>
-              </div>
-              <p className="mb-4 leading-relaxed text-gray-600">
-                B.Arch students. Verified mentors. A model that works, proven in India.
-              </p>
-              <div className="flex flex-wrap gap-2">
-                <span className="inline-block rounded-full bg-black/5 px-3 py-1 text-sm font-medium text-neutral-700">
-                  Active
-                </span>
-                <span className="inline-block rounded-full bg-black/5 px-3 py-1 text-sm font-medium text-neutral-700">
-                  Growing
-                </span>
-              </div>
-            </div>
-
-            <div className="rounded-2xl border border-black/[0.08] bg-white p-8 shadow-sm transition-all hover:shadow-xl">
-              <div className="mb-6 flex items-center gap-3">
-                <div className="flex size-12 items-center justify-center rounded-xl bg-primary/10 text-primary shadow-sm">
-                  <TrendingUp className="size-6" aria-hidden />
-                </div>
-                <h3 className="text-2xl font-bold text-gray-900">Tomorrow</h3>
-              </div>
-              <p className="leading-relaxed text-gray-600">
-                The full design ecosystem. Interior design. Urban planning. Landscape. Product design. The same
-                scattered goodwill, waiting to be organised.
-              </p>
-            </div>
-
-            <div className="rounded-2xl border border-black/[0.08] bg-white p-8 shadow-sm transition-all hover:shadow-xl">
-              <div className="mb-6 flex items-center gap-3">
-                <div className="flex size-12 items-center justify-center rounded-xl bg-primary/10 text-primary shadow-sm">
-                  <Globe className="size-6" aria-hidden />
-                </div>
-                <h3 className="text-2xl font-bold text-gray-900">The Vision</h3>
-              </div>
-              <p className="leading-relaxed text-gray-600">
-                To become the place where an architecture career actually happens. Where guidance flows freely, where
-                talent is nurtured, and where a century-old profession finally has the network it deserves.
-              </p>
-            </div>
-          </div>
-
-          <SectionReveal className="mt-10 rounded-2xl border border-black/[0.08] bg-white p-8 shadow-sm sm:p-10">
-            <h3 className="mb-6 text-center text-xl font-bold text-gray-900 sm:text-2xl">
-              A network the profession has been waiting a century for
-            </h3>
-            <div className="grid gap-8 md:grid-cols-2">
-              <div className="space-y-4">
-                <div className="flex items-start gap-3">
-                  <CheckCircle2 className="mt-1 size-6 shrink-0 text-primary" aria-hidden />
-                  <p className="text-gray-700">
-                    Where a sixteen-year-old curious about the field finds her first mentor
-                  </p>
-                </div>
-                <div className="flex items-start gap-3">
-                  <CheckCircle2 className="mt-1 size-6 shrink-0 text-primary" aria-hidden />
-                  <p className="text-gray-700">Where a third-year lands the right internship</p>
-                </div>
-              </div>
-              <div className="space-y-4">
-                <div className="flex items-start gap-3">
-                  <CheckCircle2 className="mt-1 size-6 shrink-0 text-primary" aria-hidden />
-                  <p className="text-gray-700">
-                    Where a graduate chooses between a master&apos;s abroad and a practice in Mumbai through a real
-                    conversation, not a Reddit thread
-                  </p>
-                </div>
-                <div className="flex items-start gap-3">
-                  <CheckCircle2 className="mt-1 size-6 shrink-0 text-primary" aria-hidden />
-                  <p className="text-gray-700">
-                    Where a working architect, ten years in, gives back to the profession — and is valued for it
-                  </p>
+                <div className="mt-6">
+                  <LiveMentorBanner />
                 </div>
               </div>
             </div>
@@ -440,32 +269,36 @@ export function WhoWeArePage() {
         </div>
       </section>
 
-      {/* Final CTA */}
-      <section className="relative mb-10 overflow-hidden bg-neutral-950 px-6 py-12 sm:mb-14 sm:py-14 md:mb-16 md:py-16">
-        <div className="pointer-events-none absolute inset-0 opacity-25" aria-hidden>
+      {/* ── CTA ── */}
+      <section className="relative overflow-hidden bg-neutral-950 px-6 py-12 sm:py-14">
+        <div
+          className="pointer-events-none absolute inset-0 opacity-20"
+          aria-hidden
+        >
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_1px_1px,rgba(255,255,255,0.12)_1px,transparent_0)] [background-size:54px_54px]" />
           <div className="absolute left-1/2 top-[-16rem] h-[34rem] w-[34rem] -translate-x-1/2 rounded-full bg-primary/15 blur-3xl" />
         </div>
 
-        <SectionReveal className="relative z-10 mx-auto max-w-4xl text-center text-white" delay={0.04}>
-          <Rocket className="mx-auto mb-6 size-11 text-white/90 sm:size-12" aria-hidden />
-          <h2 className="text-balance text-2xl font-black leading-tight sm:text-3xl md:text-4xl">
+        <SectionReveal className="relative z-10 mx-auto max-w-2xl text-center text-white">
+          <Rocket className="mx-auto mb-5 size-9 text-white/80" aria-hidden />
+          <h2 className="text-2xl font-black leading-tight sm:text-3xl">
             We&apos;re building it.
           </h2>
-          <p className="mx-auto mt-4 max-w-3xl text-pretty text-sm leading-relaxed text-white/80 sm:text-base md:text-lg">
-            Join us in reshaping architectural education — with real mentors, real conversations, and the structure to
-            make guidance accessible.
+          <p className="mx-auto mt-3 max-w-lg text-sm leading-relaxed text-white/70 sm:text-base">
+            Join us in reshaping architectural education — with real mentors, real
+            conversations, and the structure to make guidance accessible.
           </p>
-          <div className="mt-7 flex justify-center">
+          <div className="mt-7">
             <Link
               href="/auth"
-              className="rounded-xl bg-white px-8 py-3 text-sm font-bold text-neutral-950 shadow-2xl transition-all hover:scale-[1.02] hover:bg-neutral-100 sm:px-10 sm:py-3.5 sm:text-base"
+              className="inline-block rounded-xl bg-white px-8 py-3 text-sm font-bold text-neutral-950 shadow-xl transition-all hover:scale-[1.02] hover:bg-neutral-100 sm:px-10 sm:py-3.5 sm:text-base"
             >
               Join Commonsia
             </Link>
           </div>
         </SectionReveal>
       </section>
+
     </div>
   );
 }
